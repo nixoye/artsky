@@ -365,6 +365,55 @@ export async function searchPostsByTag(tag: string, cursor?: string) {
   return { posts: res.data.posts, cursor: res.data.cursor }
 }
 
+/** Get the current account's saved/pinned feeds from preferences. Returns array of { id, type, value, pinned }. */
+export async function getSavedFeedsFromPreferences(): Promise<
+  { id: string; type: string; value: string; pinned: boolean }[]
+> {
+  const prefs = await agent.getPreferences()
+  const list = (prefs as { savedFeeds?: { id: string; type: string; value: string; pinned: boolean }[] }).savedFeeds
+  return list ?? []
+}
+
+/** Parse a bsky.app profile feed URL into handle and feed slug. e.g. https://bsky.app/profile/foo.bsky.social/feed/for-you -> { handle: 'foo.bsky.social', feedSlug: 'for-you' } */
+export function parseBskyFeedUrl(url: string): { handle: string; feedSlug: string } | null {
+  const trimmed = url.trim()
+  const m = trimmed.match(
+    /^https?:\/\/(?:www\.)?bsky\.app\/profile\/([^/]+)\/feed\/([^/?#]+)/
+  )
+  if (!m) return null
+  return { handle: decodeURIComponent(m[1]), feedSlug: decodeURIComponent(m[2]) }
+}
+
+/** Resolve a bsky.app feed URL (or at:// URI) to a feed generator at:// URI. Throws if invalid. */
+export async function resolveFeedUri(input: string): Promise<string> {
+  const trimmed = input.trim()
+  if (trimmed.startsWith('at://')) {
+    const res = await agent.app.bsky.feed.getFeedGenerator({ feed: trimmed })
+    if (res?.data?.view?.uri) return res.data.view.uri
+    throw new Error('Invalid feed URI')
+  }
+  const parsed = parseBskyFeedUrl(trimmed)
+  if (!parsed) throw new Error('Enter a feed URI (at://...) or a bsky.app feed URL')
+  const profile = await publicAgent.getProfile({ actor: parsed.handle })
+  const did = (profile.data as { did?: string }).did
+  if (!did) throw new Error('Could not find that profile')
+  const uri = `at://${did}/app.bsky.feed.generator/${parsed.feedSlug}`
+  const res = await agent.app.bsky.feed.getFeedGenerator({ feed: uri })
+  if (!res?.data?.view?.uri) throw new Error('Could not find that feed')
+  return res.data.view.uri
+}
+
+/** Add a feed to the account's saved feeds (pinned). */
+export async function addSavedFeed(uri: string): Promise<void> {
+  await agent.addSavedFeeds([{ type: 'feed', value: uri, pinned: true }])
+}
+
+/** Get display name for a feed URI. */
+export async function getFeedDisplayName(uri: string): Promise<string> {
+  const res = await agent.app.bsky.feed.getFeedGenerator({ feed: uri })
+  return (res.data?.view as { displayName?: string })?.displayName ?? uri
+}
+
 /** Post a reply to a post. For top-level reply use same uri/cid for root and parent. */
 export async function postReply(
   rootUri: string,

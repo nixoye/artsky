@@ -3,33 +3,35 @@ import type { FeedSource } from '../types'
 import styles from './FeedSelector.module.css'
 
 interface Props {
+  sources: FeedSource[]
   value: FeedSource
   onChange: (s: FeedSource) => void
-  onAddCustom: (uri: string) => void
+  onAddCustom: (input: string) => void | Promise<void>
 }
 
-const PRESETS: FeedSource[] = [
-  { kind: 'timeline', label: 'Following' },
-  { kind: 'custom', label: "What's Hot", uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' },
-]
-
-export default function FeedSelector({ value, onChange, onAddCustom }: Props) {
-  const [customUri, setCustomUri] = useState('')
+export default function FeedSelector({ sources, value, onChange, onAddCustom }: Props) {
+  const [customInput, setCustomInput] = useState('')
   const [showCustom, setShowCustom] = useState(false)
+  const [adding, setAdding] = useState(false)
 
-  function handleAddCustom(e: React.FormEvent) {
+  async function handleAddCustom(e: React.FormEvent) {
     e.preventDefault()
-    const uri = customUri.trim()
-    if (!uri) return
-    onAddCustom(uri)
-    setShowCustom(false)
-    setCustomUri('')
+    const input = customInput.trim()
+    if (!input) return
+    setAdding(true)
+    try {
+      await onAddCustom(input)
+      setShowCustom(false)
+      setCustomInput('')
+    } finally {
+      setAdding(false)
+    }
   }
 
   return (
     <div className={styles.wrap}>
       <div className={styles.tabs}>
-        {PRESETS.map((s) => (
+        {sources.map((s) => (
           <button
             key={s.uri ?? s.label}
             type="button"
@@ -44,19 +46,24 @@ export default function FeedSelector({ value, onChange, onAddCustom }: Props) {
         <form onSubmit={handleAddCustom} className={styles.customForm}>
           <input
             type="text"
-            placeholder="Feed URI (at://...)"
-            value={customUri}
-            onChange={(e) => setCustomUri(e.target.value)}
+            placeholder="https://bsky.app/profile/handle.bsky.social/feed/feed-name"
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
             className={styles.input}
+            disabled={adding}
           />
           <div className={styles.customActions}>
-            <button type="submit" className={styles.btn}>Add</button>
-            <button type="button" className={styles.btnSecondary} onClick={() => setShowCustom(false)}>Cancel</button>
+            <button type="submit" className={styles.btn} disabled={adding}>
+              {adding ? 'Adding…' : 'Add'}
+            </button>
+            <button type="button" className={styles.btnSecondary} onClick={() => setShowCustom(false)} disabled={adding}>
+              Cancel
+            </button>
           </div>
         </form>
       ) : (
         <button type="button" className={styles.addFeed} onClick={() => setShowCustom(true)}>
-          + Custom feed URI
+          + Add custom feed
         </button>
       )}
     </div>

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { agent, publicAgent, getPostMediaInfo, getGuestFeed, type TimelineItem } from '../lib/bsky'
+import {
+  agent,
+  publicAgent,
+  getPostMediaInfo,
+  getGuestFeed,
+  getSavedFeedsFromPreferences,
+  getFeedDisplayName,
+  resolveFeedUri,
+  addSavedFeed,
+  type TimelineItem,
+} from '../lib/bsky'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
@@ -10,8 +20,9 @@ import { useSession } from '../context/SessionContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
 
-const DEFAULT_SOURCES: FeedSource[] = [
+const PRESET_SOURCES: FeedSource[] = [
   { kind: 'timeline', label: 'Following' },
+  { kind: 'custom', label: "What's Hot", uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' },
 ]
 
 export default function FeedPage() {
@@ -19,7 +30,8 @@ export default function FeedPage() {
   const navigate = useNavigate()
   const { session } = useSession()
   const { viewMode } = useViewMode()
-  const [source, setSource] = useState<FeedSource>(DEFAULT_SOURCES[0])
+  const [source, setSource] = useState<FeedSource>(PRESET_SOURCES[0])
+  const [savedFeedSources, setSavedFeedSources] = useState<FeedSource[]>([])
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
@@ -29,6 +41,38 @@ export default function FeedPage() {
   const [followedGuestHandles, setFollowedGuestHandles] = useState<string[]>([])
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
+
+  const allSources = [...PRESET_SOURCES, ...savedFeedSources]
+
+  const loadSavedFeeds = useCallback(async () => {
+    if (!session) {
+      setSavedFeedSources([])
+      return
+    }
+    try {
+      const list = await getSavedFeedsFromPreferences()
+      const feeds = list.filter((f) => f.type === 'feed' && f.pinned)
+      const withLabels = await Promise.all(
+        feeds.map(async (f) => ({
+          kind: 'custom' as const,
+          label: await getFeedDisplayName(f.value).catch(() => f.value),
+          uri: f.value,
+        }))
+      )
+      setSavedFeedSources(withLabels)
+    } catch {
+      setSavedFeedSources([])
+    }
+  }, [session])
+
+  useEffect(() => {
+    loadSavedFeeds()
+  }, [loadSavedFeeds])
+
+  // Scroll to top when landing on the feed (e.g. clicking logo from another page)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   // When logged in, see which guest accounts the user follows (so we can show the preview section for those).
   useEffect(() => {
@@ -136,9 +180,21 @@ export default function FeedPage() {
       <div className={styles.wrap}>
         {session && (
           <FeedSelector
+            sources={allSources}
             value={source}
             onChange={setSource}
-            onAddCustom={(uri) => setSource({ kind: 'custom', label: 'Custom', uri })}
+            onAddCustom={async (input) => {
+              setError(null)
+              try {
+                const uri = await resolveFeedUri(input)
+                await addSavedFeed(uri)
+                await loadSavedFeeds()
+                const label = await getFeedDisplayName(uri)
+                setSource({ kind: 'custom', label, uri })
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Could not add feed')
+              }
+            }}
           />
         )}
         {showGuestSection && (

@@ -567,7 +567,17 @@ export default function Layout({ title, children, showNav, showColumnView = true
         {showNav && (
           <>
             <div className={styles.headerLeft}>
-              <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
+              <Link
+                to="/feed"
+                className={styles.logoLink}
+                aria-label="ArtSky – back to feed"
+                onClick={(e) => {
+                  if (path === '/feed') {
+                    e.preventDefault()
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }
+                }}
+              >
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
               </Link>
