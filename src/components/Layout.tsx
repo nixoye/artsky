@@ -276,15 +276,17 @@ export default function Layout({ title, children, showNav, showColumnView = true
   useEffect(() => {
     if (!mobileSearchOpen || typeof window === 'undefined') return
     const vv = window.visualViewport
+    if (!vv) return
+    const viewport = vv
     function update() {
-      setSearchOverlayBottom(window.innerHeight - (vv.offsetTop + vv.height))
+      setSearchOverlayBottom(window.innerHeight - (viewport.offsetTop + viewport.height))
     }
     update()
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
+    viewport.addEventListener('resize', update)
+    viewport.addEventListener('scroll', update)
     return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
+      viewport.removeEventListener('resize', update)
+      viewport.removeEventListener('scroll', update)
     }
   }, [mobileSearchOpen])
 
