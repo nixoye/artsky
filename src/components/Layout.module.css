@@ -119,6 +119,166 @@
   letter-spacing: -0.02em;
 }
 
+/* Desktop: View + Account in top right; search centered */
+.headerRight {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .headerRight {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .headerBtnWrap {
+    position: relative;
+  }
+  .headerBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--glass-radius-sm);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .headerBtn:hover {
+    color: var(--text);
+    background: var(--glass-highlight);
+  }
+  .headerBtn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .viewMenu,
+  .accountMenu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    min-width: 160px;
+    padding: 0.5rem;
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    backdrop-filter: blur(var(--glass-blur-strong));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 30;
+  }
+  .accountMenu {
+    min-width: 200px;
+    max-width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .menuTitle {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .menuSection {
+    margin-bottom: 0.75rem;
+  }
+  .menuSection:last-child {
+    margin-bottom: 0;
+  }
+  .menuSectionTitle {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .menuRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .menuOption,
+  .menuOptionActive {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 0.35rem;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-highlight);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .menuOption:hover {
+    border-color: var(--muted);
+  }
+  .menuOptionActive {
+    border-color: var(--accent);
+    background: rgba(124, 58, 237, 0.18);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .menuItem,
+  .menuItemActive {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+    text-align: left;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    border-radius: var(--glass-radius-sm);
+    cursor: pointer;
+  }
+  .menuItem:hover {
+    background: var(--glass-highlight);
+  }
+  .menuItemActive {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .menuActions {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .menuActionBtn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--glass-radius-sm);
+    cursor: pointer;
+  }
+  .menuActionBtn:hover {
+    opacity: 0.95;
+  }
+  .menuActionSecondary {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    cursor: pointer;
+  }
+  .menuActionSecondary:hover {
+    color: var(--text);
+  }
+}
+
 .main {
   max-width: 1200px;
   margin: 0 auto;
