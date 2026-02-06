@@ -399,7 +399,7 @@ export default function PostCard({ item }: Props) {
           <div className={styles.handleBlock}>
             <span className={styles.handleRow}>
               {post.author.avatar && (
-                <img src={post.author.avatar} alt="" className={styles.authorAvatar} />
+                <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
               )}
               <span className={repostedByHandle ? styles.handleLinkWrapRepost : styles.handleLinkWrap}>
                 <Link

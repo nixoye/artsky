@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { agent, publicAgent, getPostMediaInfo, getGuestFeed, type TimelineItem } from '../lib/bsky'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
@@ -27,6 +27,8 @@ export default function FeedPage() {
   const [error, setError] = useState<string | null>(null)
   const [guestProfiles, setGuestProfiles] = useState<Record<string, { avatar?: string; displayName?: string }>>({})
   const [followedGuestHandles, setFollowedGuestHandles] = useState<string[]>([])
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const loadingMoreRef = useRef(false)
 
   // When logged in, see which guest accounts the user follows (so we can show the preview section for those).
   useEffect(() => {
@@ -79,6 +81,7 @@ export default function FeedPage() {
 
   const load = useCallback(async (nextCursor?: string) => {
     try {
+      // Single request at a time; limit 30 per page to avoid heavy responses
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
@@ -107,6 +110,24 @@ export default function FeedPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Infinite scroll: load more when sentinel enters view (one request at a time, only when cursor exists)
+  loadingMoreRef.current = loadingMore
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current
+    if (!sentinel || !cursor) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [e] = entries
+        if (!e?.isIntersecting || loadingMoreRef.current) return
+        loadingMoreRef.current = true
+        load(cursor)
+      },
+      { rootMargin: '200px', threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [cursor, load])
 
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
 
@@ -177,14 +198,12 @@ export default function FeedPage() {
               ))}
             </div>
             {cursor && (
-              <button
-                type="button"
-                className={styles.more}
-                onClick={() => load(cursor)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? 'Loading…' : 'Load more'}
-              </button>
+              <>
+                <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />
+                {loadingMore && (
+                  <p className={styles.loadingMore} role="status">Loading more…</p>
+                )}
+              </>
             )}
           </>
         )}

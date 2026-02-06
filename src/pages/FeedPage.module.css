@@ -114,21 +114,18 @@
 .gridView4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
 .gridView5 { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
 
-.more {
-  display: block;
+/* Invisible sentinel for infinite scroll (IntersectionObserver target) */
+.loadMoreSentinel {
+  height: 1px;
   width: 100%;
-  max-width: 200px;
-  margin: 1rem auto;
-  padding: 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  color: var(--text);
-  font-size: 0.95rem;
-  cursor: pointer;
+  pointer-events: none;
+  visibility: hidden;
 }
 
-.more:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.loadingMore {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 0.75rem;
+  margin: 0;
 }
