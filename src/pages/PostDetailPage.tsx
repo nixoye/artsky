@@ -206,15 +206,6 @@ function PostBlock({
               {formatRelativeTime(createdAt)}
             </span>
           )}
-          {onReply && (
-            <button
-              type="button"
-              className={styles.replyBtn}
-              onClick={() => onReply(post.uri, post.cid, handle)}
-            >
-              Reply
-            </button>
-          )}
         </div>
       </div>
       {allMedia.length > 0 && <MediaGallery items={allMedia} />}
@@ -223,11 +214,26 @@ function PostBlock({
           <PostText text={text} />
         </p>
       )}
+      {onReply && (
+        <div className={styles.replyBtnRow}>
+          <button
+            type="button"
+            className={styles.replyBtn}
+            onClick={() => onReply(post.uri, post.cid, handle)}
+          >
+            Reply
+          </button>
+        </div>
+      )}
       {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
         <form ref={commentFormRef} onSubmit={onReplySubmit} className={styles.inlineReplyForm}>
           {replyAs && (
             <p className={styles.replyAs}>
-              {replyAs.avatar && <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />}
+              {replyAs.avatar ? (
+                <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+              ) : (
+                <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+              )}
               <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
             </p>
           )}
@@ -447,7 +453,7 @@ export default function PostDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [decodedUri])
+  }, [decodedUri, sessionFromContext?.did])
 
   useEffect(() => {
     load()
@@ -700,7 +706,11 @@ export default function PostDetailPage() {
               <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
                 {replyAs && (
                   <p className={styles.replyAs}>
-                    {replyAs.avatar && <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />}
+                    {replyAs.avatar ? (
+                      <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+                    ) : (
+                      <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+                    )}
                     <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
                   </p>
                 )}
