@@ -968,7 +968,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
                           </span>
                         </div>
                         <div className={styles.composeActions}>
-                          <span className={styles.composeHint}>⌘↵ to post</span>
                           <button type="button" className={styles.composeCancel} onClick={closeCompose} disabled={composePosting}>
                             Cancel
                           </button>

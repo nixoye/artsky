@@ -754,12 +754,6 @@
   color: var(--muted);
 }
 
-.composeHint {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-right: 0.25rem;
-}
-
 .composeActions {
   display: flex;
   gap: 0.5rem;
