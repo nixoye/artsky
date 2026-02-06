@@ -98,36 +98,20 @@
   font-weight: 600;
 }
 
-/* Pinterest-style: column layout so items pack, horizontal posts can sit next to tall vertical ones */
-.masonry {
-  column-gap: 0.4rem;
+/* Row of columns: items distributed round-robin so "Load more" appends below, not into right columns */
+.masonryRow {
+  display: flex;
+  gap: 0.4rem;
   width: 100%;
   min-width: 0;
 }
 
-.masonry > * {
-  break-inside: avoid;
-  margin-bottom: 0.4rem;
-}
-
-.masonryView1 {
-  column-count: 1;
-}
-
-.masonryView2 {
-  column-count: 2;
-}
-
-.masonryView3 {
-  column-count: 3;
-}
-
-.masonryView4 {
-  column-count: 4;
-}
-
-.masonryView5 {
-  column-count: 5;
+.masonryColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .more {
