@@ -1124,9 +1124,10 @@ export default function PostDetailPage() {
                 }}
               >
                 {threadReplies.map((r) => {
-                  const focusedCommentUri = threadRepliesFlat[focusedCommentIndex]?.uri
+                  const commentFocusIndex = keyboardFocusIndex - (rootMediaForNav.length + 1)
+                  const focusedCommentUri = commentFocusIndex >= 0 && commentFocusIndex < threadRepliesFlat.length ? threadRepliesFlat[commentFocusIndex]?.uri : undefined
                   const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
-                  const isFocusedCollapsed = hasRepliesSection && postSectionIndex === postSectionCount - 1 && flatIndex >= 0 && flatIndex === focusedCommentIndex
+                  const isFocusedCollapsed = hasRepliesSection && flatIndex >= 0 && flatIndex === commentFocusIndex
                   if (collapsedThreads.has(r.post.uri)) {
                     const replyCount = 'replies' in r && Array.isArray(r.replies) ? (r.replies as unknown[]).length : 0
                     const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
