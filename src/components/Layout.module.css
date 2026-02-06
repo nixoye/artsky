@@ -277,7 +277,9 @@
   }
   .menuItem,
   .menuItemActive {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     width: 100%;
     padding: 0.4rem 0.5rem;
     margin-top: 0.2rem;
@@ -713,7 +715,9 @@
 
 .accountPopupContent .menuItem,
 .accountPopupContent .menuItemActive {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
   padding: 0.5rem 0.65rem;
   margin-top: 0.25rem;
@@ -725,6 +729,28 @@
   border-radius: var(--glass-radius-sm);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.accountMenuAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.accountMenuAvatarPlaceholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--glass-border);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .accountPopupContent .menuItemActive {
