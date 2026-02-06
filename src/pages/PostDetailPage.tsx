@@ -278,7 +278,9 @@ function PostBlock({
           onClick={() => onToggleCollapse?.(post.uri)}
           aria-label={isCollapsed ? 'Expand this comment' : 'Collapse this comment'}
           title={isCollapsed ? 'Expand this comment' : 'Collapse this comment'}
-        />
+        >
+          <span className={styles.collapseStripIcon} aria-hidden>−</span>
+        </button>
       )}
       <div className={styles.postBlockContent}>
       <div className={styles.postHead}>
@@ -457,6 +459,9 @@ export default function PostDetailPage() {
   const mediaSectionRef = useRef<HTMLDivElement>(null)
   const descriptionSectionRef = useRef<HTMLDivElement>(null)
   const commentsSectionRef = useRef<HTMLDivElement>(null)
+  const commentRefsRef = useRef<(HTMLDivElement | null)[]>([])
+  const [focusedCommentIndex, setFocusedCommentIndex] = useState(0)
+  const prevSectionIndexRef = useRef(0)
   const boards = getArtboards()
   const session = getSession()
   const { session: sessionFromContext, sessionsList, switchAccount } = useSession()
@@ -650,6 +655,10 @@ export default function PostDetailPage() {
     Array.isArray(thread.replies) && thread.replies.length > 0
   const postSectionCount = (hasMediaSection ? 1 : 0) + 1 + (hasRepliesSection ? 1 : 0)
 
+  const threadReplies = thread && isThreadViewPost(thread) && 'replies' in thread && Array.isArray(thread.replies)
+    ? (thread.replies as (typeof thread)[]).filter((r): r is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(r))
+    : []
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -658,6 +667,17 @@ export default function PostDetailPage() {
       if (key !== 'w' && key !== 'a' && key !== 's') return
       if (postSectionCount <= 1) return
       e.preventDefault()
+
+      const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
+      if (inCommentsSection && threadReplies.length > 0 && (key === 'w' || key === 's')) {
+        if (key === 'w') {
+          setFocusedCommentIndex((i) => Math.max(0, i - 1))
+        } else {
+          setFocusedCommentIndex((i) => Math.min(threadReplies.length - 1, i + 1))
+        }
+        return
+      }
+
       if (key === 'w') {
         setPostSectionIndex((i) => Math.max(0, i - 1))
       } else {
@@ -666,7 +686,7 @@ export default function PostDetailPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [postSectionCount])
+  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadReplies.length])
 
   useEffect(() => {
     if (postSectionCount <= 1) return
@@ -676,6 +696,25 @@ export default function PostDetailPage() {
     else if (hasRepliesSection && postSectionIndex === postSectionCount - 1) ref = commentsSectionRef.current
     if (ref) ref.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [postSectionIndex, hasMediaSection, hasRepliesSection, postSectionCount])
+
+  useEffect(() => {
+    if (postSectionIndex === postSectionCount - 1 && hasRepliesSection && prevSectionIndexRef.current !== postSectionCount - 1) {
+      setFocusedCommentIndex(0)
+    }
+    prevSectionIndexRef.current = postSectionIndex
+  }, [postSectionIndex, postSectionCount, hasRepliesSection])
+
+  useEffect(() => {
+    if (threadReplies.length > 0) {
+      setFocusedCommentIndex((i) => Math.min(i, threadReplies.length - 1))
+    }
+  }, [threadReplies.length])
+
+  useEffect(() => {
+    if (!hasRepliesSection || focusedCommentIndex < 0 || focusedCommentIndex >= threadReplies.length) return
+    const el = commentRefsRef.current[focusedCommentIndex]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [focusedCommentIndex, hasRepliesSection, threadReplies.length])
 
   if (!decodedUri) {
     navigate('/feed', { replace: true })
@@ -842,14 +881,13 @@ export default function PostDetailPage() {
             </section>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div ref={commentsSectionRef} className={styles.replies}>
-                {(thread.replies as (typeof thread)[]).map((r) => {
-                  if (!isThreadViewPost(r)) return null
+                {threadReplies.map((r, idx) => {
                   if (collapsedThreads.has(r.post.uri)) {
                     const replyCount = 'replies' in r && Array.isArray(r.replies) ? (r.replies as unknown[]).length : 0
                     const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
                     const replyHandle = r.post.author?.handle ?? r.post.author?.did ?? ''
                     return (
-                      <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: 0 }}>
+                      <div key={r.post.uri} ref={(el) => { commentRefsRef.current[idx] = el }} className={styles.collapsedCommentWrap} style={{ marginLeft: 0 }}>
                         <button type="button" className={styles.collapsedCommentBtn} onClick={() => toggleCollapse(r.post.uri)}>
                           <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                           {r.post.author?.avatar ? (
@@ -864,27 +902,28 @@ export default function PostDetailPage() {
                     )
                   }
                   return (
-                    <PostBlock
-                      key={r.post.uri}
-                      node={r}
-                      depth={0}
-                      collapsedThreads={collapsedThreads}
-                      onToggleCollapse={toggleCollapse}
-                      onReply={handleReplyTo}
-                      rootPostUri={thread.post.uri}
-                      rootPostCid={thread.post.cid}
-                      replyingTo={replyingTo}
-                      replyComment={comment}
-                      setReplyComment={setComment}
-                      onReplySubmit={handlePostReply}
-                      replyPosting={posting}
-                      clearReplyingTo={() => setReplyingTo(null)}
-                      commentFormRef={commentFormRef}
-                      replyAs={replyAs}
-                      sessionsList={sessionsList}
-                      switchAccount={switchAccount}
-                      currentDid={sessionFromContext?.did ?? undefined}
-                    />
+                    <div key={r.post.uri} ref={(el) => { commentRefsRef.current[idx] = el }}>
+                      <PostBlock
+                        node={r}
+                        depth={0}
+                        collapsedThreads={collapsedThreads}
+                        onToggleCollapse={toggleCollapse}
+                        onReply={handleReplyTo}
+                        rootPostUri={thread.post.uri}
+                        rootPostCid={thread.post.cid}
+                        replyingTo={replyingTo}
+                        replyComment={comment}
+                        setReplyComment={setComment}
+                        onReplySubmit={handlePostReply}
+                        replyPosting={posting}
+                        clearReplyingTo={() => setReplyingTo(null)}
+                        commentFormRef={commentFormRef}
+                        replyAs={replyAs}
+                        sessionsList={sessionsList}
+                        switchAccount={switchAccount}
+                        currentDid={sessionFromContext?.did ?? undefined}
+                      />
+                    </div>
                   )
                 })}
               </div>
