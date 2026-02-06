@@ -1,0 +1,14 @@
+.link,
+.hashtag {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.link:hover,
+.hashtag:hover {
+  text-decoration: underline;
+}
+
+.hashtag {
+  font-weight: 500;
+}
