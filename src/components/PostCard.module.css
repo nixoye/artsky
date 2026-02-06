@@ -1,0 +1,49 @@
+.card {
+  display: block;
+  break-inside: avoid;
+  margin-bottom: 0.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border);
+}
+
+.card:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mediaWrap {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.meta {
+  padding: 0.5rem 0.6rem;
+}
+
+.handle {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.text {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
