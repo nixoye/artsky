@@ -67,8 +67,14 @@ export default function ForumPostDetailPage() {
   const [editSaving, setEditSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replyFormRef = useRef<HTMLFormElement>(null)
+  const docSectionRef = useRef<HTMLDivElement>(null)
+  const replyFormWrapRef = useRef<HTMLDivElement>(null)
+  const repliesSectionRef = useRef<HTMLUListElement>(null)
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
+  const keyboardFocusIndexRef = useRef(0)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<ForumReplyView | null>(null)
   const [likeLoadingMap, setLikeLoadingMap] = useState<Record<string, boolean>>({})
   const [likeUriOverrideMap, setLikeUriOverrideMap] = useState<Record<string, string>>({})
   const session = getSession()
@@ -127,6 +133,62 @@ export default function ForumPostDetailPage() {
     if (doc) loadReplies()
   }, [doc, loadReplies])
 
+  const forumFocusTotal = 1 + replyPosts.length + (session ? 1 : 0)
+  keyboardFocusIndexRef.current = keyboardFocusIndex
+  useEffect(() => {
+    if (doc) setKeyboardFocusIndex(0)
+  }, [decodedUri])
+  useEffect(() => {
+    if (forumFocusTotal <= 0) return
+    setKeyboardFocusIndex((i) => Math.min(Math.max(0, i), forumFocusTotal - 1))
+  }, [forumFocusTotal])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
+      if (e.ctrlKey || e.metaKey) return
+      if (!pathname.startsWith(FORUM_POST_PREFIX) || !doc) return
+      const key = e.key.toLowerCase()
+      if (key !== 'w' && key !== 's' && key !== 'a') return
+      const totalItems = forumFocusTotal
+      if (totalItems <= 0) return
+
+      const focusItemAtIndex = (idx: number) => {
+        if (idx === 0) {
+          requestAnimationFrame(() => {
+            docSectionRef.current?.focus()
+            docSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          })
+        } else if (idx <= replyPosts.length) {
+          const replyIdx = idx - 1
+          const replyEl = repliesSectionRef.current?.querySelectorAll<HTMLElement>('[data-forum-reply-index]')?.[replyIdx]
+          if (replyEl) {
+            requestAnimationFrame(() => {
+              replyEl.focus()
+              replyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            })
+          }
+        } else {
+          requestAnimationFrame(() => {
+            replyFormWrapRef.current?.focus()
+            replyFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          })
+        }
+      }
+
+      const current = keyboardFocusIndexRef.current
+      const next = key === 'w' ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
+      if (next !== current) {
+        e.preventDefault()
+        setKeyboardFocusIndex(next)
+        focusItemAtIndex(next)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pathname, doc, forumFocusTotal, replyPosts.length])
+
   async function handleReplySubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!session || !doc || !replyText.trim() || posting) return
@@ -134,12 +196,18 @@ export default function ForumPostDetailPage() {
     try {
       await createStandardSiteComment(doc.uri, replyText.trim())
       setReplyText('')
+      setReplyingTo(null)
       await loadReplies()
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to post')
     } finally {
       setPosting(false)
     }
+  }
+
+  function handleReplyToComment(post: ForumReplyView) {
+    setReplyingTo(post)
+    requestAnimationFrame(() => replyFormRef.current?.querySelector('textarea')?.focus())
   }
 
   async function handleEditSave() {
@@ -255,7 +323,7 @@ export default function ForumPostDetailPage() {
         {doc && !loading && (
           <>
             <article className={`${postBlockStyles.postBlock} ${postBlockStyles.rootPostBlock}`}>
-              <div className={postBlockStyles.postBlockContent}>
+              <div ref={docSectionRef} tabIndex={-1} className={postBlockStyles.postBlockContent} onFocus={() => setKeyboardFocusIndex(0)}>
                 <div className={postBlockStyles.postHead}>
                   {doc.authorAvatar ? (
                     <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} />
@@ -401,7 +469,21 @@ export default function ForumPostDetailPage() {
 
             {session && (
               <section className={styles.replySection}>
+                <div
+                  ref={replyFormWrapRef}
+                  tabIndex={-1}
+                  onFocus={() => setKeyboardFocusIndex(forumFocusTotal - 1)}
+                >
                 <h2 className={styles.replySectionTitle}>Reply</h2>
+                {replyingTo && (
+                  <p className={styles.replyingTo}>
+                    <span className={styles.replyingToLabel}>Replying to</span>
+                    <span className={styles.replyingToHandle}>@{replyingTo.author.handle ?? replyingTo.author.did}</span>
+                    <button type="button" className={styles.replyingToCancel} onClick={() => setReplyingTo(null)} aria-label="Cancel reply">
+                      ×
+                    </button>
+                  </p>
+                )}
                 <form ref={replyFormRef} onSubmit={handleReplySubmit} className={styles.replyForm}>
                   <textarea
                     className={styles.replyTextarea}
@@ -413,7 +495,7 @@ export default function ForumPostDetailPage() {
                         if (replyText.trim() && !posting) replyFormRef.current?.requestSubmit()
                       }
                     }}
-                    placeholder="Write a reply…"
+                    placeholder={replyingTo ? `Reply to @${replyingTo.author.handle ?? replyingTo.author.did}…` : 'Write a reply…'}
                     rows={3}
                     disabled={posting}
                   />
@@ -421,6 +503,7 @@ export default function ForumPostDetailPage() {
                     {posting ? 'Posting…' : 'Post reply'}
                   </button>
                 </form>
+                </div>
               </section>
             )}
 
@@ -431,15 +514,21 @@ export default function ForumPostDetailPage() {
               ) : replyPosts.length === 0 ? (
                 <p className={styles.muted}>No replies yet. Post a reply above or share this post.</p>
               ) : (
-                <ul className={styles.replyList}>
-                  {replyPosts.map((p) => {
+                <ul ref={repliesSectionRef} className={styles.replyList}>
+                  {replyPosts.map((p, replyIndex) => {
                     const likedUri = likeUriOverrideMap[p.uri] ?? p.viewer?.like
                     const isLiked = !!likedUri
                     const likeLoading = likeLoadingMap[p.uri]
                     const handle = p.author.handle ?? p.author.did
                     const isComment = p.isComment === true
                     return (
-                      <li key={p.uri} className={styles.replyItem}>
+                      <li
+                        key={p.uri}
+                        className={styles.replyItem}
+                        data-forum-reply-index={replyIndex}
+                        tabIndex={-1}
+                        onFocus={() => setKeyboardFocusIndex(1 + replyIndex)}
+                      >
                         <div className={postBlockStyles.postHead}>
                           {p.author.avatar ? (
                             <img src={p.author.avatar} alt="" className={postBlockStyles.avatar} />
@@ -464,6 +553,15 @@ export default function ForumPostDetailPage() {
                           </div>
                         )}
                         <div className={styles.replyItemActions}>
+                          {session && (
+                            <button
+                              type="button"
+                              className={styles.replyToBtn}
+                              onClick={() => handleReplyToComment(p)}
+                            >
+                              Reply
+                            </button>
+                          )}
                           {!isComment && (
                             <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.viewPostLink}>
                               View post

@@ -279,6 +279,53 @@
   color: var(--text);
 }
 
+.replyingTo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.replyingToLabel {
+  flex-shrink: 0;
+}
+
+.replyingToHandle {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.replyingToCancel {
+  padding: 0 0.25rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.replyingToCancel:hover {
+  color: var(--text);
+}
+
+.replyToBtn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.replyToBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .commentBadge {
   font-size: 0.7rem;
   color: var(--muted);
