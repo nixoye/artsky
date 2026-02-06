@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import { agent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
-import { getArtboards, createArtboard, addPostToArtboard } from '../lib/artboards'
+import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import Layout from '../components/Layout'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
@@ -147,6 +147,13 @@ function PostBlock({
   onReply,
   rootPostUri,
   rootPostCid,
+  replyingTo,
+  replyComment,
+  setReplyComment,
+  onReplySubmit,
+  replyPosting,
+  clearReplyingTo,
+  commentFormRef,
 }: {
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
   depth?: number
@@ -155,6 +162,13 @@ function PostBlock({
   onReply?: (parentUri: string, parentCid: string, handle: string) => void
   rootPostUri?: string
   rootPostCid?: string
+  replyingTo?: { uri: string; cid: string; handle: string } | null
+  replyComment?: string
+  setReplyComment?: (v: string) => void
+  onReplySubmit?: (e: React.FormEvent) => void
+  replyPosting?: boolean
+  clearReplyingTo?: () => void
+  commentFormRef?: React.RefObject<HTMLFormElement | null>
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
@@ -166,6 +180,7 @@ function PostBlock({
   const hasReplies = replies.length > 0
   const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
   const canCollapse = hasReplies && onToggleCollapse
+  const isReplyTarget = replyingTo?.uri === post.uri
 
   return (
     <article className={styles.postBlock} style={{ marginLeft: depth * 12 }}>
@@ -189,12 +204,41 @@ function PostBlock({
           )}
         </div>
       </div>
+      {allMedia.length > 0 && <MediaGallery items={allMedia} />}
       {text && (
         <p className={styles.postText}>
           <PostText text={text} />
         </p>
       )}
-      {allMedia.length > 0 && <MediaGallery items={allMedia} />}
+      {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
+        <form ref={commentFormRef} onSubmit={onReplySubmit} className={styles.inlineReplyForm}>
+          <p className={styles.replyingTo}>
+            Replying to @{replyingTo.handle}
+            <button type="button" className={styles.cancelReply} onClick={clearReplyingTo} aria-label="Cancel reply">
+              ×
+            </button>
+          </p>
+          <textarea
+            placeholder={`Reply to @${replyingTo.handle}…`}
+            value={replyComment ?? ''}
+            onChange={(e) => setReplyComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.metaKey) {
+                e.preventDefault()
+                if ((replyComment ?? '').trim() && !replyPosting) commentFormRef.current?.requestSubmit()
+              }
+            }}
+            className={styles.textarea}
+            rows={2}
+            maxLength={300}
+            autoFocus
+          />
+          <p className={styles.hint}>⌘ Enter to post</p>
+          <button type="submit" className={styles.submit} disabled={replyPosting || !(replyComment ?? '').trim()}>
+            {replyPosting ? 'Posting…' : 'Post reply'}
+          </button>
+        </form>
+      )}
       {hasReplies && (
         <div className={styles.repliesContainer}>
           <button
@@ -224,6 +268,13 @@ function PostBlock({
                   onReply={onReply}
                   rootPostUri={rootPostUri}
                   rootPostCid={rootPostCid}
+                  replyingTo={replyingTo}
+                  replyComment={replyComment}
+                  setReplyComment={setReplyComment}
+                  onReplySubmit={onReplySubmit}
+                  replyPosting={replyPosting}
+                  clearReplyingTo={clearReplyingTo}
+                  commentFormRef={commentFormRef}
                 />
               ))}
             </div>
@@ -245,7 +296,7 @@ export default function PostDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [comment, setComment] = useState('')
   const [posting, setPosting] = useState(false)
-  const [addToBoardId, setAddToBoardId] = useState<string | null>(null)
+  const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [addedToBoard, setAddedToBoard] = useState<string | null>(null)
   const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(() => new Set())
   const [followLoading, setFollowLoading] = useState(false)
@@ -343,18 +394,32 @@ export default function PostDetailPage() {
   }
 
   function handleAddToArtboard() {
-    if (!thread || !isThreadViewPost(thread) || !addToBoardId) return
+    if (!thread || !isThreadViewPost(thread) || addToBoardIds.size === 0) return
     const post = thread.post
     const media = getPostMediaUrl(post)
-    addPostToArtboard(addToBoardId, {
+    const payload = {
       uri: post.uri,
       cid: post.cid,
       authorHandle: post.author.handle,
       text: (post.record as { text?: string })?.text?.slice(0, 200),
       thumb: media?.url,
+    }
+    const added: string[] = []
+    addToBoardIds.forEach((id) => {
+      addPostToArtboard(id, payload)
+      added.push(id)
     })
-    setAddedToBoard(addToBoardId)
-    setAddToBoardId(null)
+    setAddedToBoard(added[0] ?? null)
+    setAddToBoardIds(new Set())
+  }
+
+  function toggleBoardSelection(boardId: string) {
+    setAddToBoardIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(boardId)) next.delete(boardId)
+      else next.add(boardId)
+      return next
+    })
   }
 
   if (!decodedUri) {
@@ -400,44 +465,57 @@ export default function PostDetailPage() {
                   )}
                 </div>
               </div>
+              {rootMedia.length > 0 && <MediaGallery items={rootMedia} autoPlayFirstVideo />}
               {(thread.post.record as { text?: string })?.text && (
                 <p className={styles.postText}>
                   <PostText text={(thread.post.record as { text?: string }).text!} />
                 </p>
               )}
-              {rootMedia.length > 0 && <MediaGallery items={rootMedia} autoPlayFirstVideo />}
             </article>
             <section className={styles.actions} aria-label="Add to artboard">
               <div className={styles.addToBoard}>
-                <label htmlFor="board-select">Add to artboard:</label>
-                <select
-                  id="board-select"
-                  value={addToBoardId ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v === '__new__') {
-                      setShowNewBoardForm(true)
-                      setAddToBoardId(null)
-                    } else {
-                      setAddToBoardId(v || null)
-                      setShowNewBoardForm(false)
-                    }
-                  }}
-                  className={styles.select}
+                <span className={styles.addToBoardLabel}>Add to artboard:</span>
+                <div className={styles.boardCheckboxes}>
+                  {boards.map((b) => {
+                    const alreadyIn = isPostInArtboard(b.id, thread.post.uri)
+                    const selected = addToBoardIds.has(b.id)
+                    return (
+                      <label key={b.id} className={styles.boardCheckLabel}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
+                          disabled={alreadyIn}
+                          className={styles.boardCheckbox}
+                        />
+                        <span className={styles.boardCheckText}>
+                          {alreadyIn ? (
+                            <>
+                              <span className={styles.boardCheckIcon} aria-hidden>✓</span> {b.name}
+                            </>
+                          ) : (
+                            b.name
+                          )}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className={styles.addBtn}
+                  onClick={handleAddToArtboard}
+                  disabled={addToBoardIds.size === 0}
                 >
-                  <option value="">Choose…</option>
-                  {boards.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                  <option value="__new__">+ New artboard…</option>
-                </select>
-                {addToBoardId && (
-                  <button type="button" className={styles.addBtn} onClick={handleAddToArtboard}>
-                    Add
-                  </button>
-                )}
+                  Add to selected
+                </button>
+                <button
+                  type="button"
+                  className={styles.newBoardTrigger}
+                  onClick={() => setShowNewBoardForm(true)}
+                >
+                  + New artboard…
+                </button>
               </div>
               {showNewBoardForm && (
                 <div className={styles.newBoardForm}>
@@ -477,38 +555,39 @@ export default function PostDetailPage() {
                     onReply={handleReplyTo}
                     rootPostUri={thread.post.uri}
                     rootPostCid={thread.post.cid}
+                    replyingTo={replyingTo}
+                    replyComment={comment}
+                    setReplyComment={setComment}
+                    onReplySubmit={handlePostReply}
+                    replyPosting={posting}
+                    clearReplyingTo={() => setReplyingTo(null)}
+                    commentFormRef={commentFormRef}
                   />
                 ))}
               </div>
             )}
-            <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
-              {replyingTo && (
-                <p className={styles.replyingTo}>
-                  Replying to @{replyingTo.handle}
-                  <button type="button" className={styles.cancelReply} onClick={() => setReplyingTo(null)} aria-label="Cancel reply">
-                    ×
-                  </button>
-                </p>
-              )}
-              <textarea
-                placeholder={replyingTo ? `Reply to @${replyingTo.handle}…` : 'Write a comment…'}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.metaKey) {
-                    e.preventDefault()
-                    if (comment.trim() && !posting) commentFormRef.current?.requestSubmit()
-                  }
-                }}
-                className={styles.textarea}
-                rows={3}
-                maxLength={300}
-              />
-              <p className={styles.hint}>⌘ Enter to post</p>
-              <button type="submit" className={styles.submit} disabled={posting || !comment.trim()}>
-                {posting ? 'Posting…' : replyingTo ? 'Post reply' : 'Post comment'}
-              </button>
-            </form>
+            {!replyingTo && (
+              <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
+                <textarea
+                  placeholder="Write a comment…"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.metaKey) {
+                      e.preventDefault()
+                      if (comment.trim() && !posting) commentFormRef.current?.requestSubmit()
+                    }
+                  }}
+                  className={styles.textarea}
+                  rows={3}
+                  maxLength={300}
+                />
+                <p className={styles.hint}>⌘ Enter to post</p>
+                <button type="submit" className={styles.submit} disabled={posting || !comment.trim()}>
+                  {posting ? 'Posting…' : 'Post comment'}
+                </button>
+              </form>
+            )}
           </>
         )}
       </div>
