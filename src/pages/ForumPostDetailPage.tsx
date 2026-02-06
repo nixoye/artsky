@@ -35,9 +35,9 @@ function domainFromBaseUrl(baseUrl: string): string {
 }
 
 export default function ForumPostDetailPage() {
-  const { uri } = useParams<{ uri: string }>()
+  const { '*': uriSplat } = useParams<{ '*': string }>()
   const navigate = useNavigate()
-  const decodedUri = uri ? decodeURIComponent(uri) : ''
+  const decodedUri = uriSplat ? decodeURIComponent(uriSplat.replace(/^\/+/, '')) : ''
   const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,6 +81,8 @@ export default function ForumPostDetailPage() {
         setEditBody(d.body ?? '')
         setEditMediaRefs(d.mediaRefs ?? [])
         setEditMediaNewFiles([])
+      } else {
+        setError('Post not found or not a standard.site document.')
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load post')

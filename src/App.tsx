@@ -62,7 +62,7 @@ function AppRoutes() {
       <Route path="/profile/:handle" element={<ProfilePage />} />
       <Route path="/tag/:tag" element={<TagPage />} />
       <Route path="/forum" element={<ForumPage />} />
-      <Route path="/forum/post/:uri" element={<ForumPostDetailPage />} />
+      <Route path="/forum/post/*" element={<ForumPostDetailPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>

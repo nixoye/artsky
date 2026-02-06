@@ -636,47 +636,86 @@ export type ForumReplyView = {
   isComment?: boolean
 }
 
-/** List replies for a standard.site document: comment records (from current user repo) + Bluesky posts that link to this doc. */
+/** Turn comment records + author DID into ForumReplyView. */
+async function commentRecordsToViews(
+  client: AtpAgent,
+  records: { uri: string; cid: string; value: StandardSiteCommentRecord }[],
+  repoDid: string
+): Promise<ForumReplyView[]> {
+  const out: ForumReplyView[] = []
+  for (const r of records) {
+    const did = r.uri.split('/')[2] ?? repoDid
+    let handle: string | undefined
+    let avatar: string | undefined
+    try {
+      const profile = await client.getProfile({ actor: did })
+      const data = profile.data as { handle?: string; avatar?: string }
+      handle = data.handle
+      avatar = data.avatar
+    } catch {
+      // ignore
+    }
+    out.push({
+      uri: r.uri,
+      cid: r.cid,
+      author: { did, handle, avatar },
+      record: { text: r.value.text, createdAt: r.value.createdAt },
+      isComment: true,
+    })
+  }
+  return out
+}
+
+/** List replies for a standard.site document: all standard.site comment records we can find (current user + authors of linking posts) + Bluesky posts that mention this doc. */
 export async function listStandardSiteRepliesForDocument(
   documentUri: string,
   domain: string,
   documentUrl?: string | null
 ): Promise<ForumReplyView[]> {
   const client = getSession() ? agent : publicAgent
+  const seenUri = new Set<string>()
   const replies: ForumReplyView[] = []
   const session = getSession()
   const linkMatches = (text: string) =>
     text.includes(documentUri) || (!!documentUrl && text.includes(documentUrl))
 
-  if (session?.did) {
-    const { records } = await listStandardSiteComments(agent, session.did, { limit: 100 })
-    for (const r of records.filter((rec) => rec.value.subject === documentUri)) {
-      const did = r.uri.split('/')[2] ?? session.did
-      let handle: string | undefined
-      let avatar: string | undefined
-      try {
-        const profile = await client.getProfile({ actor: did })
-        const data = profile.data as { handle?: string; avatar?: string }
-        handle = data.handle
-        avatar = data.avatar
-      } catch {
-        // ignore
-      }
-      replies.push({
-        uri: r.uri,
-        cid: r.cid,
-        author: { did, handle, avatar },
-        record: { text: r.value.text, createdAt: r.value.createdAt },
-        isComment: true,
-      })
+  const addCommentsFromRepo = async (repoDid: string) => {
+    const { records } = await listStandardSiteComments(client, repoDid, { limit: 100 })
+    const forDoc = records.filter((rec) => rec.value.subject === documentUri)
+    const views = await commentRecordsToViews(client, forDoc, repoDid)
+    for (const v of views) {
+      if (seenUri.has(v.uri)) continue
+      seenUri.add(v.uri)
+      replies.push(v)
     }
   }
 
+  const docAuthorDid = (() => {
+    const p = parseAtUri(documentUri)
+    return p?.did ?? null
+  })()
+
+  if (session?.did) {
+    await addCommentsFromRepo(session.did)
+  }
+  if (docAuthorDid && docAuthorDid !== session?.did) {
+    try {
+      await addCommentsFromRepo(docAuthorDid)
+    } catch {
+      // ignore
+    }
+  }
+
+  let linkingPostDids = new Set<string>()
   try {
     const { posts } = await searchPostsByDomain(domain)
     for (const p of posts ?? []) {
       const text = (p.record as { text?: string })?.text ?? ''
       if (!linkMatches(text)) continue
+      const did = (p.author as { did?: string })?.did
+      if (did) linkingPostDids.add(did)
+      if (seenUri.has(p.uri)) continue
+      seenUri.add(p.uri)
       replies.push({
         uri: p.uri,
         cid: p.cid,
@@ -689,6 +728,15 @@ export async function listStandardSiteRepliesForDocument(
     }
   } catch {
     // ignore
+  }
+
+  for (const did of linkingPostDids) {
+    if (did === session?.did) continue
+    try {
+      await addCommentsFromRepo(did)
+    } catch {
+      // ignore
+    }
   }
 
   replies.sort((a, b) => {
