@@ -341,7 +341,7 @@ function PostBlock({
   const isFocused = focusedCommentUri === post.uri
 
   return (
-    <article className={`${styles.postBlock} ${isFocused ? styles.commentFocused : ''}`} style={{ marginLeft: depth * 12 }} data-comment-uri={post.uri}>
+    <article className={`${styles.postBlock} ${isFocused ? styles.commentFocused : ''}`} style={{ marginLeft: depth * 12 }} data-comment-uri={post.uri} tabIndex={-1}>
       {canCollapse && (
         <div className={styles.collapseColumn}>
           <button
@@ -464,7 +464,7 @@ function PostBlock({
                   const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
                   const replyHandle = r.post.author?.handle ?? r.post.author?.did ?? ''
                   return (
-                    <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: replyDepth * 12 }}>
+                    <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: replyDepth * 12 }} data-comment-uri={r.post.uri} tabIndex={-1}>
                       <button type="button" className={styles.collapsedCommentBtn} onClick={() => onToggleCollapse?.(r.post.uri)}>
                         <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                         {r.post.author?.avatar ? (
@@ -1108,7 +1108,18 @@ export default function PostDetailPage() {
               )}
             </section>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
-              <div ref={commentsSectionRef} className={styles.replies}>
+              <div
+                ref={commentsSectionRef}
+                className={styles.replies}
+                onFocusCapture={(e) => {
+                  const commentEl = (e.target as HTMLElement).closest?.('[data-comment-uri]') as HTMLElement | null
+                  if (!commentEl) return
+                  const uri = commentEl.getAttribute('data-comment-uri')
+                  if (!uri) return
+                  const idx = threadRepliesFlat.findIndex((f) => f.uri === uri)
+                  if (idx >= 0) setKeyboardFocusIndex(rootMediaForNav.length + 1 + idx)
+                }}
+              >
                 {threadReplies.map((r) => {
                   const focusedCommentUri = threadRepliesFlat[focusedCommentIndex]?.uri
                   const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
@@ -1140,12 +1151,7 @@ export default function PostDetailPage() {
                     )
                   }
                   return (
-                    <div
-                      key={r.post.uri}
-                      data-comment-uri={r.post.uri}
-                      tabIndex={-1}
-                      onFocus={() => setKeyboardFocusIndex(rootMediaForNav.length + 1 + flatIndex)}
-                    >
+                    <div key={r.post.uri}>
                       <PostBlock
                         node={r}
                         depth={0}
