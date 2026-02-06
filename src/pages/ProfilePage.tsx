@@ -11,6 +11,8 @@ const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
 
 type ProfileTab = 'posts' | 'reposts' | 'liked' | 'text' | 'feeds'
 
+const PROFILE_TABS: ProfileTab[] = ['posts', 'reposts', 'liked', 'text', 'feeds']
+
 type ProfileState = {
   displayName?: string
   avatar?: string
@@ -41,6 +43,11 @@ export default function ProfilePage() {
   const readAgent = session ? agent : publicAgent
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
+  const [tabsBarVisible, setTabsBarVisible] = useState(true)
+  const lastScrollYRef = useRef(0)
+  const touchStartXRef = useRef(0)
+  const SWIPE_THRESHOLD = 50
+  const SCROLL_THRESHOLD = 8
 
   useEffect(() => {
     if (!handle) return
@@ -135,6 +142,34 @@ export default function ProfilePage() {
   useEffect(() => {
     if (tab === 'feeds') loadFeeds()
   }, [tab, loadFeeds])
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y < 60) setTabsBarVisible(true)
+      else if (y > lastScrollYRef.current + SCROLL_THRESHOLD) setTabsBarVisible(false)
+      else if (y < lastScrollYRef.current - SCROLL_THRESHOLD) setTabsBarVisible(true)
+      lastScrollYRef.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  function goTab(direction: 1 | -1) {
+    const idx = PROFILE_TABS.indexOf(tab)
+    const next = (idx + direction + PROFILE_TABS.length) % PROFILE_TABS.length
+    setTab(PROFILE_TABS[next])
+  }
+
+  function onSwipeStart(e: React.TouchEvent) {
+    touchStartXRef.current = e.touches[0].clientX
+  }
+
+  function onSwipeEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current
+    if (dx < -SWIPE_THRESHOLD) goTab(1)
+    else if (dx > SWIPE_THRESHOLD) goTab(-1)
+  }
 
   // Infinite scroll: load more when sentinel enters view (posts, reposts, liked, text tabs)
   loadingMoreRef.current = loadingMore
@@ -257,8 +292,9 @@ export default function ProfilePage() {
             )}
           </div>
         </header>
-        <nav className={styles.tabs} aria-label="Profile sections">
-          <button
+        <div className={`${styles.tabsSticky} ${tabsBarVisible ? '' : styles.tabsBarHidden}`}>
+          <nav className={styles.tabs} aria-label="Profile sections">
+            <button
             type="button"
             className={`${styles.tab} ${tab === 'posts' ? styles.tabActive : ''}`}
             onClick={() => setTab('posts')}
@@ -272,15 +308,13 @@ export default function ProfilePage() {
           >
             Reposts
           </button>
-          {isOwnProfile && (
-            <button
-              type="button"
-              className={`${styles.tab} ${tab === 'liked' ? styles.tabActive : ''}`}
-              onClick={() => setTab('liked')}
-            >
-              Liked
-            </button>
-          )}
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === 'liked' ? styles.tabActive : ''}`}
+            onClick={() => setTab('liked')}
+          >
+            Liked
+          </button>
           <button
             type="button"
             className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`}
@@ -295,8 +329,14 @@ export default function ProfilePage() {
           >
             Feeds
           </button>
-        </nav>
+          </nav>
+        </div>
         {error && <p className={styles.error}>{error}</p>}
+        <div
+          className={styles.profileContent}
+          onTouchStart={onSwipeStart}
+          onTouchEnd={onSwipeEnd}
+        >
         {loading ? (
           <div className={styles.loading}>Loading…</div>
         ) : tab === 'text' ? (
@@ -338,7 +378,9 @@ export default function ProfilePage() {
             </ul>
           )
         ) : tab === 'liked' ? (
-          likedMediaItems.length === 0 ? (
+            !isOwnProfile ? (
+            <div className={styles.empty}>Liked posts are only visible to the account owner.</div>
+          ) : likedMediaItems.length === 0 ? (
             <div className={styles.empty}>No liked posts with images or videos.</div>
           ) : (
             <>
@@ -366,6 +408,7 @@ export default function ProfilePage() {
             {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
           </>
         )}
+        </div>
       </div>
     </Layout>
   )

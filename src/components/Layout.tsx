@@ -164,6 +164,16 @@ function UserPlusIcon() {
   )
 }
 
+function ComposeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 19l7-7 3 3-7 7-3-3z" />
+      <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+      <path d="M2 2l7.586 7.586" />
+    </svg>
+  )
+}
+
 const DESKTOP_BREAKPOINT = 768
 function getDesktopSnapshot() {
   return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
@@ -209,6 +219,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [navVisible, setNavVisible] = useState(true)
+  const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
   const lastScrollY = useRef(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const accountBtnRef = useRef<HTMLButtonElement>(null)
@@ -253,9 +264,29 @@ export default function Layout({ title, children, showNav, showColumnView = true
       setTimeout(() => searchInputRef.current?.focus(), 300)
     } else {
       setMobileSearchOpen(true)
-      setTimeout(() => searchInputRef.current?.focus(), 150)
+      setSearchOverlayBottom(0)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          searchInputRef.current?.focus()
+        }, 100)
+      })
     }
   }
+
+  useEffect(() => {
+    if (!mobileSearchOpen || typeof window === 'undefined') return
+    const vv = window.visualViewport
+    function update() {
+      setSearchOverlayBottom(window.innerHeight - (vv.offsetTop + vv.height))
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [mobileSearchOpen])
 
   function closeMobileSearch() {
     setMobileSearchOpen(false)
@@ -298,6 +329,8 @@ export default function Layout({ title, children, showNav, showColumnView = true
     navigate('/login', { replace: true })
   }
 
+  const postComposeUrl = 'https://bsky.app/compose'
+
   const navTrayItems = (
     <>
       <Link
@@ -316,6 +349,16 @@ export default function Layout({ title, children, showNav, showColumnView = true
         <span className={styles.navIcon}><ArtboardsIcon /></span>
         <span className={styles.navLabel}>Artboards</span>
       </Link>
+      <a
+        href={postComposeUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={styles.navBtn}
+        aria-label="New post"
+      >
+        <span className={styles.navIcon}><ComposeIcon /></span>
+        <span className={styles.navLabel}>Post</span>
+      </a>
       <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
         <span className={styles.navIcon}><SearchIcon /></span>
         <span className={styles.navLabel}>Search</span>
@@ -573,6 +616,18 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 </>
               ) : (
                 <>
+              {isDesktop && (
+                <a
+                  href={postComposeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.headerBtn}
+                  aria-label="New post"
+                  title="New post"
+                >
+                  <ComposeIcon />
+                </a>
+              )}
               {showColumnView && (
                 <button
                   type="button"
@@ -650,7 +705,12 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 onClick={closeMobileSearch}
                 aria-hidden
               />
-              <div className={styles.searchOverlayCenter} role="dialog" aria-label="Search">
+              <div
+                className={`${styles.searchOverlayCenter} ${styles.searchOverlayAboveKeyboard}`}
+                role="dialog"
+                aria-label="Search"
+                style={{ bottom: searchOverlayBottom }}
+              >
                 <div className={styles.searchOverlayCard}>
                   <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove />
                 </div>

@@ -438,58 +438,61 @@ export default function PostCard({ item }: Props) {
         {!artOnly && (
         <div className={styles.meta}>
           <div className={styles.handleBlock}>
-            <span className={styles.handleRow}>
-              {isVideo && (
-                <span className={styles.mediaBadge} title="Video">
-                  <VideoIcon />
+            <div className={styles.handleRow}>
+              <span className={styles.handleRowMain}>
+                {post.author.avatar && (
+                  <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
+                )}
+                <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
+                  <Link
+                    to={`/profile/${encodeURIComponent(handle)}`}
+                    className={styles.handleLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    @{handle}
+                  </Link>
                 </span>
-              )}
-              {isMultipleImages && (
-                <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
-                  <ImagesIcon />
-                </span>
-              )}
-              {isSingleImage && (
-                <span className={styles.mediaBadge} title="Image">
-                  <ImageIcon />
-                </span>
-              )}
-              {post.author.avatar && (
-                <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
-              )}
-              <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
-                <Link
-                  to={`/profile/${encodeURIComponent(handle)}`}
-                  className={styles.handleLink}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  @{handle}
-                </Link>
+                {repostedByHandle && (
+                  <Link
+                    to={`/profile/${encodeURIComponent(repostedByHandle)}`}
+                    className={styles.repostIconLink}
+                    onClick={(e) => e.stopPropagation()}
+                    title={`Reposted by @${repostedByHandle}`}
+                    aria-label={`Reposted by @${repostedByHandle}`}
+                  >
+                    <RepostIcon />
+                  </Link>
+                )}
               </span>
-              {createdAt && (
-                <span
-                  className={styles.timestamp}
-                  title={formatExactDateTime(createdAt)}
-                >
-                  {formatRelativeTime(createdAt)}
-                </span>
-              )}
-              {repostedByHandle && (
-                <Link
-                  to={`/profile/${encodeURIComponent(repostedByHandle)}`}
-                  className={styles.repostIconLink}
+              <span className={styles.handleRowMeta}>
+                {isVideo && (
+                  <span className={styles.mediaBadge} title="Video">
+                    <VideoIcon />
+                  </span>
+                )}
+                {isMultipleImages && (
+                  <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
+                    <ImagesIcon />
+                  </span>
+                )}
+                {isSingleImage && (
+                  <span className={styles.mediaBadge} title="Image">
+                    <ImageIcon />
+                  </span>
+                )}
+                {createdAt && (
+                  <span
+                    className={styles.timestamp}
+                    title={formatExactDateTime(createdAt)}
+                  >
+                    {formatRelativeTime(createdAt)}
+                  </span>
+                )}
+                <div
+                  className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
+                  ref={addRef}
                   onClick={(e) => e.stopPropagation()}
-                  title={`Reposted by @${repostedByHandle}`}
-                  aria-label={`Reposted by @${repostedByHandle}`}
                 >
-                  <RepostIcon />
-                </Link>
-              )}
-              <div
-                className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
-                ref={addRef}
-                onClick={(e) => e.stopPropagation()}
-              >
                 <button
                   type="button"
                   className={styles.addToBoardBtn}
