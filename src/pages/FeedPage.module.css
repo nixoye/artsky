@@ -98,21 +98,17 @@
   font-weight: 600;
 }
 
-/* Each page of posts is its own row so "Load more" adds a new row below the button */
-.masonryRow {
-  display: flex;
-  gap: 0.4rem;
+/* Each page uses column-count so the browser balances column heights; new page = new block below Load more */
+.masonryPage {
+  column-gap: 0.4rem;
   width: 100%;
   min-width: 0;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
-.masonryColumn {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+.masonryPage > * {
+  break-inside: avoid;
+  margin-bottom: 0.4rem;
 }
 
 .more {

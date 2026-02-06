@@ -111,9 +111,11 @@ export default function FeedPage() {
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
   const columnCount = Number(viewMode) || 1
   const PAGE_SIZE = 30
-  const pages = Array.from(
-    { length: Math.ceil(mediaItems.length / PAGE_SIZE) },
-    (_, i) => mediaItems.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE)
+  const firstPage = mediaItems.slice(0, PAGE_SIZE)
+  const restItems = mediaItems.slice(PAGE_SIZE)
+  const restPages = Array.from(
+    { length: Math.ceil(restItems.length / PAGE_SIZE) },
+    (_, i) => restItems.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE)
   )
 
   return (
@@ -177,22 +179,16 @@ export default function FeedPage() {
           <div className={styles.empty}>No posts with images or videos in this feed.</div>
         ) : (
           <>
-            {pages.map((pageItems, pageIndex) => {
-              const pageColumns = Array.from({ length: columnCount }, (_, colIndex) =>
-                pageItems.filter((_, i) => i % columnCount === colIndex)
-              )
-              return (
-                <div key={pageIndex} className={styles.masonryRow}>
-                  {pageColumns.map((colItems, colIndex) => (
-                    <div key={colIndex} className={styles.masonryColumn}>
-                      {colItems.map((item) => (
-                        <PostCard key={item.post.uri} item={item} />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
+            {firstPage.length > 0 && (
+              <div
+                className={styles.masonryPage}
+                style={{ columnCount: columnCount }}
+              >
+                {firstPage.map((item) => (
+                  <PostCard key={item.post.uri} item={item} />
+                ))}
+              </div>
+            )}
             {cursor && (
               <button
                 type="button"
@@ -203,6 +199,17 @@ export default function FeedPage() {
                 {loadingMore ? 'Loading…' : 'Load more'}
               </button>
             )}
+            {restPages.map((pageItems, pageIndex) => (
+              <div
+                key={pageIndex}
+                className={styles.masonryPage}
+                style={{ columnCount: columnCount }}
+              >
+                {pageItems.map((item) => (
+                  <PostCard key={item.post.uri} item={item} />
+                ))}
+              </div>
+            ))}
           </>
         )}
       </div>

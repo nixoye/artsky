@@ -220,6 +220,10 @@ export default function PostCard({ item }: Props) {
   }, [currentImageUrl])
 
   useEffect(() => {
+    if (isVideo) setMediaAspect(null)
+  }, [isVideo, media.videoPlaylist])
+
+  useEffect(() => {
     if (!isVideo || !media.videoPlaylist || !videoRef.current) return
     const video = videoRef.current
     const src = media.videoPlaylist
@@ -332,7 +336,10 @@ export default function PostCard({ item }: Props) {
       >
         <div
           className={styles.mediaWrap}
-          style={mediaAspect != null ? { aspectRatio: String(mediaAspect) } : undefined}
+          style={{
+            aspectRatio:
+              mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
+          }}
           onMouseEnter={onMediaEnter}
           onMouseLeave={onMediaLeave}
         >
@@ -345,6 +352,12 @@ export default function PostCard({ item }: Props) {
               playsInline
               loop
               preload="metadata"
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget
+                if (v.videoWidth && v.videoHeight) {
+                  setMediaAspect(v.videoWidth / v.videoHeight)
+                }
+              }}
             />
           ) : (
             <>
