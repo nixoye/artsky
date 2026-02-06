@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   getStandardSiteDocument,
   deleteStandardSiteDocument,
@@ -38,15 +38,14 @@ function domainFromBaseUrl(baseUrl: string): string {
 
 const FORUM_POST_PREFIX = '/forum/post/'
 
-/** Get document URI from pathname so it works on refresh (encoded or decoded path). */
-function getForumPostUriFromPathname(pathname: string): string {
-  if (!pathname.startsWith(FORUM_POST_PREFIX)) return ''
-  const rest = pathname.slice(FORUM_POST_PREFIX.length).replace(/^\/+/, '')
-  if (!rest) return ''
+/** Get document URI from route splat (encoded) or pathname fallback. Handles refresh. */
+function getDecodedUriFromRoute(splat: string | undefined, pathname: string): string {
+  const encoded = splat ?? (pathname.startsWith(FORUM_POST_PREFIX) ? pathname.slice(FORUM_POST_PREFIX.length).replace(/^\/+/, '') : '')
+  if (!encoded) return ''
   try {
-    return rest.includes('%') ? decodeURIComponent(rest) : rest
+    return decodeURIComponent(encoded)
   } catch {
-    return rest
+    return encoded
   }
 }
 
@@ -88,8 +87,9 @@ const REPLY_THREAD_INDENT = 20
 
 export default function ForumPostDetailPage() {
   const { pathname } = useLocation()
+  const { '*': splat } = useParams()
   const navigate = useNavigate()
-  const decodedUri = useMemo(() => getForumPostUriFromPathname(pathname), [pathname])
+  const decodedUri = useMemo(() => getDecodedUriFromRoute(splat, pathname), [splat, pathname])
   const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -119,6 +119,7 @@ export default function ForumPostDetailPage() {
   const { session, sessionsList, switchAccount } = useSession()
   const currentDid = session?.did ?? ''
   const inlineReplyTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const loadDocRetriedRef = useRef(false)
   const isOwn = session?.did && doc?.did === session.did
   const docUrl = doc ? documentUrl(doc) : null
   const domain = doc?.baseUrl ? domainFromBaseUrl(doc.baseUrl) : ''
@@ -158,21 +159,28 @@ export default function ForumPostDetailPage() {
     if (!decodedUri) return
     setLoading(true)
     setError(null)
+    let skipLoadingFalse = false
     try {
       const d = await getStandardSiteDocument(decodedUri)
-      setDoc(d)
       if (d) {
+        loadDocRetriedRef.current = false
+        setDoc(d)
         setEditTitle(d.title ?? '')
         setEditBody(d.body ?? '')
         setEditMediaRefs(d.mediaRefs ?? [])
         setEditMediaNewFiles([])
+      } else if (!loadDocRetriedRef.current && decodedUri.startsWith('at://')) {
+        loadDocRetriedRef.current = true
+        skipLoadingFalse = true
+        setTimeout(() => loadDoc(), 600)
+        return
       } else {
         setError('Post not found or not a standard.site document.')
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load post')
     } finally {
-      setLoading(false)
+      if (!skipLoadingFalse) setLoading(false)
     }
   }, [decodedUri])
 
@@ -195,6 +203,7 @@ export default function ForumPostDetailPage() {
   )
 
   useEffect(() => {
+    loadDocRetriedRef.current = false
     setDoc(null)
     loadDoc()
   }, [loadDoc])
