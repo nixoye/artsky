@@ -66,7 +66,7 @@ export default function LoginPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
-        <h1 className={styles.title}>artsky</h1>
+        <h1 className={styles.title}>ArtSky</h1>
         <p className={styles.subtitle}>Bluesky feed & artboards</p>
 
         <div className={styles.tabs}>

@@ -24,9 +24,9 @@ export default function Layout({ title, children, showNav }: Props) {
     <div className={styles.wrap}>
       <header className={styles.header}>
         {showNav && (
-          <Link to="/feed" className={styles.logoLink} aria-label="artsky – back to feed">
+          <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
             <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
-            <span className={styles.logoText}>artsky</span>
+            <span className={styles.logoText}>ArtSky</span>
           </Link>
         )}
         <h1 className={styles.title}>{title}</h1>

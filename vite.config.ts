@@ -10,8 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'artsky',
-        short_name: 'artsky',
+        name: 'ArtSky',
+        short_name: 'ArtSky',
         description: 'Pinterest-style Bluesky feed & artboards',
         theme_color: '#1a1a2e',
         background_color: '#0f0f1a',
