@@ -185,16 +185,19 @@ export default function Layout({ title, children, showNav, showColumnView = true
     return () => { cancelled = true }
   }, [sessionsDidKey, sessionsList])
   const { theme, setTheme } = useTheme()
-  const themeThumbTop = theme === 'light' ? '0' : theme === 'system' ? '33.333%' : '66.666%'
-  const themeSwitchVertical = (
-    <div className={styles.themeSwitchVertical} role="group" aria-label="Theme">
-      <div className={styles.themeSwitchTrack}>
-        <span className={styles.themeSwitchThumb} style={{ top: themeThumbTop }} aria-hidden />
-        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('light')} title="Light" aria-label="Light" aria-pressed={theme === 'light'} />
-        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('system')} title="Auto (system)" aria-label="Auto" aria-pressed={theme === 'system'} />
-        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('dark')} title="Dark" aria-label="Dark" aria-pressed={theme === 'dark'} />
-      </div>
-    </div>
+  const themeThumbLeft = theme === 'light' ? '0' : theme === 'system' ? '33.333%' : '66.666%'
+  const cycleTheme = () => setTheme(theme === 'light' ? 'system' : theme === 'system' ? 'dark' : 'light')
+  const themeSwitchControl = (
+    <button
+      type="button"
+      className={styles.themeSwitchTrack}
+      onClick={cycleTheme}
+      role="switch"
+      aria-label={`Theme: ${theme === 'light' ? 'Light' : theme === 'system' ? 'Auto' : 'Dark'}. Click to cycle.`}
+      title={theme === 'light' ? 'Light' : theme === 'system' ? 'Auto (system)' : 'Dark'}
+    >
+      <span className={styles.themeSwitchThumb} style={{ left: themeThumbLeft }} aria-hidden />
+    </button>
   )
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
@@ -477,7 +480,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
       )}
       <section className={styles.menuSection}>
         <span className={styles.menuSectionTitle}>Appearance</span>
-        {themeSwitchVertical}
+        {themeSwitchControl}
       </section>
       <section className={styles.menuSection}>
         <span className={styles.menuSectionTitle}>Columns</span>
@@ -559,7 +562,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
         </div>
       )}
       <div className={styles.menuCompactRow}>
-        {themeSwitchVertical}
+        {themeSwitchControl}
       </div>
       <div className={styles.menuCompactRow}>
         {viewOptions.map((m) => (
@@ -625,7 +628,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                       {viewMode === '3' && <Column3Icon />}
                     </button>
                   )}
-                  {themeSwitchVertical}
+                  {themeSwitchControl}
                   <Link to="/login" className={styles.headerAuthLink}>
                     Log in
                   </Link>
@@ -659,7 +662,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   {viewMode === '3' && <Column3Icon />}
                 </button>
               )}
-              {themeSwitchVertical}
+              {themeSwitchControl}
               {!isDesktop && (
                 <button
                   type="button"

@@ -165,53 +165,35 @@
   letter-spacing: -0.02em;
 }
 
-/* Theme switch: single vertical 3-position (top = light, middle = auto, bottom = dark) */
-.themeSwitchVertical {
-  display: inline-block;
-}
-
+/* Theme switch: horizontal 3-position (left = light, middle = auto, right = dark), click anywhere to cycle */
 .themeSwitchTrack {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 28px;
-  height: 72px;
+  display: block;
+  width: 72px;
+  height: 28px;
+  padding: 0;
   background: var(--glass-highlight);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.themeSwitchTrack:hover {
+  background: color-mix(in srgb, var(--glass-highlight) 90%, white);
 }
 
 .themeSwitchThumb {
   position: absolute;
-  left: 2px;
-  right: 2px;
-  height: 33.333%;
-  min-height: 22px;
+  top: 2px;
+  bottom: 2px;
+  width: 33.333%;
   background: rgba(124, 58, 237, 0.25);
   border-radius: 4px;
   pointer-events: none;
-  transition: top 0.2s ease;
+  transition: left 0.2s ease;
   z-index: 0;
-}
-
-.themeSwitchZone {
-  flex: 1;
-  min-height: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  z-index: 1;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.themeSwitchZone:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.themeSwitchZone:active {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 @media (min-width: 768px) {

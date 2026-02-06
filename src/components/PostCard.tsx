@@ -26,18 +26,25 @@ function VideoIcon() {
   )
 }
 
+/* Multiple images: 2x2 grid of frames */
 function ImagesIcon() {
   return (
-    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z" />
+    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="2" width="9" height="9" rx="1" />
+      <rect x="13" y="2" width="9" height="9" rx="1" />
+      <rect x="2" y="13" width="9" height="9" rx="1" />
+      <rect x="13" y="13" width="9" height="9" rx="1" />
     </svg>
   )
 }
 
+/* Single image: one frame */
 function ImageIcon() {
   return (
-    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
     </svg>
   )
 }
@@ -448,10 +455,7 @@ export default function PostCard({ item }: Props) {
                 >
                   <div className={styles.mediaGrid}>
                     {imageItems.map((imgItem, idx) => (
-                      <div
-                        key={idx}
-                        className={`${styles.mediaGridCell} ${idx === imageIndex ? styles.mediaGridCellCurrent : ''}`}
-                      >
+                      <div key={idx} className={styles.mediaGridCell}>
                         <img
                           src={imgItem.url}
                           alt=""
@@ -503,10 +507,37 @@ export default function PostCard({ item }: Props) {
         <div className={styles.meta}>
           <div className={styles.handleBlock}>
             <div className={styles.handleRow}>
-              <span className={styles.handleRowMain}>
+              <div className={styles.avatarBadgeBlock}>
                 {post.author.avatar && (
                   <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
                 )}
+                <span className={styles.badgeTimeRow}>
+                  {isVideo && (
+                    <span className={styles.mediaBadge} title="Video">
+                      <VideoIcon />
+                    </span>
+                  )}
+                  {isMultipleImages && (
+                    <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
+                      <ImagesIcon />
+                    </span>
+                  )}
+                  {isSingleImage && (
+                    <span className={styles.mediaBadge} title="Image">
+                      <ImageIcon />
+                    </span>
+                  )}
+                  {createdAt && (
+                    <span
+                      className={styles.timestamp}
+                      title={formatExactDateTime(createdAt)}
+                    >
+                      {formatRelativeTime(createdAt)}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <span className={styles.handleRowMain}>
                 <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
                   <Link
                     to={`/profile/${encodeURIComponent(handle)}`}
@@ -529,29 +560,6 @@ export default function PostCard({ item }: Props) {
                 )}
               </span>
               <span className={styles.handleRowMeta}>
-                {isVideo && (
-                  <span className={styles.mediaBadge} title="Video">
-                    <VideoIcon />
-                  </span>
-                )}
-                {isMultipleImages && (
-                  <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
-                    <ImagesIcon />
-                  </span>
-                )}
-                {isSingleImage && (
-                  <span className={styles.mediaBadge} title="Image">
-                    <ImageIcon />
-                  </span>
-                )}
-                {createdAt && (
-                  <span
-                    className={styles.timestamp}
-                    title={formatExactDateTime(createdAt)}
-                  >
-                    {formatRelativeTime(createdAt)}
-                  </span>
-                )}
                 <div
                   className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
                   ref={addRef}
