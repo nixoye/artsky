@@ -1,7 +1,7 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Hls from 'hls.js'
-import { getPostMediaInfo, type TimelineItem } from '../lib/bsky'
+import { getPostMediaInfo, getPostAllMedia, type TimelineItem } from '../lib/bsky'
 import PostText from './PostText'
 import styles from './PostCard.module.css'
 
@@ -47,10 +47,16 @@ export default function PostCard({ item }: Props) {
   const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost' && reason?.by
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
 
+  const [imageIndex, setImageIndex] = useState(0)
   if (!media) return null
 
   const isVideo = media.type === 'video' && media.videoPlaylist
   const isMultipleImages = media.type === 'image' && (media.imageCount ?? 0) > 1
+  const allMedia = getPostAllMedia(post)
+  const imageItems = allMedia.filter((m) => m.type === 'image')
+  const canPrev = isMultipleImages && imageItems.length > 1 && imageIndex > 0
+  const canNext = isMultipleImages && imageItems.length > 1 && imageIndex < imageItems.length - 1
+  const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : media.url
 
   useEffect(() => {
     if (!isVideo || !media.videoPlaylist || !videoRef.current) return
@@ -106,7 +112,41 @@ export default function PostCard({ item }: Props) {
             preload="metadata"
           />
         ) : (
-          <img src={media.url} alt="" className={styles.media} loading="lazy" />
+          <>
+            <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" />
+            {isMultipleImages && imageItems.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className={styles.mediaArrow}
+                  style={{ left: 0 }}
+                  aria-label="Previous image"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setImageIndex((i) => Math.max(0, i - 1))
+                  }}
+                  disabled={!canPrev}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className={styles.mediaArrow}
+                  style={{ right: 0 }}
+                  aria-label="Next image"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setImageIndex((i) => Math.min(imageItems.length - 1, i + 1))
+                  }}
+                  disabled={!canNext}
+                >
+                  ›
+                </button>
+              </>
+            )}
+          </>
         )}
       </div>
       <div className={styles.meta}>

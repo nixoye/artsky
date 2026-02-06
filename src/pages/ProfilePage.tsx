@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { agent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
 import PostCard from '../components/PostCard'
+import PostText from '../components/PostText'
 import Layout from '../components/Layout'
 import styles from './ProfilePage.module.css'
 
@@ -218,7 +219,9 @@ export default function ProfilePage() {
                 ))}
             </div>
             {profile?.description && (
-              <p className={styles.description}>{profile.description}</p>
+              <p className={styles.description}>
+                <PostText text={profile.description} linkDisplay="domain" />
+              </p>
             )}
           </div>
         </header>

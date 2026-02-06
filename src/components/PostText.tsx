@@ -5,6 +5,16 @@ import styles from './PostText.module.css'
 const LINKIFY_REGEX =
   /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"'\],;:)!?]+)|(?<![@\/])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)|(#[\w]+)|(?<![a-zA-Z0-9])(@[\w.-]+)/gi
 
+function linkDisplayText(href: string, value: string, display: 'url' | 'domain'): string {
+  if (display !== 'domain') return value
+  try {
+    const u = new URL(href)
+    return u.hostname.replace(/^www\./, '')
+  } catch {
+    return value
+  }
+}
+
 export interface PostTextProps {
   text: string
   className?: string
@@ -12,9 +22,11 @@ export interface PostTextProps {
   maxLength?: number
   /** Stop click propagation (use inside a card that is itself a link). */
   stopPropagation?: boolean
+  /** Show link as domain name only (e.g. "example.com"). Default "url" shows full URL. */
+  linkDisplay?: 'url' | 'domain'
 }
 
-export default function PostText({ text, className, maxLength, stopPropagation }: PostTextProps) {
+export default function PostText({ text, className, maxLength, stopPropagation, linkDisplay = 'url' }: PostTextProps) {
   const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string }> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
@@ -79,6 +91,7 @@ export default function PostText({ text, className, maxLength, stopPropagation }
         }
         if (seg.type === 'url') {
           const href = seg.value
+          const display = linkDisplayText(href, href, linkDisplay)
           return (
             <a
               key={i}
@@ -87,14 +100,16 @@ export default function PostText({ text, className, maxLength, stopPropagation }
               rel="noopener noreferrer"
               className={styles.link}
               onClick={onClick}
+              title={href}
             >
-              {href}
+              {display}
             </a>
           )
         }
         if (seg.type === 'bareUrl') {
           const raw = seg.value.replace(/[.,;:)!?]+$/, '')
           const href = `https://${raw}`
+          const display = linkDisplayText(href, seg.value, linkDisplay)
           return (
             <a
               key={i}
@@ -103,8 +118,9 @@ export default function PostText({ text, className, maxLength, stopPropagation }
               rel="noopener noreferrer"
               className={styles.link}
               onClick={onClick}
+              title={href}
             >
-              {seg.value}
+              {display}
             </a>
           )
         }
