@@ -517,14 +517,6 @@ export default function PostDetailPage() {
                   >
                     @{thread.post.author.handle ?? thread.post.author.did}
                   </Link>
-                  {(thread.post.record as { createdAt?: string })?.createdAt && (
-                    <span
-                      className={styles.postTimestamp}
-                      title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
-                    >
-                      {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
-                    </span>
-                  )}
                   {!isOwnPost && (
                     alreadyFollowing ? (
                       <button
@@ -547,6 +539,14 @@ export default function PostDetailPage() {
                         {followLoading ? 'Following…' : 'Follow'}
                       </button>
                     )
+                  )}
+                  {(thread.post.record as { createdAt?: string })?.createdAt && (
+                    <span
+                      className={styles.postTimestamp}
+                      title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
+                    >
+                      {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
+                    </span>
                   )}
                 </div>
               </div>
