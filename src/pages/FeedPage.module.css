@@ -61,6 +61,28 @@
   min-width: 0;
 }
 
+.guestPreviewAvatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.35rem;
+}
+
+.guestPreviewAvatarPlaceholder {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--glass-border);
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.35rem;
+}
+
 .guestPreviewCard:hover {
   border-color: var(--accent);
   background: rgba(124, 58, 237, 0.08);

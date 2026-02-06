@@ -105,6 +105,90 @@
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25);
 }
 
+.inputWrap {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.suggestion,
+.suggestionActive {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.suggestion:hover,
+.suggestionActive {
+  background: var(--glass-highlight);
+}
+
+.suggestionActive {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.suggestionAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.suggestionHandle {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.suggestionName {
+  color: var(--muted);
+  margin-left: auto;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestionsLoading {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.signupLink {
+  display: block;
+  text-align: center;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  border-radius: var(--glass-radius-sm);
+}
+
+.signupLink:hover {
+  background: rgba(124, 58, 237, 0.1);
+}
+
 .error {
   color: var(--error);
   font-size: 0.875rem;

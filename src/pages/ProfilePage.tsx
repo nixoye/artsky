@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { agent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
 import Layout from '../components/Layout'
@@ -38,10 +38,11 @@ export default function ProfilePage() {
   const [followUriOverride, setFollowUriOverride] = useState<string | null>(null)
   const session = getSession()
   const { viewMode } = useViewMode()
+  const readAgent = session ? agent : publicAgent
 
   useEffect(() => {
     if (!handle) return
-    agent
+    readAgent
       .getProfile({ actor: handle })
       .then((res) => {
         const data = res.data
@@ -54,7 +55,7 @@ export default function ProfilePage() {
         })
       })
       .catch(() => {})
-  }, [handle])
+  }, [handle, readAgent])
 
   const load = useCallback(async (nextCursor?: string) => {
     if (!handle) return
@@ -62,7 +63,7 @@ export default function ProfilePage() {
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
-      const res = await agent.getAuthorFeed({ actor: handle, limit: 30, cursor: nextCursor })
+      const res = await readAgent.getAuthorFeed({ actor: handle, limit: 30, cursor: nextCursor })
       setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
       setCursor(res.data.cursor ?? undefined)
     } catch (err: unknown) {
@@ -71,7 +72,7 @@ export default function ProfilePage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [handle])
+  }, [handle, readAgent])
 
   const loadLiked = useCallback(async (nextCursor?: string) => {
     if (!handle || !profile || session?.did !== profile.did) return
@@ -96,7 +97,7 @@ export default function ProfilePage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await agent.app.bsky.feed.getActorFeeds({ actor: handle, limit: 50 })
+      const res = await readAgent.app.bsky.feed.getActorFeeds({ actor: handle, limit: 50 })
       const list = (res.data.feeds || []).map((f: { uri: string; displayName: string; description?: string; avatar?: string; likeCount?: number }) => ({
         uri: f.uri,
         displayName: f.displayName,
@@ -110,7 +111,7 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
-  }, [handle])
+  }, [handle, readAgent])
 
   useEffect(() => {
     if (handle) {

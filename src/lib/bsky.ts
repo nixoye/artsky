@@ -2,6 +2,8 @@ import { AtpAgent, type AtpSessionData, type AtpSessionEvent } from '@atproto/ap
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 
 const BSKY_SERVICE = 'https://bsky.social'
+/** Public AppView for unauthenticated reads (profiles, feeds). */
+const PUBLIC_BSKY = 'https://public.api.bsky.app'
 const SESSION_KEY = 'artsky-bsky-session'
 const ACCOUNTS_KEY = 'artsky-accounts'
 
@@ -110,10 +112,13 @@ export const agent = new AtpAgent({
   persistSession,
 })
 
+/** Agent for unauthenticated reads (profiles, author feeds). Use when no session. */
+export const publicAgent = new AtpAgent({ service: PUBLIC_BSKY })
+
 /** Handles for the guest feed (from config). Re-exported for convenience. */
 export const GUEST_FEED_HANDLES = GUEST_FEED_ACCOUNTS.map((a) => a.handle)
 
-/** Fetch and merge author feeds for guest (no login). cursor = offset as string. */
+/** Fetch and merge author feeds for guest (no login). Uses public API so it works when logged out. cursor = offset as string. */
 export async function getGuestFeed(
   limit: number,
   cursor?: string,
@@ -123,7 +128,7 @@ export async function getGuestFeed(
   const perHandle = Math.ceil(need / GUEST_FEED_HANDLES.length) + 5
   const results = await Promise.all(
     GUEST_FEED_HANDLES.map((actor) =>
-      agent.getAuthorFeed({ actor, limit: perHandle }).catch(() => ({ data: { feed: [] } })),
+      publicAgent.getAuthorFeed({ actor, limit: perHandle }).catch(() => ({ data: { feed: [] } })),
     ),
   )
   const all = results.flatMap((r) => (r.data.feed || []) as TimelineItem[])
@@ -327,11 +332,12 @@ export function getPostMediaUrl(post: PostView): { url: string; type: 'image' | 
   return info ? { url: info.url, type: info.type } : null
 }
 
-/** Typeahead search for actors (usernames). */
+/** Typeahead search for actors (usernames). Uses public API when not logged in (e.g. login page). */
 export async function searchActorsTypeahead(q: string, limit = 10) {
   const term = q.trim()
   if (!term) return { actors: [] }
-  const res = await agent.app.bsky.actor.searchActorsTypeahead({ q: term, limit })
+  const api = getSession() ? agent : publicAgent
+  const res = await api.app.bsky.actor.searchActorsTypeahead({ q: term, limit })
   return res.data
 }
 

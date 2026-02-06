@@ -71,7 +71,6 @@ export default function PostCard({ item }: Props) {
   const media = getPostMediaInfo(post)
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
-  const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost' && reason?.by
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
 
   const [imageIndex, setImageIndex] = useState(0)

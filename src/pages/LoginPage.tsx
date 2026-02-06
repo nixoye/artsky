@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import * as bsky from '../lib/bsky'
+import type { AppBskyActorDefs } from '@atproto/api'
 import styles from './LoginPage.module.css'
+
+const BLUESKY_SIGNIN_URL = 'https://bsky.app/signin'
+const BLUESKY_SIGNUP_URL = 'https://bsky.app/signup'
+const DEBOUNCE_MS = 250
 
 type Mode = 'signin' | 'create'
 
@@ -16,16 +21,68 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [suggestions, setSuggestions] = useState<AppBskyActorDefs.ProfileViewBasic[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
   const [email, setEmail] = useState('')
   const [handle, setHandle] = useState('')
   const [createPassword, setCreatePassword] = useState('')
 
+  const fetchSuggestions = useCallback(async (q: string) => {
+    const term = q.trim().replace(/^@/, '')
+    if (!term || term.length < 2) {
+      setSuggestions([])
+      return
+    }
+    setSuggestionsLoading(true)
+    try {
+      const res = await bsky.searchActorsTypeahead(term, 8)
+      setSuggestions(res.actors ?? [])
+      setActiveIndex(0)
+    } catch {
+      setSuggestions([])
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (identifier.trim().replace(/^@/, '').length < 2) {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      return
+    }
+    const t = setTimeout(() => fetchSuggestions(identifier), DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [identifier, fetchSuggestions])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setSuggestionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    const id = identifier.trim()
+    if (!id) return
+
+    if (!password.trim()) {
+      window.location.href = BLUESKY_SIGNIN_URL
+      return
+    }
+
     setLoading(true)
     try {
-      await login(identifier.trim(), password)
+      await login(id, password)
       navigate('/feed', { replace: true })
     } catch (err: unknown) {
       const message =
@@ -55,7 +112,14 @@ export default function LoginPage() {
         err && typeof err === 'object' && 'message' in err
           ? String((err as { message: string }).message)
           : 'Could not create account. Check that the handle is available.'
-      setError(message)
+      const isVerificationRequired =
+        typeof message === 'string' &&
+        (message.toLowerCase().includes('verification') || message.toLowerCase().includes('latest version'))
+      setError(
+        isVerificationRequired
+          ? 'Account creation now requires verification on Bluesky. Please create your account on the Bluesky website or app, then sign in here with an App Password.'
+          : message
+      )
     } finally {
       setLoading(false)
     }
@@ -92,30 +156,84 @@ export default function LoginPage() {
 
         {mode === 'signin' ? (
           <form onSubmit={handleSignIn} className={styles.form}>
-            <input
-              type="text"
-              placeholder="Handle or email"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              className={styles.input}
-              autoComplete="username"
-              required
-            />
+            <div ref={wrapperRef} className={styles.inputWrap}>
+              <input
+                type="text"
+                placeholder="Handle or email"
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value)
+                  setSuggestionsOpen(true)
+                }}
+                onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
+                onKeyDown={(e) => {
+                  if (!suggestionsOpen || suggestions.length === 0) return
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    setActiveIndex((i) => (i + 1) % suggestions.length)
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length)
+                  } else if (e.key === 'Enter' && suggestions[activeIndex]) {
+                    e.preventDefault()
+                    const h = suggestions[activeIndex].handle
+                    setIdentifier(h ?? '')
+                    setSuggestionsOpen(false)
+                  } else if (e.key === 'Escape') {
+                    setSuggestionsOpen(false)
+                  }
+                }}
+                className={styles.input}
+                autoComplete="username"
+                required
+              />
+              {suggestionsOpen && (suggestions.length > 0 || suggestionsLoading) && (
+                <ul className={styles.suggestions} role="listbox">
+                  {suggestionsLoading && suggestions.length === 0 ? (
+                    <li className={styles.suggestion} role="option" aria-disabled>
+                      <span className={styles.suggestionsLoading}>Searching…</span>
+                    </li>
+                  ) : (
+                    suggestions.map((actor, i) => (
+                      <li
+                        key={actor.did}
+                        role="option"
+                        aria-selected={i === activeIndex}
+                        className={i === activeIndex ? styles.suggestionActive : styles.suggestion}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setIdentifier(actor.handle ?? '')
+                          setSuggestionsOpen(false)
+                        }}
+                      >
+                        {actor.avatar && (
+                          <img src={actor.avatar} alt="" className={styles.suggestionAvatar} />
+                        )}
+                        <span className={styles.suggestionHandle}>@{actor.handle}</span>
+                        {actor.displayName && (
+                          <span className={styles.suggestionName}>{actor.displayName}</span>
+                        )}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
             <input
               type="password"
-              placeholder="App password"
+              placeholder="App password (optional — leave blank to sign in with Bluesky)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={styles.input}
               autoComplete="current-password"
-              required
             />
             {error && <p className={styles.error}>{error}</p>}
             <button type="submit" className={styles.button} disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
+              {password.trim() ? (loading ? 'Signing in…' : 'Sign in') : 'Sign in with Bluesky'}
             </button>
             <p className={styles.hint}>
-              Create an App Password in Bluesky: Settings → App passwords. Do not use your main password.
+              Leave password blank to open Bluesky and sign in there. Or create an App Password in Bluesky: Settings
+              → App passwords, then enter it above.
             </p>
           </form>
         ) : (
@@ -153,8 +271,17 @@ export default function LoginPage() {
               {loading ? 'Creating account…' : 'Create account'}
             </button>
             <p className={styles.hint}>
-              You’re creating a Bluesky account (hosted at bsky.social).
+              Bluesky now requires verification to create accounts. Create your account on the Bluesky website or app,
+              then return here to sign in with an App Password.
             </p>
+            <a
+              href={BLUESKY_SIGNUP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.signupLink}
+            >
+              Create account on Bluesky →
+            </a>
           </form>
         )}
       </div>

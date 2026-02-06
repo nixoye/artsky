@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { agent, getPostMediaInfo, getGuestFeed, type TimelineItem } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getGuestFeed, type TimelineItem } from '../lib/bsky'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
@@ -25,6 +25,21 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guestProfiles, setGuestProfiles] = useState<Record<string, { avatar?: string; displayName?: string }>>({})
+
+  useEffect(() => {
+    if (!session) {
+      GUEST_FEED_ACCOUNTS.forEach((a) => {
+        publicAgent.getProfile({ actor: a.handle }).then((res) => {
+          const d = res.data
+          setGuestProfiles((prev) => ({
+            ...prev,
+            [a.handle]: { avatar: d.avatar, displayName: d.displayName },
+          }))
+        }).catch(() => {})
+      })
+    }
+  }, [session])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
@@ -92,16 +107,24 @@ export default function FeedPage() {
               . Sign in to see your feed.
             </p>
             <div className={styles.guestPreview}>
-              {GUEST_FEED_ACCOUNTS.map((a) => (
-                <Link
-                  key={a.handle}
-                  to={`/profile/${encodeURIComponent(a.handle)}`}
-                  className={styles.guestPreviewCard}
-                >
-                  <span className={styles.guestPreviewLabel}>@{a.handle}</span>
-                  <span className={styles.guestPreviewName}>{a.label}</span>
-                </Link>
-              ))}
+              {GUEST_FEED_ACCOUNTS.map((a) => {
+                const profile = guestProfiles[a.handle]
+                return (
+                  <Link
+                    key={a.handle}
+                    to={`/profile/${encodeURIComponent(a.handle)}`}
+                    className={styles.guestPreviewCard}
+                  >
+                    {profile?.avatar ? (
+                      <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
+                    ) : (
+                      <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
+                    )}
+                    <span className={styles.guestPreviewLabel}>@{a.handle}</span>
+                    <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
+                  </Link>
+                )
+              })}
             </div>
           </section>
         )}
