@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
-import { agent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
+import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import Layout from '../components/Layout'
 import VideoWithHls from '../components/VideoWithHls'
@@ -384,8 +384,9 @@ export default function PostDetailPage() {
     if (!decodedUri) return
     setLoading(true)
     setError(null)
+    const api = getSession() ? agent : publicAgent
     try {
-      const res = await agent.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 })
+      const res = await api.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 })
       const th = res.data.thread
       setThread(th)
     } catch (err: unknown) {

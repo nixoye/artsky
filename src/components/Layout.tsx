@@ -146,6 +146,17 @@ function LogInIcon() {
   )
 }
 
+function UserPlusIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </svg>
+  )
+}
+
 const DESKTOP_BREAKPOINT = 768
 function getDesktopSnapshot() {
   return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
@@ -410,15 +421,25 @@ export default function Layout({ title, children, showNav }: Props) {
         </>
       )}
       {!session && (
-        <button
-          type="button"
-          className={styles.menuCompactActionBtn}
-          onClick={() => { setAccountSheetOpen(false); navigate('/login'); }}
-          title="Sign in"
-          aria-label="Sign in"
-        >
-          <LogInIcon />
-        </button>
+        <div className={styles.menuCompactAuthRow}>
+          <Link
+            to="/login"
+            className={styles.menuCompactAuthBtn}
+            onClick={() => setAccountSheetOpen(false)}
+          >
+            <LogInIcon />
+            <span>Log in</span>
+          </Link>
+          <Link
+            to="/login"
+            state={{ mode: 'create' }}
+            className={styles.menuCompactAuthBtnPrimary}
+            onClick={() => setAccountSheetOpen(false)}
+          >
+            <UserPlusIcon />
+            <span>Create account</span>
+          </Link>
+        </div>
       )}
       <div className={styles.menuCompactRow}>
         {(['light', 'dark', 'system'] as const).map((t) => (
