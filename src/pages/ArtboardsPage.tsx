@@ -66,10 +66,48 @@ export default function ArtboardsPage() {
             No artboards yet. Open a post from the feed and use “Add to artboard” to save it here.
           </p>
         ) : (
-          <ul className={styles.list}>
+          <div className={styles.bento}>
             {boards.map((board) => (
-              <li key={board.id} className={styles.item}>
-                <div className={styles.itemHead}>
+              <div key={board.id} className={styles.bentoCard}>
+                <Link to={`/artboard/${board.id}`} className={styles.bentoLink}>
+                  {board.posts.length > 0 ? (
+                    <div className={styles.bentoThumbs}>
+                      {board.posts.length === 1 ? (
+                        <div className={styles.bentoMain}>
+                          {board.posts[0].thumb ? (
+                            <img src={board.posts[0].thumb} alt="" />
+                          ) : (
+                            <span className={styles.thumbPlaceholder}>📌</span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className={styles.bentoMain}>
+                            {board.posts[0].thumb ? (
+                              <img src={board.posts[0].thumb} alt="" />
+                            ) : (
+                              <span className={styles.thumbPlaceholder}>📌</span>
+                            )}
+                          </div>
+                          <div className={styles.bentoSide}>
+                            {board.posts.slice(1, 4).map((p) => (
+                              <div key={p.uri} className={styles.bentoSideThumb}>
+                                {p.thumb ? <img src={p.thumb} alt="" /> : <span className={styles.thumbPlaceholder}>📌</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={styles.bentoEmpty}>No posts yet</div>
+                  )}
+                  <div className={styles.bentoInfo}>
+                    <span className={styles.bentoName}>{board.name}</span>
+                    <span className={styles.bentoCount}>{board.posts.length} post{board.posts.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </Link>
+                <div className={styles.bentoActions}>
                   {editingId === board.id ? (
                     <>
                       <input
@@ -79,39 +117,21 @@ export default function ArtboardsPage() {
                         className={styles.editInput}
                         autoFocus
                         onBlur={saveEdit}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), saveEdit())}
+                        onClick={(e) => e.preventDefault()}
                       />
-                      <button type="button" className={styles.smallBtn} onClick={saveEdit}>Save</button>
+                      <button type="button" className={styles.smallBtn} onClick={(e) => { e.preventDefault(); saveEdit(); }}>Save</button>
                     </>
                   ) : (
                     <>
-                      <Link to={`/artboard/${board.id}`} className={styles.boardLink}>
-                        <span className={styles.boardName}>{board.name}</span>
-                        <span className={styles.boardCount}>{board.posts.length} posts</span>
-                      </Link>
-                      <div className={styles.itemActions}>
-                        <button type="button" className={styles.smallBtn} onClick={() => startEdit(board)}>Rename</button>
-                        <button type="button" className={styles.smallBtnDanger} onClick={() => handleDelete(board.id)}>Delete</button>
-                      </div>
+                      <button type="button" className={styles.smallBtn} onClick={(e) => { e.preventDefault(); startEdit(board); }}>Rename</button>
+                      <button type="button" className={styles.smallBtnDanger} onClick={(e) => { e.preventDefault(); handleDelete(board.id); }}>Delete</button>
                     </>
                   )}
                 </div>
-                {board.posts.length > 0 && (
-                  <div className={styles.thumbs}>
-                    {board.posts.slice(0, 4).map((p) => (
-                      <div key={p.uri} className={styles.thumb}>
-                        {p.thumb ? (
-                          <img src={p.thumb} alt="" />
-                        ) : (
-                          <span className={styles.thumbPlaceholder}>📌</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </Layout>
