@@ -42,6 +42,12 @@
   color: var(--accent);
 }
 
+/* Hovering the - button also highlights the collapse strip below it */
+.collapseColumn:has(.collapseBtn:hover) .collapseStrip {
+  color: var(--accent);
+  background: rgba(124, 58, 237, 0.2);
+}
+
 .collapseBtn {
   display: inline-flex;
   align-items: center;

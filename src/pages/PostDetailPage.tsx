@@ -789,10 +789,11 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     if (postSectionCount <= 1) return
+    /* Only scroll when user has moved focus to a different section (e.g. comments). Don't scroll on initial load so the post stays at the top. */
+    const onPostSection = postSectionIndex === 0 || (hasMediaSection && postSectionIndex === 1)
+    if (onPostSection) return
     let ref: HTMLDivElement | null = null
-    if (hasMediaSection && postSectionIndex === 0) ref = mediaSectionRef.current
-    else if (postSectionIndex === (hasMediaSection ? 1 : 0)) ref = descriptionSectionRef.current
-    else if (hasRepliesSection && postSectionIndex === postSectionCount - 1) ref = commentsSectionRef.current
+    if (hasRepliesSection && postSectionIndex === postSectionCount - 1) ref = commentsSectionRef.current
     if (ref) ref.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [postSectionIndex, hasMediaSection, hasRepliesSection, postSectionCount])
 
