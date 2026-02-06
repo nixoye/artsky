@@ -213,7 +213,7 @@ export default function FeedPage() {
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item) => (
-                <PostCard key={item.post.uri} item={item} showRepostGlow />
+                <PostCard key={item.post.uri} item={item} />
               ))}
             </div>
             {cursor && (

@@ -299,6 +299,7 @@ function PostBlock({
                   return (
                     <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: replyDepth * 12 }}>
                       <button type="button" className={styles.collapsedCommentBtn} onClick={() => onToggleCollapse?.(r.post.uri)}>
+                        <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                         {r.post.author?.avatar ? (
                           <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} />
                         ) : (
@@ -718,6 +719,7 @@ export default function PostDetailPage() {
                     return (
                       <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: 0 }}>
                         <button type="button" className={styles.collapsedCommentBtn} onClick={() => toggleCollapse(r.post.uri)}>
+                          <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                           {r.post.author?.avatar ? (
                             <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} />
                           ) : (

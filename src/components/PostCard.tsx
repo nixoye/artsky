@@ -16,8 +16,6 @@ const LONG_PRESS_MOVE_THRESHOLD = 14
 
 interface Props {
   item: TimelineItem
-  /** When true, show a subtle green glow on the author handle if this post is in the feed because someone reposted it (home feed only). */
-  showRepostGlow?: boolean
 }
 
 function VideoIcon() {
@@ -72,7 +70,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, showRepostGlow = false }: Props) {
+export default function PostCard({ item }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
