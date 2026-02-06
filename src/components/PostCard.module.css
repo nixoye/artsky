@@ -30,9 +30,28 @@
   padding: 0.5rem 0.6rem;
 }
 
+.handleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .handle {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.mediaBadge {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.mediaIcon {
+  width: 0.9rem;
+  height: 0.9rem;
+  opacity: 0.85;
 }
 
 .text {

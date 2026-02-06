@@ -73,29 +73,69 @@ export type TimelineItem = TimelineResponse['data']['feed'][number]
 export type PostView = TimelineItem['post']
 export type ThreadView = Awaited<ReturnType<typeof agent.getPostThread>>['data']['thread']
 
-/** Returns the first image or video URL from a post for card display */
-export function getPostMediaUrl(post: PostView): { url: string; type: 'image' | 'video' } | null {
+export type PostMediaInfo = {
+  url: string
+  type: 'image' | 'video'
+  imageCount?: number
+  videoPlaylist?: string
+}
+
+/** Returns media info for a post: thumbnail/first image URL, type, and for video the playlist URL. */
+export function getPostMediaInfo(post: PostView): PostMediaInfo | null {
   const embed = post.embed as
-    | { $type?: string; images?: { thumb: string; fullsize: string }[]; thumbnail?: string; playlist?: string }
+    | {
+        $type?: string
+        images?: { thumb: string; fullsize: string }[]
+        thumbnail?: string
+        playlist?: string
+      }
     | undefined
   if (!embed) return null
   if (embed.$type === 'app.bsky.embed.images#view' && embed.images?.length) {
     const img = embed.images[0]
-    return { url: img.fullsize ?? img.thumb ?? '', type: 'image' as const }
+    return {
+      url: img.fullsize ?? img.thumb ?? '',
+      type: 'image',
+      imageCount: embed.images.length,
+    }
   }
-  if (embed.$type === 'app.bsky.embed.video#view' && embed.thumbnail) {
-    return { url: embed.thumbnail, type: 'video' }
+  if (embed.$type === 'app.bsky.embed.video#view') {
+    const thumb = embed.thumbnail ?? ''
+    const playlist = embed.playlist ?? ''
+    return { url: thumb, type: 'video', videoPlaylist: playlist || undefined }
   }
   // recordWithMedia: media can be in .media
-  const media = (embed as { media?: { $type?: string; images?: { fullsize?: string; thumb?: string }[]; thumbnail?: string } }).media
+  const media = (embed as {
+    media?: {
+      $type?: string
+      images?: { fullsize?: string; thumb?: string }[]
+      thumbnail?: string
+      playlist?: string
+    }
+  }).media
   if (media?.$type === 'app.bsky.embed.images#view' && media.images?.length) {
     const img = media.images[0]
-    return { url: img.fullsize ?? img.thumb ?? '', type: 'image' as const }
+    return {
+      url: img.fullsize ?? img.thumb ?? '',
+      type: 'image',
+      imageCount: media.images.length,
+    }
   }
-  if (media?.$type === 'app.bsky.embed.video#view' && media.thumbnail) {
-    return { url: media.thumbnail, type: 'video' }
+  if (media?.$type === 'app.bsky.embed.video#view') {
+    const playlist = (media as { playlist?: string }).playlist
+    return {
+      url: media.thumbnail ?? '',
+      type: 'video',
+      videoPlaylist: playlist,
+    }
   }
   return null
+}
+
+/** @deprecated Use getPostMediaInfo. Returns first image or video thumbnail for card display. */
+export function getPostMediaUrl(post: PostView): { url: string; type: 'image' | 'video' } | null {
+  const info = getPostMediaInfo(post)
+  return info ? { url: info.url, type: info.type } : null
 }
 
 /** Post a reply (comment) to a Bluesky post */

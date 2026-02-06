@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { agent, getPostMediaUrl, type TimelineItem } from '../lib/bsky'
+import { agent, getPostMediaInfo, type TimelineItem } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
@@ -45,7 +45,7 @@ export default function FeedPage() {
     load()
   }, [load])
 
-  const mediaItems = items.filter((item) => getPostMediaUrl(item.post))
+  const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
 
   return (
     <Layout title="Feed" showNav>
