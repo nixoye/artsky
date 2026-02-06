@@ -368,6 +368,182 @@ export async function searchPostsByTag(tag: string, cursor?: string) {
 /** Domain used for standard.site / long-form blog posts. */
 export const STANDARD_SITE_DOMAIN = 'standard.site'
 
+/** Standard.site lexicon collection NSIDs (long-form blogs on AT Protocol). */
+export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document'
+export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication'
+
+/** A document record from the standard.site lexicon (metadata about a blog post). */
+export type StandardSiteDocumentRecord = {
+  path?: string
+  title?: string
+  createdAt?: string
+  [k: string]: unknown
+}
+
+/** Document list item with author and optional base URL for building canonical link. */
+export type StandardSiteDocumentView = {
+  uri: string
+  cid: string
+  did: string
+  rkey: string
+  path: string
+  title?: string
+  createdAt?: string
+  baseUrl?: string
+  authorHandle?: string
+}
+
+/** List site.standard.document records from a repo. Does not require the lexicon to be installed. */
+export async function listStandardSiteDocuments(
+  client: AtpAgent,
+  repo: string,
+  opts?: { limit?: number; cursor?: string; reverse?: boolean }
+): Promise<{ records: { uri: string; cid: string; value: StandardSiteDocumentRecord }[]; cursor?: string }> {
+  const res = await client.com.atproto.repo.listRecords({
+    repo,
+    collection: STANDARD_SITE_DOCUMENT_COLLECTION,
+    limit: opts?.limit ?? 30,
+    cursor: opts?.cursor,
+    reverse: opts?.reverse ?? true,
+  })
+  const records = (res.data.records ?? []).map((r: { uri: string; cid: string; value: Record<string, unknown> }) => ({
+    uri: r.uri,
+    cid: r.cid,
+    value: r.value as StandardSiteDocumentRecord,
+  }))
+  return { records, cursor: res.data.cursor }
+}
+
+/** Get the base URL of a publication from a repo (first site.standard.publication record). */
+export async function getStandardSitePublicationBaseUrl(client: AtpAgent, repo: string): Promise<string | null> {
+  try {
+    const res = await client.com.atproto.repo.listRecords({
+      repo,
+      collection: STANDARD_SITE_PUBLICATION_COLLECTION,
+      limit: 1,
+    })
+    const record = res.data.records?.[0]?.value as { url?: string } | undefined
+    return record?.url ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get DIDs (and handles) of accounts that the actor follows. */
+export async function getFollows(
+  client: AtpAgent,
+  actor: string,
+  opts?: { limit?: number; cursor?: string }
+): Promise<{ dids: string[]; handles: Map<string, string>; cursor?: string }> {
+  const res = await client.app.bsky.graph.getFollows({
+    actor,
+    limit: opts?.limit ?? 100,
+    cursor: opts?.cursor,
+  })
+  const dids = (res.data.follows ?? []).map((f: { did: string; handle?: string }) => f.did)
+  const handles = new Map<string, string>()
+  for (const f of res.data.follows ?? []) {
+    const sub = f as { did: string; handle?: string }
+    if (sub.handle) handles.set(sub.did, sub.handle)
+  }
+  return { dids, handles, cursor: res.data.cursor }
+}
+
+/** Fetch standard.site blog documents from the current user and people they follow. Requires session. */
+export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteDocumentView[]> {
+  const session = getSession()
+  if (!session?.did) return []
+  const client = agent
+  const selfHandle = (session as { handle?: string }).handle ?? session.did
+  const limitPerRepo = 15
+  const maxFollows = 50
+  const allViews: StandardSiteDocumentView[] = []
+  const didToHandle = new Map<string, string>()
+  didToHandle.set(session.did, selfHandle)
+  try {
+    const { dids: followDids, handles: followHandles } = await getFollows(client, session.did, { limit: maxFollows })
+    followHandles.forEach((h, did) => didToHandle.set(did, h))
+    const didsToFetch = [session.did, ...followDids]
+    const baseUrlCache = new Map<string, string | null>()
+    await Promise.all(
+      didsToFetch.map(async (did) => {
+        const base = await getStandardSitePublicationBaseUrl(client, did)
+        baseUrlCache.set(did, base)
+      })
+    )
+    const results = await Promise.all(
+      didsToFetch.map(async (did) => {
+        try {
+          const { records } = await listStandardSiteDocuments(client, did, { limit: limitPerRepo, reverse: true })
+          const baseUrl = baseUrlCache.get(did) ?? undefined
+          const handle = didToHandle.get(did)
+          return records.map((r) => {
+            const path = r.value.path ?? r.uri.split('/').pop() ?? ''
+            return {
+              uri: r.uri,
+              cid: r.cid,
+              did,
+              rkey: r.uri.split('/').pop() ?? '',
+              path,
+              title: r.value.title,
+              createdAt: r.value.createdAt,
+              baseUrl: baseUrl ?? undefined,
+              authorHandle: handle,
+            }
+          })
+        } catch {
+          return []
+        }
+      })
+    )
+    for (const list of results) allViews.push(...list)
+    allViews.sort((a, b) => {
+      const ta = new Date(a.createdAt ?? 0).getTime()
+      const tb = new Date(b.createdAt ?? 0).getTime()
+      return tb - ta
+    })
+  } catch {
+    // ignore
+  }
+  return allViews
+}
+
+/** List standard.site blog documents for a single author (by DID). Use for profile blog tab. */
+export async function listStandardSiteDocumentsForAuthor(
+  client: AtpAgent,
+  did: string,
+  authorHandle?: string,
+  opts?: { limit?: number; cursor?: string }
+): Promise<{ documents: StandardSiteDocumentView[]; cursor?: string }> {
+  try {
+    const [baseUrl, { records, cursor }] = await Promise.all([
+      getStandardSitePublicationBaseUrl(client, did),
+      listStandardSiteDocuments(client, did, {
+        limit: opts?.limit ?? 30,
+        cursor: opts?.cursor,
+        reverse: true,
+      }),
+    ])
+    const documents: StandardSiteDocumentView[] = records.map((r) => {
+      const path = r.value.path ?? r.uri.split('/').pop() ?? ''
+      return {
+        uri: r.uri,
+        cid: r.cid,
+        did,
+        rkey: r.uri.split('/').pop() ?? '',
+        path,
+        title: r.value.title,
+        createdAt: r.value.createdAt,
+        baseUrl: baseUrl ?? undefined,
+        authorHandle: authorHandle ?? did,
+      }
+    })
+    return { documents, cursor }
+  } catch {
+    return { documents: [], cursor: undefined }
+  }
+}
+
 /** Search posts that link to a domain (e.g. standard.site). Works with publicAgent when logged out. */
 export async function searchPostsByDomain(
   domain: string,

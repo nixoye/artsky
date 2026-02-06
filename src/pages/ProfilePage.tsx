@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { agent, publicAgent, getPostMediaInfo, getSession, searchPostsByDomain, STANDARD_SITE_DOMAIN, type TimelineItem } from '../lib/bsky'
-import type { AppBskyFeedDefs } from '@atproto/api'
+import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
@@ -36,7 +35,7 @@ export default function ProfilePage() {
   const [likedItems, setLikedItems] = useState<TimelineItem[]>([])
   const [likedCursor, setLikedCursor] = useState<string | undefined>()
   const [feeds, setFeeds] = useState<GeneratorView[]>([])
-  const [blogPosts, setBlogPosts] = useState<AppBskyFeedDefs.PostView[]>([])
+  const [blogDocuments, setBlogDocuments] = useState<StandardSiteDocumentView[]>([])
   const [blogCursor, setBlogCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -135,13 +134,13 @@ export default function ProfilePage() {
   }, [handle, readAgent])
 
   const loadBlog = useCallback(async (nextCursor?: string) => {
-    if (!handle) return
+    if (!handle || !profile?.did) return
     try {
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
-      const { posts, cursor: next } = await searchPostsByDomain(STANDARD_SITE_DOMAIN, nextCursor, handle)
-      setBlogPosts((prev) => (nextCursor ? [...prev, ...posts] : posts))
+      const { documents, cursor: next } = await listStandardSiteDocumentsForAuthor(readAgent, profile.did, handle, { cursor: nextCursor })
+      setBlogDocuments((prev) => (nextCursor ? [...prev, ...documents] : documents))
       setBlogCursor(next)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load blog')
@@ -149,7 +148,7 @@ export default function ProfilePage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [handle])
+  }, [handle, profile?.did, readAgent])
 
   useEffect(() => {
     if (handle) {
@@ -173,8 +172,8 @@ export default function ProfilePage() {
   }, [tab, loadFeeds])
 
   useEffect(() => {
-    if (tab === 'blog') loadBlog()
-  }, [tab, loadBlog])
+    if (tab === 'blog' && profile?.did) loadBlog()
+  }, [tab, profile?.did, loadBlog])
 
   useEffect(() => {
     const onScroll = () => {
@@ -452,28 +451,55 @@ export default function ProfilePage() {
         {loading ? (
           <div className={styles.loading}>Loading…</div>
         ) : tab === 'blog' ? (
-          blogPosts.length === 0 ? (
+          blogDocuments.length === 0 ? (
             <div className={styles.empty}>No standard.site blog posts.</div>
           ) : (
             <>
               <ul className={styles.textList}>
-                {blogPosts.map((p) => {
-                  const authorHandle = p.author.handle ?? p.author.did
-                  const text = (p.record as { text?: string })?.text?.trim() ?? ''
-                  const createdAt = (p.record as { createdAt?: string })?.createdAt
-                  const avatar = p.author.avatar
+                {blogDocuments.map((doc) => {
+                  const authorHandle = doc.authorHandle ?? doc.did
+                  const title = doc.title || doc.path || 'Untitled'
+                  const createdAt = doc.createdAt
+                  const url = doc.baseUrl
+                    ? `${doc.baseUrl.replace(/\/$/, '')}/${(doc.path ?? '').replace(/^\//, '')}`.trim() || doc.baseUrl
+                    : null
                   return (
-                    <li key={p.uri}>
-                      <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.textPostLink}>
+                    <li key={doc.uri}>
+                      {url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.textPostLink}>
+                          <article className={postBlockStyles.postBlock}>
+                            <div className={postBlockStyles.postBlockContent}>
+                              <div className={postBlockStyles.postHead}>
+                                <div className={postBlockStyles.authorRow}>
+                                  <Link
+                                    to={`/profile/${encodeURIComponent(authorHandle)}`}
+                                    className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    @{authorHandle}
+                                  </Link>
+                                  {createdAt && (
+                                    <span
+                                      className={postBlockStyles.postTimestamp}
+                                      title={formatExactDateTime(createdAt)}
+                                    >
+                                      {formatRelativeTime(createdAt)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className={postBlockStyles.postText}>{title}</p>
+                            </div>
+                          </article>
+                        </a>
+                      ) : (
                         <article className={postBlockStyles.postBlock}>
                           <div className={postBlockStyles.postBlockContent}>
                             <div className={postBlockStyles.postHead}>
-                              {avatar && <img src={avatar} alt="" className={postBlockStyles.avatar} />}
                               <div className={postBlockStyles.authorRow}>
                                 <Link
                                   to={`/profile/${encodeURIComponent(authorHandle)}`}
                                   className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
-                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   @{authorHandle}
                                 </Link>
@@ -487,14 +513,10 @@ export default function ProfilePage() {
                                 )}
                               </div>
                             </div>
-                            {text ? (
-                              <p className={postBlockStyles.postText}>
-                                <PostText text={text} />
-                              </p>
-                            ) : null}
+                            <p className={postBlockStyles.postText}>{title}</p>
                           </div>
                         </article>
-                      </Link>
+                      )}
                     </li>
                   )
                 })}

@@ -1,38 +1,39 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchPostsByDomain, STANDARD_SITE_DOMAIN, type PostView } from '../lib/bsky'
+import { listStandardSiteDocumentsForForum, getSession, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
-import PostText from '../components/PostText'
 import Layout from '../components/Layout'
 import styles from './ForumPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
-export default function ForumPage() {
-  const [posts, setPosts] = useState<PostView[]>([])
-  const [cursor, setCursor] = useState<string | undefined>()
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+function documentUrl(doc: StandardSiteDocumentView): string | null {
+  if (!doc.baseUrl) return null
+  const base = doc.baseUrl.replace(/\/$/, '')
+  const path = (doc.path ?? '').replace(/^\//, '')
+  return path ? `${base}/${path}` : base
+}
 
-  const load = useCallback(async (nextCursor?: string) => {
+export default function ForumPage() {
+  const [documents, setDocuments] = useState<StandardSiteDocumentView[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const session = getSession()
+
+  const load = useCallback(async () => {
     try {
-      if (nextCursor) setLoadingMore(true)
-      else setLoading(true)
+      setLoading(true)
       setError(null)
-      const { posts: nextPosts, cursor: next } = await searchPostsByDomain(STANDARD_SITE_DOMAIN, nextCursor)
-      setPosts((prev) => (nextCursor ? [...prev, ...nextPosts] : nextPosts))
-      setCursor(next)
+      const list = await listStandardSiteDocumentsForForum()
+      setDocuments(list)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load forum')
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
   }, [])
 
   useEffect(() => {
-    setPosts([])
-    setCursor(undefined)
+    setDocuments([])
     load()
   }, [load])
 
@@ -42,30 +43,32 @@ export default function ForumPage() {
         <header className={styles.header}>
           <h2 className={styles.title}>Forum</h2>
           <p className={styles.subtitle}>
-            Posts using the <a href="https://standard.site" target="_blank" rel="noopener noreferrer" className={styles.standardLink}>standard.site</a> lexicon
+            Blogs using the <a href="https://standard.site" target="_blank" rel="noopener noreferrer" className={styles.standardLink}>standard.site</a> lexicon (from you and people you follow)
           </p>
         </header>
         {error && <p className={styles.error}>{error}</p>}
-        {loading ? (
+        {!session ? (
+          <div className={styles.empty}>
+            Sign in to browse standard.site blogs from your account and people you follow.
+          </div>
+        ) : loading ? (
           <div className={styles.loading}>Loading…</div>
-        ) : posts.length === 0 ? (
-          <div className={styles.empty}>No forum posts yet.</div>
+        ) : documents.length === 0 ? (
+          <div className={styles.empty}>No standard.site blog posts yet from you or people you follow.</div>
         ) : (
-          <>
-            <ul className={styles.list}>
-              {posts.map((post) => {
-                const handle = post.author?.handle ?? post.author?.did ?? ''
-                const text = (post.record as { text?: string })?.text ?? ''
-                const createdAt = (post.record as { createdAt?: string })?.createdAt
-                return (
-                  <li key={post.uri}>
-                    <Link to={`/post/${encodeURIComponent(post.uri)}`} className={styles.postLink}>
+          <ul className={styles.list}>
+            {documents.map((doc) => {
+              const handle = doc.authorHandle ?? doc.did
+              const url = documentUrl(doc)
+              const createdAt = doc.createdAt
+              const title = doc.title || doc.path || 'Untitled'
+              return (
+                <li key={doc.uri}>
+                  {url ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.postLink}>
                       <article className={postBlockStyles.postBlock}>
                         <div className={postBlockStyles.postBlockContent}>
                           <div className={postBlockStyles.postHead}>
-                            {post.author?.avatar && (
-                              <img src={post.author.avatar} alt="" className={postBlockStyles.avatar} />
-                            )}
                             <div className={postBlockStyles.authorRow}>
                               <Link
                                 to={`/profile/${encodeURIComponent(handle)}`}
@@ -84,29 +87,37 @@ export default function ForumPage() {
                               )}
                             </div>
                           </div>
-                          {text ? (
-                            <p className={postBlockStyles.postText}>
-                              <PostText text={text} />
-                            </p>
-                          ) : null}
+                          <p className={postBlockStyles.postText}>{title}</p>
                         </div>
                       </article>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-            {cursor && (
-              <button
-                type="button"
-                className={styles.more}
-                onClick={() => load(cursor)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? 'Loading…' : 'Load more'}
-              </button>
-            )}
-          </>
+                    </a>
+                  ) : (
+                    <article className={postBlockStyles.postBlock}>
+                      <div className={postBlockStyles.postBlockContent}>
+                        <div className={postBlockStyles.postHead}>
+                          <div className={postBlockStyles.authorRow}>
+                            <Link to={`/profile/${encodeURIComponent(handle)}`} className={postBlockStyles.handleLink}>
+                              @{handle}
+                            </Link>
+                            {createdAt && (
+                              <span
+                                className={postBlockStyles.postTimestamp}
+                                title={formatExactDateTime(createdAt)}
+                              >
+                                {formatRelativeTime(createdAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className={postBlockStyles.postText}>{title}</p>
+                        <p className={styles.noUrl}>No publication URL</p>
+                      </div>
+                    </article>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
     </Layout>
