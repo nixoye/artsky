@@ -272,14 +272,14 @@
 /* Separate theme buttons (account menu) */
 .themeButtonGroup {
   display: flex;
-  gap: 0.2rem;
+  gap: 0.15rem;
   flex-shrink: 0;
 }
 
 .themeBtn,
 .themeBtnActive {
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.35rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 0.3rem;
   border: 1px solid var(--glass-border);
   background: var(--glass-highlight);
   color: var(--muted);
@@ -291,8 +291,8 @@
 
 .themeBtn svg,
 .themeBtnActive svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .themeBtn:hover {
@@ -517,19 +517,19 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 0.35rem;
     margin-bottom: 0.35rem;
   }
   .menuRow {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.2rem;
+    gap: 0.15rem;
   }
   .menuOption,
   .menuOptionActive {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.8rem;
-    border-radius: 0.35rem;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.75rem;
+    border-radius: 0.3rem;
     border: 1px solid var(--glass-border);
     background: var(--glass-highlight);
     color: var(--text);
@@ -540,8 +540,8 @@
   }
   .menuRow .menuOption svg,
   .menuRow .menuOptionActive svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
   }
   .menuOption:hover {
     border-color: var(--muted);
@@ -1242,8 +1242,8 @@
 
 .accountPopupContent .menuOption,
 .accountPopupContent .menuOptionActive {
-  padding: 0.35rem 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.75rem;
   border-radius: 0.35rem;
   border: 1px solid var(--glass-border);
   background: var(--glass-highlight);
@@ -1257,8 +1257,8 @@
 
 .accountPopupContent .menuRow .menuOption svg,
 .accountPopupContent .menuRow .menuOptionActive svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 .accountPopupContent .menuOptionActive {
