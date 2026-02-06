@@ -203,7 +203,7 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'x' || key === 'c') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'r' || key === 'x' || key === 'c') e.preventDefault()
 
       if (key === 'w') {
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
@@ -224,6 +224,11 @@ export default function FeedPage() {
       if (key === 'e') {
         const item = items[i]
         if (item) navigate(`/post/${encodeURIComponent(item.post.uri)}`)
+        return
+      }
+      if (key === 'r') {
+        const item = items[i]
+        if (item) navigate(`/post/${encodeURIComponent(item.post.uri)}`, { state: { openReply: true } })
         return
       }
       if (key === 'x') {

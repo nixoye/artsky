@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
@@ -37,51 +37,53 @@ function ReplyAsRow({
   return (
     <p className={styles.replyAs}>
       <span className={styles.replyAsLabel}>Replying as</span>
-      {replyAs.avatar ? (
-        <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
-      ) : (
-        <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
-      )}
-      <div className={styles.replyAsHandleWrap} ref={wrapRef}>
-        {canSwitch ? (
-          <>
-            <button
-              type="button"
-              className={styles.replyAsHandleBtn}
-              onClick={() => setDropdownOpen((o) => !o)}
-              aria-expanded={dropdownOpen}
-              aria-haspopup="true"
-            >
-              @{replyAs.handle}
-            </button>
-            {dropdownOpen && (
-              <div className={styles.replyAsDropdown} role="menu">
-                {sessionsList.map((s) => {
-                  const handle = (s as { handle?: string }).handle ?? s.did
-                  const isCurrent = s.did === currentDid
-                  return (
-                    <button
-                      key={s.did}
-                      type="button"
-                      role="menuitem"
-                      className={isCurrent ? styles.replyAsDropdownItemActive : styles.replyAsDropdownItem}
-                      onClick={async () => {
-                        const ok = await switchAccount(s.did)
-                        if (ok) setDropdownOpen(false)
-                      }}
-                    >
-                      @{handle}
-                      {isCurrent && <span aria-hidden> ✓</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </>
+      <span className={styles.replyAsUserChip}>
+        {replyAs.avatar ? (
+          <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
         ) : (
-          <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+          <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
         )}
-      </div>
+        <div className={styles.replyAsHandleWrap} ref={wrapRef}>
+          {canSwitch ? (
+            <>
+              <button
+                type="button"
+                className={styles.replyAsHandleBtn}
+                onClick={() => setDropdownOpen((o) => !o)}
+                aria-expanded={dropdownOpen}
+                aria-haspopup="true"
+              >
+                @{replyAs.handle}
+              </button>
+              {dropdownOpen && (
+                <div className={styles.replyAsDropdown} role="menu">
+                  {sessionsList.map((s) => {
+                    const handle = (s as { handle?: string }).handle ?? s.did
+                    const isCurrent = s.did === currentDid
+                    return (
+                      <button
+                        key={s.did}
+                        type="button"
+                        role="menuitem"
+                        className={isCurrent ? styles.replyAsDropdownItemActive : styles.replyAsDropdownItem}
+                        onClick={async () => {
+                          const ok = await switchAccount(s.did)
+                          if (ok) setDropdownOpen(false)
+                        }}
+                      >
+                        @{handle}
+                        {isCurrent && <span aria-hidden> ✓</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+          )}
+        </div>
+      </span>
     </p>
   )
 }
@@ -367,25 +369,26 @@ function PostBlock({
       {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
         <div className={styles.inlineReplyFormWrap}>
           <form ref={commentFormRef} onSubmit={onReplySubmit} className={styles.inlineReplyForm}>
-            {replyAs && (sessionsList && switchAccount && currentDid ? (
-              <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={currentDid} />
-            ) : (
-              <p className={styles.replyAs}>
-                <span className={styles.replyAsLabel}>Replying as</span>
-                {replyAs.avatar ? (
-                  <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
-                ) : (
-                  <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
-                )}
-                <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
-              </p>
-            ))}
-            <p className={styles.replyingTo}>
-              Replying to @{replyingTo.handle}
+            <div className={styles.inlineReplyFormHeader}>
               <button type="button" className={styles.cancelReply} onClick={clearReplyingTo} aria-label="Cancel reply">
                 ×
               </button>
-            </p>
+              {replyAs && (sessionsList && switchAccount && currentDid ? (
+                <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={currentDid} />
+              ) : (
+                <p className={styles.replyAs}>
+                  <span className={styles.replyAsLabel}>Replying as</span>
+                  <span className={styles.replyAsUserChip}>
+                    {replyAs.avatar ? (
+                      <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+                    ) : (
+                      <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+                    )}
+                    <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+                  </span>
+                </p>
+              ))}
+            </div>
             <textarea
               placeholder={`Reply to @${replyingTo.handle}…`}
               value={replyComment ?? ''}
@@ -479,6 +482,7 @@ function PostBlock({
 export default function PostDetailPage() {
   const { uri } = useParams<{ uri: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const decodedUri = uri ? decodeURIComponent(uri) : ''
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -629,6 +633,30 @@ export default function PostDetailPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    const state = location.state as { openReply?: boolean } | null
+    if (!thread || !isThreadViewPost(thread) || !state?.openReply) return
+    const handle = thread.post.author?.handle ?? thread.post.author?.did ?? ''
+    setReplyingTo({ uri: thread.post.uri, cid: thread.post.cid, handle })
+    navigate(location.pathname, { replace: true, state: {} })
+    requestAnimationFrame(() => {
+      const form = document.querySelector(`.${styles.commentForm} textarea`) as HTMLTextAreaElement | null
+      form?.focus()
+    })
+  }, [thread, location.state, location.pathname, navigate])
+
+  useEffect(() => {
+    if (!replyingTo) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setReplyingTo(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [replyingTo])
 
   async function handlePostReply(e: React.FormEvent) {
     e.preventDefault()
@@ -782,14 +810,16 @@ export default function PostDetailPage() {
   }, [threadRepliesFlat.length])
 
   useEffect(() => {
+    const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
+    if (!inCommentsSection || postSectionCount <= 1) return
     const flat = threadRepliesFlatRef.current
-    if (!hasRepliesSection || focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
+    if (focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
     const uri = flat[focusedCommentIndex]?.uri
     if (!uri || !commentsSectionRef.current) return
     const nodes = commentsSectionRef.current.querySelectorAll('[data-comment-uri]')
     const el = Array.from(nodes).find((n) => n.getAttribute('data-comment-uri') === uri)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [focusedCommentIndex, hasRepliesSection])
+  }, [focusedCommentIndex, hasRepliesSection, postSectionIndex, postSectionCount])
 
   if (!decodedUri) {
     navigate('/feed', { replace: true })
@@ -1018,24 +1048,35 @@ export default function PostDetailPage() {
                 })}
               </div>
             )}
-            {!replyingTo && (
+            {(!replyingTo || (thread && isThreadViewPost(thread) && replyingTo.uri === thread.post.uri)) && (
               <div className={styles.inlineReplyFormWrap}>
                 <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
-                  {replyAs && (sessionsList && sessionFromContext?.did ? (
-                    <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={sessionFromContext.did} />
-                  ) : (
-                    <p className={styles.replyAs}>
-                      <span className={styles.replyAsLabel}>Replying as</span>
-                      {replyAs.avatar ? (
-                        <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
-                      ) : (
-                        <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+                  {replyAs && (
+                    <div className={styles.inlineReplyFormHeader}>
+                      {replyingTo && (
+                        <button type="button" className={styles.cancelReply} onClick={() => setReplyingTo(null)} aria-label="Cancel reply">
+                          ×
+                        </button>
                       )}
-                      <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
-                    </p>
-                  ))}
+                      {sessionsList && sessionFromContext?.did ? (
+                        <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={sessionFromContext.did} />
+                      ) : (
+                        <p className={styles.replyAs}>
+                          <span className={styles.replyAsLabel}>Replying as</span>
+                          <span className={styles.replyAsUserChip}>
+                            {replyAs.avatar ? (
+                              <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+                            ) : (
+                              <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+                            )}
+                            <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <textarea
-                  placeholder="Write a comment…"
+                  placeholder={replyingTo ? `Reply to @${replyingTo.handle}…` : 'Write a comment…'}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   onKeyDown={(e) => {

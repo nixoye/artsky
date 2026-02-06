@@ -40,7 +40,6 @@
 .collapseColumn:hover .collapseBtn,
 .collapseColumn:hover .collapseStrip {
   color: var(--accent);
-  background: rgba(124, 58, 237, 0.2);
 }
 
 .collapseBtn {
@@ -60,7 +59,6 @@
 
 .collapseBtn:hover {
   color: var(--accent);
-  background: rgba(124, 58, 237, 0.2);
 }
 
 .collapseBtn:focus {
@@ -726,11 +724,18 @@
   gap: 0.4rem;
 }
 
+.inlineReplyFormHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+}
+
 .replyAs {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
 }
@@ -738,6 +743,21 @@
 .replyAsLabel {
   flex-shrink: 0;
   color: var(--muted);
+}
+
+.replyAsUserChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--glass-highlight);
+}
+
+.replyAsUserChip:hover {
+  border-color: var(--accent);
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .replyAsHandleWrap {
@@ -826,18 +846,10 @@
   color: var(--text);
 }
 
-.replyingTo {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .cancelReply {
-  padding: 0 0.25rem;
-  font-size: 1.1rem;
+  flex-shrink: 0;
+  padding: 0 0.35rem;
+  font-size: 1.25rem;
   line-height: 1;
   background: none;
   border: none;
