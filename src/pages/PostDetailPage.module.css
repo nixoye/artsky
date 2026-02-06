@@ -57,10 +57,34 @@
   cursor: default;
 }
 
-.followingLabel {
+.followBtnFollowing {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.followBtnFollowing:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.followLabelHover {
+  display: none;
+}
+
+.followBtnFollowing:hover:not(:disabled) .followLabelDefault {
+  display: none;
+}
+
+.followBtnFollowing:hover:not(:disabled) .followLabelHover {
+  display: inline;
+}
+
+.postTimestamp {
   font-size: 0.8rem;
   color: var(--muted);
-  font-weight: 500;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
 }
 
 .replyBtn {

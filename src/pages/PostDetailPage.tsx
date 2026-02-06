@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
@@ -176,6 +177,7 @@ function PostBlock({
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const avatar = post.author.avatar ?? undefined
+  const createdAt = (post.record as { createdAt?: string })?.createdAt
   const replies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
   const hasReplies = replies.length > 0
   const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
@@ -193,6 +195,14 @@ function PostBlock({
           >
             @{handle}
           </Link>
+          {createdAt && (
+            <span
+              className={styles.postTimestamp}
+              title={formatExactDateTime(createdAt)}
+            >
+              {formatRelativeTime(createdAt)}
+            </span>
+          )}
           {onReply && (
             <button
               type="button"
@@ -301,6 +311,7 @@ export default function PostDetailPage() {
   const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(() => new Set())
   const [followLoading, setFollowLoading] = useState(false)
   const [authorFollowed, setAuthorFollowed] = useState(false)
+  const [followUriOverride, setFollowUriOverride] = useState<string | null>(null)
   const [likeLoading, setLikeLoading] = useState(false)
   const [repostLoading, setRepostLoading] = useState(false)
   const [likeUriOverride, setLikeUriOverride] = useState<string | null>(null)
@@ -312,8 +323,9 @@ export default function PostDetailPage() {
   const boards = getArtboards()
   const session = getSession()
   const isOwnPost = thread && isThreadViewPost(thread) && session?.did === thread.post.author.did
-  const alreadyFollowing =
-    (thread && isThreadViewPost(thread) && !!thread.post.author.viewer?.following) || authorFollowed
+  const authorViewer = thread && isThreadViewPost(thread) ? (thread.post.author as { viewer?: { following?: string } }).viewer : undefined
+  const followingUri = authorViewer?.following ?? followUriOverride
+  const alreadyFollowing = !!followingUri || authorFollowed
   const postViewer = thread && isThreadViewPost(thread) ? (thread.post as { viewer?: { like?: string; repost?: string } }).viewer : undefined
   const likedUri = postViewer?.like ?? likeUriOverride
   const repostedUri = postViewer?.repost ?? repostUriOverride
@@ -333,10 +345,25 @@ export default function PostDetailPage() {
     if (!thread || !isThreadViewPost(thread) || followLoading || alreadyFollowing) return
     setFollowLoading(true)
     try {
-      await agent.follow(thread.post.author.did)
+      const res = await agent.follow(thread.post.author.did)
+      setFollowUriOverride(res.uri)
       setAuthorFollowed(true)
     } catch {
       // leave button state unchanged so user can retry
+    } finally {
+      setFollowLoading(false)
+    }
+  }
+
+  async function handleUnfollowAuthor() {
+    if (!followingUri || followLoading) return
+    setFollowLoading(true)
+    try {
+      await agent.deleteFollow(followingUri)
+      setFollowUriOverride(null)
+      setAuthorFollowed(false)
+    } catch {
+      // leave state unchanged so user can retry
     } finally {
       setFollowLoading(false)
     }
@@ -490,9 +517,26 @@ export default function PostDetailPage() {
                   >
                     @{thread.post.author.handle ?? thread.post.author.did}
                   </Link>
+                  {(thread.post.record as { createdAt?: string })?.createdAt && (
+                    <span
+                      className={styles.postTimestamp}
+                      title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
+                    >
+                      {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
+                    </span>
+                  )}
                   {!isOwnPost && (
                     alreadyFollowing ? (
-                      <span className={styles.followingLabel}>Following</span>
+                      <button
+                        type="button"
+                        className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                        onClick={handleUnfollowAuthor}
+                        disabled={followLoading}
+                        title="Unfollow"
+                      >
+                        <span className={styles.followLabelDefault}>Following</span>
+                        <span className={styles.followLabelHover}>Unfollow</span>
+                      </button>
                     ) : (
                       <button
                         type="button"

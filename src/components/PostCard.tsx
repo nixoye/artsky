@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type TimelineItem } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
@@ -72,6 +73,7 @@ export default function PostCard({ item }: Props) {
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
+  const createdAt = (post.record as { createdAt?: string })?.createdAt
 
   const [imageIndex, setImageIndex] = useState(0)
   const [mediaAspect, setMediaAspect] = useState<number | null>(null)
@@ -399,13 +401,23 @@ export default function PostCard({ item }: Props) {
               {post.author.avatar && (
                 <img src={post.author.avatar} alt="" className={styles.authorAvatar} />
               )}
-              <Link
-                to={`/profile/${encodeURIComponent(handle)}`}
-                className={styles.handleLink}
-                onClick={(e) => e.stopPropagation()}
-              >
-                @{handle}
-              </Link>
+              <span className={repostedByHandle ? styles.handleLinkWrapRepost : styles.handleLinkWrap}>
+                <Link
+                  to={`/profile/${encodeURIComponent(handle)}`}
+                  className={styles.handleLink}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  @{handle}
+                </Link>
+              </span>
+              {createdAt && (
+                <span
+                  className={styles.timestamp}
+                  title={formatExactDateTime(createdAt)}
+                >
+                  {formatRelativeTime(createdAt)}
+                </span>
+              )}
               {repostedByHandle && (
                 <Link
                   to={`/profile/${encodeURIComponent(repostedByHandle)}`}
