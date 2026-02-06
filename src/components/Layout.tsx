@@ -258,6 +258,19 @@ export default function Layout({ title, children, showNav, showColumnView = true
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
   }, [title])
 
+  /* Global keyboard: Q = back (works on all pages when not typing) */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
+      if (e.key.toLowerCase() !== 'q') return
+      e.preventDefault()
+      navigate(-1)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [navigate])
+
   useEffect(() => {
     if (!accountMenuOpen) return
     const onDocClick = (e: MouseEvent) => {

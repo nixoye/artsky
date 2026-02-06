@@ -452,7 +452,11 @@ export default function PostDetailPage() {
   const [replyingTo, setReplyingTo] = useState<{ uri: string; cid: string; handle: string } | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
   const [showBoardDropdown, setShowBoardDropdown] = useState(false)
+  const [postSectionIndex, setPostSectionIndex] = useState(0)
   const commentFormRef = useRef<HTMLFormElement>(null)
+  const mediaSectionRef = useRef<HTMLDivElement>(null)
+  const descriptionSectionRef = useRef<HTMLDivElement>(null)
+  const commentsSectionRef = useRef<HTMLDivElement>(null)
   const boards = getArtboards()
   const session = getSession()
   const { session: sessionFromContext, sessionsList, switchAccount } = useSession()
@@ -638,6 +642,41 @@ export default function PostDetailPage() {
     })
   }
 
+  const rootMediaForNav =
+    thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
+  const hasMediaSection = rootMediaForNav.length > 0
+  const hasRepliesSection =
+    thread && isThreadViewPost(thread) && 'replies' in thread &&
+    Array.isArray(thread.replies) && thread.replies.length > 0
+  const postSectionCount = (hasMediaSection ? 1 : 0) + 1 + (hasRepliesSection ? 1 : 0)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
+      const key = e.key.toLowerCase()
+      if (key !== 'w' && key !== 'a' && key !== 's') return
+      if (postSectionCount <= 1) return
+      e.preventDefault()
+      if (key === 'w') {
+        setPostSectionIndex((i) => Math.max(0, i - 1))
+      } else {
+        setPostSectionIndex((i) => Math.min(postSectionCount - 1, i + 1))
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [postSectionCount])
+
+  useEffect(() => {
+    if (postSectionCount <= 1) return
+    let ref: HTMLDivElement | null = null
+    if (hasMediaSection && postSectionIndex === 0) ref = mediaSectionRef.current
+    else if (postSectionIndex === (hasMediaSection ? 1 : 0)) ref = descriptionSectionRef.current
+    else if (hasRepliesSection && postSectionIndex === postSectionCount - 1) ref = commentsSectionRef.current
+    if (ref) ref.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [postSectionIndex, hasMediaSection, hasRepliesSection, postSectionCount])
+
   if (!decodedUri) {
     navigate('/feed', { replace: true })
     return null
@@ -654,56 +693,62 @@ export default function PostDetailPage() {
         {thread && isThreadViewPost(thread) && (
           <>
             <article className={`${styles.postBlock} ${styles.rootPostBlock}`}>
-              {rootMedia.length > 0 && <MediaGallery items={rootMedia} autoPlayFirstVideo />}
-              <div className={styles.postHead}>
-                {thread.post.author.avatar && (
-                  <img src={thread.post.author.avatar} alt="" className={styles.avatar} />
-                )}
-                <div className={styles.authorRow}>
-                  <Link
-                    to={`/profile/${encodeURIComponent(thread.post.author.handle ?? thread.post.author.did)}`}
-                    className={styles.handleLink}
-                  >
-                    @{thread.post.author.handle ?? thread.post.author.did}
-                  </Link>
-                  {!isOwnPost && (
-                    alreadyFollowing ? (
-                      <button
-                        type="button"
-                        className={`${styles.followBtn} ${styles.followBtnFollowing}`}
-                        onClick={handleUnfollowAuthor}
-                        disabled={followLoading}
-                        title="Unfollow"
-                      >
-                        <span className={styles.followLabelDefault}>Following</span>
-                        <span className={styles.followLabelHover}>Unfollow</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.followBtn}
-                        onClick={handleFollowAuthor}
-                        disabled={followLoading}
-                      >
-                        {followLoading ? 'Following…' : 'Follow'}
-                      </button>
-                    )
-                  )}
-                  {(thread.post.record as { createdAt?: string })?.createdAt && (
-                    <span
-                      className={styles.postTimestamp}
-                      title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
-                    >
-                      {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
-                    </span>
-                  )}
+              {rootMedia.length > 0 && (
+                <div ref={mediaSectionRef}>
+                  <MediaGallery items={rootMedia} autoPlayFirstVideo />
                 </div>
-              </div>
-              {(thread.post.record as { text?: string })?.text && (
-                <p className={styles.postText}>
-                  <PostText text={(thread.post.record as { text?: string }).text!} />
-                </p>
               )}
+              <div ref={descriptionSectionRef}>
+                <div className={styles.postHead}>
+                  {thread.post.author.avatar && (
+                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} />
+                  )}
+                  <div className={styles.authorRow}>
+                    <Link
+                      to={`/profile/${encodeURIComponent(thread.post.author.handle ?? thread.post.author.did)}`}
+                      className={styles.handleLink}
+                    >
+                      @{thread.post.author.handle ?? thread.post.author.did}
+                    </Link>
+                    {!isOwnPost && (
+                      alreadyFollowing ? (
+                        <button
+                          type="button"
+                          className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                          onClick={handleUnfollowAuthor}
+                          disabled={followLoading}
+                          title="Unfollow"
+                        >
+                          <span className={styles.followLabelDefault}>Following</span>
+                          <span className={styles.followLabelHover}>Unfollow</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.followBtn}
+                          onClick={handleFollowAuthor}
+                          disabled={followLoading}
+                        >
+                          {followLoading ? 'Following…' : 'Follow'}
+                        </button>
+                      )
+                    )}
+                    {(thread.post.record as { createdAt?: string })?.createdAt && (
+                      <span
+                        className={styles.postTimestamp}
+                        title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
+                      >
+                        {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {(thread.post.record as { text?: string })?.text && (
+                  <p className={styles.postText}>
+                    <PostText text={(thread.post.record as { text?: string }).text!} />
+                  </p>
+                )}
+              </div>
             </article>
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
@@ -796,7 +841,7 @@ export default function PostDetailPage() {
               )}
             </section>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
-              <div className={styles.replies}>
+              <div ref={commentsSectionRef} className={styles.replies}>
                 {(thread.replies as (typeof thread)[]).map((r) => {
                   if (!isThreadViewPost(r)) return null
                   if (collapsedThreads.has(r.post.uri)) {

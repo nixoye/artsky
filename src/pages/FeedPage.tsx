@@ -203,7 +203,7 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'x' || key === 'q' || key === 'c') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'x' || key === 'c') e.preventDefault()
 
       if (key === 'w') {
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
@@ -229,10 +229,6 @@ export default function FeedPage() {
       if (key === 'x') {
         const item = items[i]
         if (item?.post?.uri && item?.post?.cid) agent.like(item.post.uri, item.post.cid).catch(() => {})
-        return
-      }
-      if (key === 'q') {
-        navigate(-1)
         return
       }
       if (key === 'c') {

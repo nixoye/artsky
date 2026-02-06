@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { agent, publicAgent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
@@ -47,8 +47,14 @@ export default function ProfilePage() {
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const [tabsBarVisible, setTabsBarVisible] = useState(true)
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
+  const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const lastScrollYRef = useRef(0)
   const touchStartXRef = useRef(0)
+  const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
+  const keyboardFocusIndexRef = useRef(0)
+  const profileGridItemsRef = useRef<TimelineItem[]>([])
+  const navigate = useNavigate()
   const SWIPE_THRESHOLD = 100
   const SCROLL_THRESHOLD = 8
 
@@ -215,6 +221,67 @@ export default function ProfilePage() {
       : authorFeedItemsRaw
   const mediaItems = authorFeedItems.filter((item) => getPostMediaInfo(item.post))
   const likedMediaItems = likedItems.filter((item) => getPostMediaInfo(item.post))
+  const profileGridItems = tab === 'liked' ? likedMediaItems : mediaItems
+  const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+  profileGridItemsRef.current = profileGridItems
+  keyboardFocusIndexRef.current = keyboardFocusIndex
+
+  useEffect(() => {
+    setKeyboardFocusIndex((i) => (profileGridItems.length ? Math.min(i, profileGridItems.length - 1) : 0))
+  }, [profileGridItems.length])
+
+  useEffect(() => {
+    const el = cardRefsRef.current[keyboardFocusIndex]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  }, [keyboardFocusIndex])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
+      const gridTab = tab === 'posts' || tab === 'reposts' || tab === 'liked'
+      if (!gridTab) return
+
+      const items = profileGridItemsRef.current
+      if (items.length === 0) return
+      const i = keyboardFocusIndexRef.current
+      const key = e.key.toLowerCase()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'x' || key === 'c') e.preventDefault()
+
+      if (key === 'w') {
+        setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
+        return
+      }
+      if (key === 's') {
+        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
+        return
+      }
+      if (key === 'a' || e.key === 'ArrowLeft') {
+        setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        return
+      }
+      if (key === 'd' || e.key === 'ArrowRight') {
+        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        return
+      }
+      if (key === 'e') {
+        const item = items[i]
+        if (item) navigate(`/post/${encodeURIComponent(item.post.uri)}`)
+        return
+      }
+      if (key === 'x') {
+        const item = items[i]
+        if (item?.post?.uri && item?.post?.cid) agent.like(item.post.uri, item.post.cid).catch(() => {})
+        return
+      }
+      if (key === 'c') {
+        setKeyboardAddOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [tab, cols, navigate])
+
   const postText = (post: TimelineItem['post']) => (post.record as { text?: string })?.text?.trim() ?? ''
   const isReply = (post: TimelineItem['post']) => !!(post.record as { reply?: unknown })?.reply
   const textItems = authorFeedItems.filter(
@@ -434,8 +501,15 @@ export default function ProfilePage() {
           ) : (
             <>
               <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-                {likedMediaItems.map((item) => (
-                  <PostCard key={item.post.uri} item={item} />
+                {likedMediaItems.map((item, index) => (
+                  <PostCard
+                    key={item.post.uri}
+                    item={item}
+                    isSelected={tab === 'liked' && index === keyboardFocusIndex}
+                    cardRef={(el) => { cardRefsRef.current[index] = el }}
+                    openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
+                    onAddClose={() => setKeyboardAddOpen(false)}
+                  />
                 ))}
               </div>
               {likedCursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
@@ -449,8 +523,15 @@ export default function ProfilePage() {
         ) : (
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {mediaItems.map((item) => (
-                <PostCard key={item.post.uri} item={item} />
+              {mediaItems.map((item, index) => (
+                <PostCard
+                  key={item.post.uri}
+                  item={item}
+                  isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
+                  cardRef={(el) => { cardRefsRef.current[index] = el }}
+                  openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
+                  onAddClose={() => setKeyboardAddOpen(false)}
+                />
               ))}
             </div>
             {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
