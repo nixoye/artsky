@@ -29,6 +29,14 @@
   flex-direction: column;
 }
 
+.collapseColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+}
+
 .collapseBtn {
   display: inline-flex;
   align-items: center;
@@ -50,6 +58,27 @@
 }
 
 .collapseBtn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.collapseStrip {
+  flex: 1;
+  min-height: 2rem;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  width: 1.25rem;
+}
+
+.collapseStrip:hover {
+  background: var(--glass-highlight);
+}
+
+.collapseStrip:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }

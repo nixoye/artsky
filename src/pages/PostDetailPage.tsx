@@ -92,6 +92,39 @@ function isThreadViewPost(
   return node && typeof node === 'object' && 'post' in node && !!(node as AppBskyFeedDefs.ThreadViewPost).post
 }
 
+/** Flatten visible comments in display order (expanded threads include nested replies). */
+function flattenVisibleReplies(
+  replies: AppBskyFeedDefs.ThreadViewPost[],
+  collapsed: Set<string>
+): { uri: string; handle: string }[] {
+  return replies.flatMap((r) => {
+    const uri = r.post.uri
+    const handle = r.post.author?.handle ?? r.post.author?.did ?? ''
+    if (collapsed.has(uri)) return [{ uri, handle }]
+    const nested =
+      'replies' in r && Array.isArray(r.replies)
+        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x))
+        : []
+    return [{ uri, handle }, ...flattenVisibleReplies(nested, collapsed)]
+  })
+}
+
+function findReplyByUri(
+  replies: AppBskyFeedDefs.ThreadViewPost[],
+  uri: string
+): AppBskyFeedDefs.ThreadViewPost | null {
+  for (const r of replies) {
+    if (r.post.uri === uri) return r
+    const nested =
+      'replies' in r && Array.isArray(r.replies)
+        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x))
+        : []
+    const found = findReplyByUri(nested, uri)
+    if (found) return found
+  }
+  return null
+}
+
 function MediaGallery({
   items,
   autoPlayFirstVideo = false,
@@ -270,10 +303,9 @@ function PostBlock({
   const isReplyTarget = replyingTo?.uri === post.uri
 
   return (
-    <article className={styles.postBlock} style={{ marginLeft: depth * 12 }}>
-      <div className={styles.postBlockContent}>
-      <div className={styles.postHead}>
-        {canCollapse && (
+    <article className={styles.postBlock} style={{ marginLeft: depth * 12 }} data-comment-uri={post.uri}>
+      {canCollapse && (
+        <div className={styles.collapseColumn}>
           <button
             type="button"
             className={styles.collapseBtn}
@@ -283,7 +315,17 @@ function PostBlock({
           >
             <span className={styles.collapseIcon} aria-hidden>−</span>
           </button>
-        )}
+          <button
+            type="button"
+            className={styles.collapseStrip}
+            onClick={() => onToggleCollapse?.(post.uri)}
+            aria-label={isCollapsed ? 'Expand this comment' : 'Collapse this comment'}
+            title={isCollapsed ? 'Expand this comment' : 'Collapse this comment'}
+          />
+        </div>
+      )}
+      <div className={styles.postBlockContent}>
+      <div className={styles.postHead}>
         {avatar && <img src={avatar} alt="" className={styles.avatar} />}
         <div className={styles.authorRow}>
           <Link
@@ -459,7 +501,6 @@ export default function PostDetailPage() {
   const mediaSectionRef = useRef<HTMLDivElement>(null)
   const descriptionSectionRef = useRef<HTMLDivElement>(null)
   const commentsSectionRef = useRef<HTMLDivElement>(null)
-  const commentRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const [focusedCommentIndex, setFocusedCommentIndex] = useState(0)
   const prevSectionIndexRef = useRef(0)
   const boards = getArtboards()
@@ -658,8 +699,12 @@ export default function PostDetailPage() {
   const threadReplies = thread && isThreadViewPost(thread) && 'replies' in thread && Array.isArray(thread.replies)
     ? (thread.replies as (typeof thread)[]).filter((r): r is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(r))
     : []
-  const threadRepliesRef = useRef<(typeof threadReplies)[number][]>([])
-  threadRepliesRef.current = threadReplies
+  const threadRepliesFlat = useMemo(
+    () => flattenVisibleReplies(threadReplies, collapsedThreads),
+    [threadReplies, collapsedThreads]
+  )
+  const threadRepliesFlatRef = useRef(threadRepliesFlat)
+  threadRepliesFlatRef.current = threadRepliesFlat
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -671,11 +716,10 @@ export default function PostDetailPage() {
         if (!t || !isThreadViewPost(t)) return
         e.preventDefault()
         const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
-        const replies = threadRepliesRef.current
-        if (inCommentsSection && replies.length > 0 && focusedCommentIndex >= 0 && focusedCommentIndex < replies.length) {
-          const reply = replies[focusedCommentIndex]
-          const handle = reply.post.author?.handle ?? reply.post.author?.did ?? ''
-          handleReplyTo(reply.post.uri, reply.post.cid, handle)
+        if (inCommentsSection && threadRepliesFlat.length > 0 && focusedCommentIndex >= 0 && focusedCommentIndex < threadRepliesFlat.length) {
+          const focused = threadRepliesFlat[focusedCommentIndex]
+          const replyNode = findReplyByUri(threadReplies, focused.uri)
+          if (replyNode) handleReplyTo(replyNode.post.uri, replyNode.post.cid, focused.handle)
         } else if (postSectionIndex === (hasMediaSection ? 1 : 0)) {
           const handle = t.post.author?.handle ?? t.post.author?.did ?? ''
           handleReplyTo(t.post.uri, t.post.cid, handle)
@@ -687,11 +731,12 @@ export default function PostDetailPage() {
       e.preventDefault()
 
       const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
-      if (inCommentsSection && threadReplies.length > 0 && (key === 'w' || key === 's')) {
+      const nextComment = key === 'w' || key === 's' || key === 'a'
+      if (inCommentsSection && threadRepliesFlat.length > 0 && nextComment) {
         if (key === 'w') {
           setFocusedCommentIndex((i) => Math.max(0, i - 1))
         } else {
-          setFocusedCommentIndex((i) => Math.min(threadReplies.length - 1, i + 1))
+          setFocusedCommentIndex((i) => Math.min(threadRepliesFlat.length - 1, i + 1))
         }
         return
       }
@@ -704,7 +749,7 @@ export default function PostDetailPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadReplies.length, focusedCommentIndex, thread, hasMediaSection, handleReplyTo])
+  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadRepliesFlat, focusedCommentIndex, thread, hasMediaSection, handleReplyTo])
 
   useEffect(() => {
     if (postSectionCount <= 1) return
@@ -723,16 +768,20 @@ export default function PostDetailPage() {
   }, [postSectionIndex, postSectionCount, hasRepliesSection])
 
   useEffect(() => {
-    if (threadReplies.length > 0) {
-      setFocusedCommentIndex((i) => Math.min(i, threadReplies.length - 1))
+    if (threadRepliesFlat.length > 0) {
+      setFocusedCommentIndex((i) => Math.min(i, threadRepliesFlat.length - 1))
     }
-  }, [threadReplies.length])
+  }, [threadRepliesFlat.length])
 
   useEffect(() => {
-    if (!hasRepliesSection || focusedCommentIndex < 0 || focusedCommentIndex >= threadReplies.length) return
-    const el = commentRefsRef.current[focusedCommentIndex]
+    const flat = threadRepliesFlatRef.current
+    if (!hasRepliesSection || focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
+    const uri = flat[focusedCommentIndex]?.uri
+    if (!uri || !commentsSectionRef.current) return
+    const nodes = commentsSectionRef.current.querySelectorAll('[data-comment-uri]')
+    const el = Array.from(nodes).find((n) => n.getAttribute('data-comment-uri') === uri)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [focusedCommentIndex, hasRepliesSection, threadReplies.length])
+  }, [focusedCommentIndex, hasRepliesSection])
 
   if (!decodedUri) {
     navigate('/feed', { replace: true })
@@ -903,6 +952,8 @@ export default function PostDetailPage() {
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div ref={commentsSectionRef} className={styles.replies}>
                 {threadReplies.map((r, idx) => {
+                  const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
+                  const isFocused = hasRepliesSection && postSectionIndex === postSectionCount - 1 && flatIndex >= 0 && flatIndex === focusedCommentIndex
                   if (collapsedThreads.has(r.post.uri)) {
                     const replyCount = 'replies' in r && Array.isArray(r.replies) ? (r.replies as unknown[]).length : 0
                     const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
@@ -910,8 +961,8 @@ export default function PostDetailPage() {
                     return (
                       <div
                         key={r.post.uri}
-                        ref={(el) => { commentRefsRef.current[idx] = el }}
-                        className={`${styles.collapsedCommentWrap} ${hasRepliesSection && postSectionIndex === postSectionCount - 1 && idx === focusedCommentIndex ? styles.commentFocused : ''}`}
+                        data-comment-uri={r.post.uri}
+                        className={`${styles.collapsedCommentWrap} ${isFocused ? styles.commentFocused : ''}`}
                         style={{ marginLeft: 0 }}
                       >
                         <button type="button" className={styles.collapsedCommentBtn} onClick={() => toggleCollapse(r.post.uri)}>
@@ -927,11 +978,13 @@ export default function PostDetailPage() {
                       </div>
                     )
                   }
+                  const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
+                  const isFocused = hasRepliesSection && postSectionIndex === postSectionCount - 1 && flatIndex >= 0 && flatIndex === focusedCommentIndex
                   return (
                     <div
                       key={r.post.uri}
-                      ref={(el) => { commentRefsRef.current[idx] = el }}
-                      className={hasRepliesSection && postSectionIndex === postSectionCount - 1 && idx === focusedCommentIndex ? styles.commentFocused : undefined}
+                      data-comment-uri={r.post.uri}
+                      className={isFocused ? styles.commentFocused : undefined}
                     >
                       <PostBlock
                         node={r}
