@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfo, type TimelineItem } from '../lib/bsky'
+import PostText from './PostText'
 import styles from './PostCard.module.css'
 
 interface Props {
@@ -121,8 +122,7 @@ export default function PostCard({ item }: Props) {
         </span>
         {text ? (
           <p className={styles.text}>
-            {text.slice(0, 80)}
-            {text.length > 80 ? '…' : ''}
+            <PostText text={text} maxLength={80} stopPropagation />
           </p>
         ) : null}
       </div>

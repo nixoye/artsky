@@ -5,6 +5,7 @@ import { agent, postReply, getPostAllMedia, getPostMediaUrl } from '../lib/bsky'
 import { getArtboards, addPostToArtboard } from '../lib/artboards'
 import Layout from '../components/Layout'
 import VideoWithHls from '../components/VideoWithHls'
+import PostText from '../components/PostText'
 import styles from './PostDetailPage.module.css'
 
 function isThreadViewPost(
@@ -171,7 +172,11 @@ function PostBlock({
           @{handle}
         </Link>
       </div>
-      {text && <p className={styles.postText}>{text}</p>}
+      {text && (
+        <p className={styles.postText}>
+          <PostText text={text} />
+        </p>
+      )}
       {allMedia.length > 0 && <MediaGallery items={allMedia} />}
       {hasReplies && (
         <div className={styles.repliesContainer}>
@@ -313,7 +318,7 @@ export default function PostDetailPage() {
               </div>
               {(thread.post.record as { text?: string })?.text && (
                 <p className={styles.postText}>
-                  {(thread.post.record as { text?: string }).text}
+                  <PostText text={(thread.post.record as { text?: string }).text!} />
                 </p>
               )}
               {rootMedia.length > 0 && <MediaGallery items={rootMedia} autoPlayFirstVideo />}

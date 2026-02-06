@@ -196,6 +196,20 @@ export function getPostMediaUrl(post: PostView): { url: string; type: 'image' | 
   return info ? { url: info.url, type: info.type } : null
 }
 
+/** Search posts by hashtag (tag without #). Returns PostView[]; use with cursor for pagination. */
+export async function searchPostsByTag(tag: string, cursor?: string) {
+  const normalized = tag.replace(/^#/, '').trim()
+  if (!normalized) return { posts: [], cursor: undefined as string | undefined }
+  const res = await agent.app.bsky.feed.searchPosts({
+    q: normalized,
+    tag: [normalized],
+    limit: 30,
+    cursor,
+    sort: 'latest',
+  })
+  return { posts: res.data.posts, cursor: res.data.cursor }
+}
+
 /** Post a reply (comment) to a Bluesky post */
 export async function postReply(
   parentUri: string,

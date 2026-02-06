@@ -6,6 +6,7 @@ import ArtboardsPage from './pages/ArtboardsPage'
 import ArtboardDetailPage from './pages/ArtboardDetailPage'
 import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
+import TagPage from './pages/TagPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession()
@@ -63,6 +64,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tag/:tag"
+        element={
+          <ProtectedRoute>
+            <TagPage />
           </ProtectedRoute>
         }
       />
