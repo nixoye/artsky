@@ -652,6 +652,8 @@ export default function PostDetailPage() {
       if (e.key === 'Escape') {
         e.preventDefault()
         setReplyingTo(null)
+        const el = document.activeElement
+        if (el instanceof HTMLElement) el.blur()
       }
     }
     window.addEventListener('keydown', onKey)
