@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
+import type { AtpSessionData } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
@@ -9,6 +10,81 @@ import Layout from '../components/Layout'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
 import styles from './PostDetailPage.module.css'
+
+function ReplyAsRow({
+  replyAs,
+  sessionsList,
+  switchAccount,
+  currentDid,
+}: {
+  replyAs: { handle: string; avatar?: string }
+  sessionsList: AtpSessionData[]
+  switchAccount: (did: string) => Promise<boolean>
+  currentDid: string
+}) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return
+      setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [dropdownOpen])
+  const canSwitch = sessionsList.length > 1
+  return (
+    <p className={styles.replyAs}>
+      <span className={styles.replyAsLabel}>Replying as</span>
+      {replyAs.avatar ? (
+        <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+      ) : (
+        <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+      )}
+      <div className={styles.replyAsHandleWrap} ref={wrapRef}>
+        {canSwitch ? (
+          <>
+            <button
+              type="button"
+              className={styles.replyAsHandleBtn}
+              onClick={() => setDropdownOpen((o) => !o)}
+              aria-expanded={dropdownOpen}
+              aria-haspopup="true"
+            >
+              @{replyAs.handle}
+            </button>
+            {dropdownOpen && (
+              <div className={styles.replyAsDropdown} role="menu">
+                {sessionsList.map((s) => {
+                  const handle = (s as { handle?: string }).handle ?? s.did
+                  const isCurrent = s.did === currentDid
+                  return (
+                    <button
+                      key={s.did}
+                      type="button"
+                      role="menuitem"
+                      className={isCurrent ? styles.replyAsDropdownItemActive : styles.replyAsDropdownItem}
+                      onClick={async () => {
+                        const ok = await switchAccount(s.did)
+                        if (ok) setDropdownOpen(false)
+                      }}
+                    >
+                      @{handle}
+                      {isCurrent && <span aria-hidden> ✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+        )}
+      </div>
+    </p>
+  )
+}
 
 function isThreadViewPost(
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
@@ -157,6 +233,9 @@ function PostBlock({
   clearReplyingTo,
   commentFormRef,
   replyAs,
+  sessionsList,
+  switchAccount,
+  currentDid,
 }: {
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
   depth?: number
@@ -173,6 +252,9 @@ function PostBlock({
   clearReplyingTo?: () => void
   commentFormRef?: React.RefObject<HTMLFormElement | null>
   replyAs?: { handle: string; avatar?: string } | null
+  sessionsList?: AtpSessionData[]
+  switchAccount?: (did: string) => Promise<boolean>
+  currentDid?: string
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
@@ -237,18 +319,20 @@ function PostBlock({
       )}
       {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
         <div className={styles.inlineReplyFormWrap}>
-          <p className={styles.inlineReplyFormLabel}>Your reply</p>
           <form ref={commentFormRef} onSubmit={onReplySubmit} className={styles.inlineReplyForm}>
-            {replyAs && (
+            {replyAs && (sessionsList && switchAccount && currentDid ? (
+              <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={currentDid} />
+            ) : (
               <p className={styles.replyAs}>
+                <span className={styles.replyAsLabel}>Replying as</span>
                 {replyAs.avatar ? (
                   <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
                 ) : (
                   <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
                 )}
-                <span className={styles.replyAsHandle}>Replying as @{replyAs.handle}</span>
+                <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
               </p>
-            )}
+            ))}
             <p className={styles.replyingTo}>
               Replying to @{replyingTo.handle}
               <button type="button" className={styles.cancelReply} onClick={clearReplyingTo} aria-label="Cancel reply">
@@ -329,6 +413,9 @@ function PostBlock({
                     clearReplyingTo={clearReplyingTo}
                     commentFormRef={commentFormRef}
                     replyAs={replyAs}
+                    sessionsList={sessionsList}
+                    switchAccount={switchAccount}
+                    currentDid={currentDid}
                   />
                 )
               })}
@@ -368,7 +455,7 @@ export default function PostDetailPage() {
   const commentFormRef = useRef<HTMLFormElement>(null)
   const boards = getArtboards()
   const session = getSession()
-  const { session: sessionFromContext } = useSession()
+  const { session: sessionFromContext, sessionsList, switchAccount } = useSession()
   const [replyAsProfile, setReplyAsProfile] = useState<{ handle: string; avatar?: string } | null>(null)
 
   useEffect(() => {
@@ -749,6 +836,9 @@ export default function PostDetailPage() {
                       clearReplyingTo={() => setReplyingTo(null)}
                       commentFormRef={commentFormRef}
                       replyAs={replyAs}
+                      sessionsList={sessionsList}
+                      switchAccount={switchAccount}
+                      currentDid={sessionFromContext?.did ?? undefined}
                     />
                   )
                 })}
@@ -756,18 +846,20 @@ export default function PostDetailPage() {
             )}
             {!replyingTo && (
               <div className={styles.inlineReplyFormWrap}>
-                <p className={styles.inlineReplyFormLabel}>Your reply</p>
                 <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
-                  {replyAs && (
+                  {replyAs && (sessionsList && sessionFromContext?.did ? (
+                    <ReplyAsRow replyAs={replyAs} sessionsList={sessionsList} switchAccount={switchAccount} currentDid={sessionFromContext.did} />
+                  ) : (
                     <p className={styles.replyAs}>
+                      <span className={styles.replyAsLabel}>Replying as</span>
                       {replyAs.avatar ? (
                         <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
                       ) : (
                         <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
                       )}
-                      <span className={styles.replyAsHandle}>Replying as @{replyAs.handle}</span>
+                      <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
                     </p>
-                  )}
+                  ))}
                   <textarea
                   placeholder="Write a comment…"
                   value={comment}
