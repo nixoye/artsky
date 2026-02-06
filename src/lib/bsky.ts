@@ -449,6 +449,82 @@ export async function getFollows(
   return { dids, handles, cursor: res.data.cursor }
 }
 
+/** Resolve DID from a publication base URL via .well-known/site.standard.publication. Returns null on CORS/network error. */
+export async function resolvePublicationDidFromWellKnown(baseUrl: string): Promise<string | null> {
+  try {
+    const url = `${baseUrl.replace(/\/$/, '')}/.well-known/site.standard.publication`
+    const res = await fetch(url, { method: 'GET', credentials: 'omit' })
+    if (!res.ok) return null
+    const text = await res.text()
+    const atUri = text.trim()
+    if (!atUri.startsWith('at://')) return null
+    const parts = atUri.slice('at://'.length).split('/')
+    if (parts.length < 1) return null
+    return parts[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Fetch standard.site documents from discovery URLs (and optional DIDs). Uses publicAgent so it works logged out. */
+export async function listStandardSiteDocumentsFromDiscovery(
+  discoveryUrls: string[],
+  discoveryDids: string[] = []
+): Promise<StandardSiteDocumentView[]> {
+  const client = publicAgent
+  const dids: string[] = [...discoveryDids]
+  await Promise.all(
+    discoveryUrls.map(async (url) => {
+      const did = await resolvePublicationDidFromWellKnown(url)
+      if (did) dids.push(did)
+    })
+  )
+  const seen = new Set<string>()
+  const allViews: StandardSiteDocumentView[] = []
+  const limitPerRepo = 30
+  await Promise.all(
+    dids.map(async (did) => {
+      if (seen.has(did)) return
+      seen.add(did)
+      try {
+        const [baseUrl, { records }] = await Promise.all([
+          getStandardSitePublicationBaseUrl(client, did),
+          listStandardSiteDocuments(client, did, { limit: limitPerRepo, reverse: true }),
+        ])
+        let handle: string | undefined
+        try {
+          const profile = await client.getProfile({ actor: did })
+          handle = (profile.data as { handle?: string }).handle
+        } catch {
+          // ignore
+        }
+        for (const r of records) {
+          const path = r.value.path ?? r.uri.split('/').pop() ?? ''
+          allViews.push({
+            uri: r.uri,
+            cid: r.cid,
+            did,
+            rkey: r.uri.split('/').pop() ?? '',
+            path,
+            title: r.value.title,
+            createdAt: r.value.createdAt,
+            baseUrl: baseUrl ?? undefined,
+            authorHandle: handle,
+          })
+        }
+      } catch {
+        // skip this repo
+      }
+    })
+  )
+  allViews.sort((a, b) => {
+    const ta = new Date(a.createdAt ?? 0).getTime()
+    const tb = new Date(b.createdAt ?? 0).getTime()
+    return tb - ta
+  })
+  return allViews
+}
+
 /** Fetch standard.site blog documents from the current user and people they follow. Requires session. */
 export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteDocumentView[]> {
   const session = getSession()
@@ -506,6 +582,23 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
     // ignore
   }
   return allViews
+}
+
+/** All forum documents: discovery sources (always) + from you and people you follow (when logged in). Dedupes by uri. */
+export async function listStandardSiteDocumentsAll(discoveryUrls: string[]): Promise<StandardSiteDocumentView[]> {
+  const [discovery, fromFollows] = await Promise.all([
+    listStandardSiteDocumentsFromDiscovery(discoveryUrls),
+    listStandardSiteDocumentsForForum(),
+  ])
+  const byUri = new Map<string, StandardSiteDocumentView>()
+  for (const d of [...discovery, ...fromFollows]) byUri.set(d.uri, d)
+  const merged = Array.from(byUri.values())
+  merged.sort((a, b) => {
+    const ta = new Date(a.createdAt ?? 0).getTime()
+    const tb = new Date(b.createdAt ?? 0).getTime()
+    return tb - ta
+  })
+  return merged
 }
 
 /** List standard.site blog documents for a single author (by DID). Use for profile blog tab. */
