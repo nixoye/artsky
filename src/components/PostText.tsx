@@ -15,14 +15,13 @@ export interface PostTextProps {
 }
 
 export default function PostText({ text, className, maxLength, stopPropagation }: PostTextProps) {
-  const displayText = maxLength != null && text.length > maxLength ? text.slice(0, maxLength) + '…' : text
   const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string }> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
   const re = new RegExp(LINKIFY_REGEX.source, 'gi')
-  while ((match = re.exec(displayText)) !== null) {
+  while ((match = re.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      segments.push({ type: 'text', value: displayText.slice(lastIndex, match.index) })
+      segments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
     }
     const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]
     if (match[1]) {
@@ -36,18 +35,45 @@ export default function PostText({ text, className, maxLength, stopPropagation }
     }
     lastIndex = re.lastIndex
   }
-  if (lastIndex < displayText.length) {
-    segments.push({ type: 'text', value: displayText.slice(lastIndex) })
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', value: text.slice(lastIndex) })
   }
-  if (segments.length === 0) {
-    return <span className={className}>{displayText}</span>
+
+  let displaySegments: typeof segments
+  if (maxLength != null) {
+    let used = 0
+    displaySegments = []
+    for (const seg of segments) {
+      if (seg.type === 'text') {
+        if (used + seg.value.length <= maxLength) {
+          displaySegments.push(seg)
+          used += seg.value.length
+        } else {
+          const take = maxLength - used
+          if (take > 0) {
+            displaySegments.push({ type: 'text', value: seg.value.slice(0, take) + '…' })
+          }
+          break
+        }
+      } else {
+        displaySegments.push(seg)
+        used += seg.value.length
+      }
+    }
+  } else {
+    displaySegments = segments
+  }
+
+  const displayText = segments.length === 0 ? (maxLength != null && text.length > maxLength ? text.slice(0, maxLength) + '…' : text) : ''
+  if (displaySegments.length === 0) {
+    return <span className={className}>{displayText || text}</span>
   }
 
   const onClick = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined
 
   return (
     <span className={className ?? undefined}>
-      {segments.map((seg, i) => {
+      {displaySegments.map((seg, i) => {
         if (seg.type === 'text') {
           return <span key={i}>{seg.value}</span>
         }

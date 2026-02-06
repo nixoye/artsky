@@ -23,6 +23,59 @@
 
 .profileMeta {
   min-width: 0;
+  flex: 1;
+}
+
+.profileTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.followBtn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.followBtn:hover:not(:disabled) {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.followBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.followBtnFollowing {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.followBtnFollowing:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.followLabelHover {
+  display: none;
+}
+
+.followBtnFollowing:hover:not(:disabled) .followLabelDefault {
+  display: none;
+}
+
+.followBtnFollowing:hover:not(:disabled) .followLabelHover {
+  display: inline;
 }
 
 .displayName {

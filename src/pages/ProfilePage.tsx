@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { agent, getPostMediaInfo, type TimelineItem } from '../lib/bsky'
+import { agent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import styles from './ProfilePage.module.css'
+
+type ProfileState = {
+  displayName?: string
+  avatar?: string
+  description?: string
+  did: string
+  viewer?: { following?: string }
+}
 
 export default function ProfilePage() {
   const { handle: handleParam } = useParams<{ handle: string }>()
@@ -13,17 +21,23 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [profile, setProfile] = useState<{ displayName?: string; avatar?: string; description?: string } | null>(null)
+  const [profile, setProfile] = useState<ProfileState | null>(null)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [followUriOverride, setFollowUriOverride] = useState<string | null>(null)
+  const session = getSession()
 
   useEffect(() => {
     if (!handle) return
     agent
       .getProfile({ actor: handle })
       .then((res) => {
+        const data = res.data
         setProfile({
-          displayName: res.data.displayName,
-          avatar: res.data.avatar,
-          description: (res.data as { description?: string }).description,
+          displayName: data.displayName,
+          avatar: data.avatar,
+          description: (data as { description?: string }).description,
+          did: data.did,
+          viewer: (data as { viewer?: { following?: string } }).viewer,
         })
       })
       .catch(() => {})
@@ -49,9 +63,44 @@ export default function ProfilePage() {
   useEffect(() => {
     if (handle) {
       setProfile(null)
+      setFollowUriOverride(null)
       load()
     }
   }, [handle, load])
+
+  const followingUri = profile?.viewer?.following ?? followUriOverride
+  const isFollowing = !!followingUri
+  const isOwnProfile = !!session && !!profile && session.did === profile.did
+  const showFollowButton = !!session && !!profile && !isOwnProfile
+
+  async function handleFollow() {
+    if (!profile || followLoading || isFollowing) return
+    setFollowLoading(true)
+    try {
+      const res = await agent.follow(profile.did)
+      setFollowUriOverride(res.uri)
+    } catch {
+      // leave state unchanged so user can retry
+    } finally {
+      setFollowLoading(false)
+    }
+  }
+
+  async function handleUnfollow() {
+    if (!followingUri || followLoading) return
+    setFollowLoading(true)
+    try {
+      await agent.deleteFollow(followingUri)
+      setFollowUriOverride(null)
+      setProfile((prev) =>
+        prev ? { ...prev, viewer: { ...prev.viewer, following: undefined } } : null,
+      )
+    } catch {
+      // leave state unchanged so user can retry
+    } finally {
+      setFollowLoading(false)
+    }
+  }
 
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
 
@@ -73,10 +122,36 @@ export default function ProfilePage() {
             <img src={profile.avatar} alt="" className={styles.avatar} />
           )}
           <div className={styles.profileMeta}>
-            {profile?.displayName && (
-              <h2 className={styles.displayName}>{profile.displayName}</h2>
-            )}
-            <p className={styles.handle}>@{handle}</p>
+            <div className={styles.profileTitleRow}>
+              <div>
+                {profile?.displayName && (
+                  <h2 className={styles.displayName}>{profile.displayName}</h2>
+                )}
+                <p className={styles.handle}>@{handle}</p>
+              </div>
+              {showFollowButton &&
+                (isFollowing ? (
+                  <button
+                    type="button"
+                    className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                    onClick={handleUnfollow}
+                    disabled={followLoading}
+                    title="Unfollow"
+                  >
+                    <span className={styles.followLabelDefault}>Following</span>
+                    <span className={styles.followLabelHover}>Unfollow</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.followBtn}
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                  >
+                    {followLoading ? 'Following…' : 'Follow'}
+                  </button>
+                ))}
+            </div>
             {profile?.description && (
               <p className={styles.description}>{profile.description}</p>
             )}

@@ -12,8 +12,7 @@ interface Props {
 function VideoIcon() {
   return (
     <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      {/* Film strip: frame with sprocket holes */}
-      <path d="M4 4h16v16H4V4zm2 2v2H4V6h2zm0 6v2H4v-2h2zm0 6v2H4v-2h2zm12-12h-2v2h2V6zm0 6v2h-2v-2h2zm0 6v2h-2v-2h2zM8 8h8v8H8V8z" />
+      <path d="M8 5v14l11-7L8 5z" />
     </svg>
   )
 }
