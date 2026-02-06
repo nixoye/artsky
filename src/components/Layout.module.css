@@ -165,6 +165,45 @@
   letter-spacing: -0.02em;
 }
 
+/* Theme switch: 3-position toggle (light | auto | dark) – used in header and account menu */
+.themeSwitch {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  overflow: hidden;
+}
+
+.themeSwitchSegment,
+.themeSwitchActive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.themeSwitchSegment:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.themeSwitchActive {
+  color: var(--accent);
+  background: rgba(124, 58, 237, 0.2);
+}
+
+.themeSwitch svg {
+  width: 18px;
+  height: 18px;
+}
+
 @media (min-width: 768px) {
   .headerBtnActive {
     color: var(--accent);
