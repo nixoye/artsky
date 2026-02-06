@@ -75,6 +75,7 @@ export default function PostCard({ item }: Props) {
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
 
   const [imageIndex, setImageIndex] = useState(0)
+  const [mediaAspect, setMediaAspect] = useState<number | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [newBoardName, setNewBoardName] = useState('')
@@ -210,6 +211,17 @@ export default function PostCard({ item }: Props) {
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : media.url
   const n = imageItems.length
 
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget
+    if (img.naturalWidth && img.naturalHeight) {
+      setMediaAspect(img.naturalWidth / img.naturalHeight)
+    }
+  }, [])
+
+  useEffect(() => {
+    setMediaAspect(null)
+  }, [currentImageUrl])
+
   useEffect(() => {
     if (!isVideo || !media.videoPlaylist || !videoRef.current) return
     const video = videoRef.current
@@ -323,6 +335,7 @@ export default function PostCard({ item }: Props) {
       >
         <div
           className={styles.mediaWrap}
+          style={mediaAspect != null ? { aspectRatio: String(mediaAspect) } : undefined}
           onMouseEnter={onMediaEnter}
           onMouseLeave={onMediaLeave}
         >
@@ -338,7 +351,7 @@ export default function PostCard({ item }: Props) {
             />
           ) : (
             <>
-              <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" />
+              <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" onLoad={handleImageLoad} />
               {isMultipleImages && imageItems.length > 1 && (
                 <>
                   <button

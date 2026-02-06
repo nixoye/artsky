@@ -453,14 +453,16 @@ export default function Layout({ title, children, showNav }: Props) {
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
               </Link>
+              {isDesktop && (
+                <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
+                  Artboards
+                </Link>
+              )}
             </div>
             <div className={styles.headerCenter}>
               <SearchBar inputRef={searchInputRef} compact={isDesktop} />
             </div>
             <div className={styles.headerRight}>
-              <div className={styles.navTray} aria-label="Main">
-                {navTrayItems}
-              </div>
               <button
                 type="button"
                 className={styles.headerBtn}
@@ -470,15 +472,17 @@ export default function Layout({ title, children, showNav }: Props) {
               >
                 <ViewIcon />
               </button>
-              <button
-                type="button"
-                className={`${styles.headerBtn} ${artOnly ? styles.headerBtnActive : ''}`}
-                onClick={toggleArtOnly}
-                aria-label={artOnly ? 'Show text on feed' : 'Hide text, focus on art'}
-                title={artOnly ? 'Show text' : 'Art only'}
-              >
-                <EyeIcon off={artOnly} />
-              </button>
+              {!isDesktop && (
+                <button
+                  type="button"
+                  className={`${styles.headerBtn} ${artOnly ? styles.headerBtnActive : ''}`}
+                  onClick={toggleArtOnly}
+                  aria-label={artOnly ? 'Show text on feed' : 'Hide text, focus on art'}
+                  title={artOnly ? 'Show text' : 'Art only'}
+                >
+                  <EyeIcon off={artOnly} />
+                </button>
+              )}
               <div className={styles.headerBtnWrap}>
                 <button
                   ref={accountBtnRef}

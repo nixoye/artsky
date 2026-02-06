@@ -53,6 +53,18 @@
 @media (min-width: 768px) {
   .headerLeft {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .headerArtboardsLink {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .headerArtboardsLink:hover {
+    color: var(--accent);
   }
   .headerCenter {
     display: flex;
@@ -70,36 +82,6 @@
     align-items: center;
     gap: 0.25rem;
     flex-shrink: 0;
-  }
-  .headerRight .navTray {
-    display: flex;
-    align-items: center;
-    gap: 0.15rem;
-  }
-  .headerRight .navTray a,
-  .headerRight .navTray .navBtn {
-    flex: none;
-    flex-direction: row;
-    gap: 0.25rem;
-    padding: 0.25rem 0.4rem;
-    min-height: 0;
-    font-size: 0.7rem;
-    border-radius: var(--glass-radius-sm);
-  }
-  .headerRight .navTray .navIcon {
-    width: 16px;
-    height: 16px;
-  }
-  .headerRight .navTray .navIcon svg {
-    width: 14px;
-    height: 14px;
-  }
-  .headerRight .navTray a:hover,
-  .headerRight .navTray .navBtn:hover {
-    background: var(--glass-highlight);
-  }
-  .headerRight .navTray a.navActive {
-    background: rgba(124, 58, 237, 0.15);
   }
 }
 
