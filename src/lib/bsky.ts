@@ -414,6 +414,17 @@ export async function getFeedDisplayName(uri: string): Promise<string> {
   return (res.data?.view as { displayName?: string })?.displayName ?? uri
 }
 
+/** Create a new post (no reply). */
+export async function createPost(text: string): Promise<{ uri: string; cid: string }> {
+  const t = text.trim()
+  if (!t) throw new Error('Post text is required')
+  const res = await agent.post({
+    text: t,
+    createdAt: new Date().toISOString(),
+  })
+  return { uri: res.uri, cid: res.cid }
+}
+
 /** Post a reply to a post. For top-level reply use same uri/cid for root and parent. */
 export async function postReply(
   rootUri: string,

@@ -500,6 +500,141 @@
   animation: popIn 0.2s ease;
 }
 
+/* Compose post modal */
+.composeOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+.composeCard {
+  width: 100%;
+  max-width: 420px;
+  padding: 1.25rem;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  animation: popIn 0.2s ease;
+}
+
+.composeTitle {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.composeSignIn {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.composeSignIn a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.composeSignIn a:hover {
+  text-decoration: underline;
+}
+
+.composeTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 0.75rem;
+}
+
+.composeTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.composeTextarea::placeholder {
+  color: var(--muted);
+}
+
+.composeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.composeCount {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.composeActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.composeCancel,
+.composeSubmit {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.composeCancel {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.composeCancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.composeSubmit {
+  color: white;
+  background: var(--accent);
+  border: none;
+}
+
+.composeSubmit:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.composeSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.composeError {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--error);
+}
+
 @keyframes popIn {
   from {
     opacity: 0;

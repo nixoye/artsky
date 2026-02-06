@@ -4,7 +4,7 @@ import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
-import { publicAgent } from '../lib/bsky'
+import { publicAgent, createPost } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -215,6 +215,10 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [composeText, setComposeText] = useState('')
+  const [composePosting, setComposePosting] = useState(false)
+  const [composeError, setComposeError] = useState<string | null>(null)
   const [navVisible, setNavVisible] = useState(true)
   const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
   const lastScrollY = useRef(0)
@@ -328,7 +332,35 @@ export default function Layout({ title, children, showNav, showColumnView = true
     navigate('/login', { replace: true })
   }
 
-  const postComposeUrl = 'https://bsky.app/compose'
+  const POST_MAX_LENGTH = 300
+
+  function openCompose() {
+    setComposeOpen(true)
+    setComposeText('')
+    setComposeError(null)
+  }
+
+  function closeCompose() {
+    setComposeOpen(false)
+    setComposeText('')
+    setComposeError(null)
+  }
+
+  async function handleComposeSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!session || composePosting) return
+    setComposeError(null)
+    setComposePosting(true)
+    try {
+      await createPost(composeText)
+      closeCompose()
+      navigate('/feed')
+    } catch (err) {
+      setComposeError(err instanceof Error ? err.message : 'Failed to post')
+    } finally {
+      setComposePosting(false)
+    }
+  }
 
   const navTrayItems = (
     <>
@@ -348,16 +380,15 @@ export default function Layout({ title, children, showNav, showColumnView = true
         <span className={styles.navIcon}><ArtboardsIcon /></span>
         <span className={styles.navLabel}>Artboards</span>
       </Link>
-      <a
-        href={postComposeUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
         className={styles.navBtn}
+        onClick={openCompose}
         aria-label="New post"
       >
         <span className={styles.navIcon}><ComposeIcon /></span>
         <span className={styles.navLabel}>Post</span>
-      </a>
+      </button>
       <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
         <span className={styles.navIcon}><SearchIcon /></span>
         <span className={styles.navLabel}>Search</span>
@@ -685,16 +716,15 @@ export default function Layout({ title, children, showNav, showColumnView = true
               ) : (
                 <>
               {isDesktop && (
-                <a
-                  href={postComposeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
                   className={styles.headerBtn}
+                  onClick={openCompose}
                   aria-label="New post"
                   title="New post"
                 >
                   <ComposeIcon />
-                </a>
+                </button>
               )}
               {showColumnView && (
                 <button
@@ -816,6 +846,52 @@ export default function Layout({ title, children, showNav, showColumnView = true
               <div className={styles.accountPopup} role="dialog" aria-label="Account and settings">
                 <div className={styles.accountPopupContentCompact}>
                   {accountPanelContentCompact}
+                </div>
+              </div>
+            </>
+          )}
+          {composeOpen && (
+            <>
+              <div
+                className={styles.searchOverlayBackdrop}
+                onClick={closeCompose}
+                aria-hidden
+              />
+              <div className={styles.composeOverlay} role="dialog" aria-label="New post">
+                <div className={styles.composeCard}>
+                  <h2 className={styles.composeTitle}>New post</h2>
+                  {!session ? (
+                    <p className={styles.composeSignIn}>
+                      <Link to="/login" onClick={closeCompose}>Sign in</Link> to post.
+                    </p>
+                  ) : (
+                    <form onSubmit={handleComposeSubmit}>
+                      <textarea
+                        className={styles.composeTextarea}
+                        value={composeText}
+                        onChange={(e) => setComposeText(e.target.value.slice(0, POST_MAX_LENGTH))}
+                        placeholder="What's on your mind?"
+                        rows={4}
+                        maxLength={POST_MAX_LENGTH}
+                        disabled={composePosting}
+                        autoFocus
+                      />
+                      <div className={styles.composeFooter}>
+                        <span className={styles.composeCount} aria-live="polite">
+                          {composeText.length}/{POST_MAX_LENGTH}
+                        </span>
+                        <div className={styles.composeActions}>
+                          <button type="button" className={styles.composeCancel} onClick={closeCompose} disabled={composePosting}>
+                            Cancel
+                          </button>
+                          <button type="submit" className={styles.composeSubmit} disabled={composePosting || !composeText.trim()}>
+                            {composePosting ? 'Posting…' : 'Post'}
+                          </button>
+                        </div>
+                      </div>
+                      {composeError && <p className={styles.composeError}>{composeError}</p>}
+                    </form>
+                  )}
                 </div>
               </div>
             </>
