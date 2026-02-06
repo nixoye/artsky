@@ -19,7 +19,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [handle, setHandle] = useState('')
   const [createPassword, setCreatePassword] = useState('')
-  const [inviteCode, setInviteCode] = useState('')
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -48,7 +47,6 @@ export default function LoginPage() {
         email: email.trim(),
         password: createPassword,
         handle: handle.trim().toLowerCase().replace(/^@/, ''),
-        inviteCode: inviteCode.trim() || undefined,
       })
       refreshSession()
       navigate('/feed', { replace: true })
@@ -56,7 +54,7 @@ export default function LoginPage() {
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String((err as { message: string }).message)
-          : 'Could not create account. Check that the handle is available and invite code is valid (if required).'
+          : 'Could not create account. Check that the handle is available.'
       setError(message)
     } finally {
       setLoading(false)
@@ -150,20 +148,12 @@ export default function LoginPage() {
               required
               minLength={8}
             />
-            <input
-              type="text"
-              placeholder="Invite code (if you have one)"
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              className={styles.input}
-              autoComplete="off"
-            />
             {error && <p className={styles.error}>{error}</p>}
             <button type="submit" className={styles.button} disabled={loading}>
               {loading ? 'Creating account…' : 'Create account'}
             </button>
             <p className={styles.hint}>
-              You’re creating a Bluesky account. An invite code may be required depending on Bluesky’s current signup policy.
+              You’re creating a Bluesky account (hosted at bsky.social).
             </p>
           </form>
         )}
