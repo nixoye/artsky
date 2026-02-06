@@ -391,6 +391,7 @@ export type StandardSiteDocumentView = {
   createdAt?: string
   baseUrl?: string
   authorHandle?: string
+  authorAvatar?: string
 }
 
 /** List site.standard.document records from a repo. Does not require the lexicon to be installed. */
@@ -427,6 +428,99 @@ export async function getStandardSitePublicationBaseUrl(client: AtpAgent, repo: 
   } catch {
     return null
   }
+}
+
+/** Parse an at:// URI into repo (DID), collection, and rkey. */
+export function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
+  const trimmed = uri.trim()
+  if (!trimmed.startsWith('at://')) return null
+  const withoutScheme = trimmed.slice('at://'.length)
+  const parts = withoutScheme.split('/')
+  if (parts.length < 3) return null
+  const [did, collection, ...rkeyParts] = parts
+  const rkey = rkeyParts.join('/')
+  return did && collection && rkey ? { did, collection, rkey } : null
+}
+
+/** Fetch a single standard.site document by URI. Returns null if not found or not a site.standard.document. */
+export async function getStandardSiteDocument(uri: string): Promise<StandardSiteDocumentView | null> {
+  const parsed = parseAtUri(uri)
+  if (!parsed || parsed.collection !== STANDARD_SITE_DOCUMENT_COLLECTION) return null
+  const client = getSession() ? agent : publicAgent
+  try {
+    const res = await client.com.atproto.repo.getRecord({
+      repo: parsed.did,
+      collection: STANDARD_SITE_DOCUMENT_COLLECTION,
+      rkey: parsed.rkey,
+    })
+    const value = res.data?.value as StandardSiteDocumentRecord | undefined
+    if (!value) return null
+    const [baseUrl, profile] = await Promise.all([
+      getStandardSitePublicationBaseUrl(client, parsed.did),
+      client.getProfile({ actor: parsed.did }).then((p) => p.data as { handle?: string; avatar?: string }).catch(() => null),
+    ])
+    return {
+      uri: res.data.uri as string,
+      cid: res.data.cid as string,
+      did: parsed.did,
+      rkey: parsed.rkey,
+      path: value.path ?? parsed.rkey,
+      title: value.title,
+      createdAt: value.createdAt,
+      baseUrl: baseUrl ?? undefined,
+      authorHandle: profile?.handle,
+      authorAvatar: profile?.avatar,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Delete a standard.site document. Requires session; only the author can delete. */
+export async function deleteStandardSiteDocument(uri: string): Promise<void> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  const parsed = parseAtUri(uri)
+  if (!parsed || parsed.collection !== STANDARD_SITE_DOCUMENT_COLLECTION) throw new Error('Invalid document URI')
+  if (parsed.did !== session.did) throw new Error('You can only delete your own posts')
+  await agent.com.atproto.repo.deleteRecord({
+    repo: session.did,
+    collection: STANDARD_SITE_DOCUMENT_COLLECTION,
+    rkey: parsed.rkey,
+  })
+}
+
+/** Update a standard.site document (title, path). Requires session; only the author can update. */
+export async function updateStandardSiteDocument(
+  uri: string,
+  updates: { title?: string; path?: string }
+): Promise<StandardSiteDocumentView> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  const parsed = parseAtUri(uri)
+  if (!parsed || parsed.collection !== STANDARD_SITE_DOCUMENT_COLLECTION) throw new Error('Invalid document URI')
+  if (parsed.did !== session.did) throw new Error('You can only edit your own posts')
+  const existing = await agent.com.atproto.repo.getRecord({
+    repo: session.did,
+    collection: STANDARD_SITE_DOCUMENT_COLLECTION,
+    rkey: parsed.rkey,
+  })
+  const current = (existing.data?.value ?? {}) as StandardSiteDocumentRecord
+  const record = {
+    ...current,
+    path: updates.path ?? current.path,
+    title: updates.title ?? current.title,
+    createdAt: current.createdAt,
+  }
+  const res = await agent.com.atproto.repo.putRecord({
+    repo: session.did,
+    collection: STANDARD_SITE_DOCUMENT_COLLECTION,
+    rkey: parsed.rkey,
+    record,
+  })
+  const updated = await getStandardSiteDocument(res.data.uri)
+  if (!updated) throw new Error('Failed to fetch updated document')
+  return updated
 }
 
 /** Get DIDs (and handles) of accounts that the actor follows. */
@@ -492,9 +586,12 @@ export async function listStandardSiteDocumentsFromDiscovery(
           listStandardSiteDocuments(client, did, { limit: limitPerRepo, reverse: true }),
         ])
         let handle: string | undefined
+        let avatar: string | undefined
         try {
           const profile = await client.getProfile({ actor: did })
-          handle = (profile.data as { handle?: string }).handle
+          const data = profile.data as { handle?: string; avatar?: string }
+          handle = data.handle
+          avatar = data.avatar
         } catch {
           // ignore
         }
@@ -510,6 +607,7 @@ export async function listStandardSiteDocumentsFromDiscovery(
             createdAt: r.value.createdAt,
             baseUrl: baseUrl ?? undefined,
             authorHandle: handle,
+            authorAvatar: avatar,
           })
         }
       } catch {
@@ -535,6 +633,7 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
   const maxFollows = 50
   const allViews: StandardSiteDocumentView[] = []
   const didToHandle = new Map<string, string>()
+  const didToAvatar = new Map<string, string>()
   didToHandle.set(session.did, selfHandle)
   try {
     const { dids: followDids, handles: followHandles } = await getFollows(client, session.did, { limit: maxFollows })
@@ -543,8 +642,12 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
     const baseUrlCache = new Map<string, string | null>()
     await Promise.all(
       didsToFetch.map(async (did) => {
-        const base = await getStandardSitePublicationBaseUrl(client, did)
+        const [base, profile] = await Promise.all([
+          getStandardSitePublicationBaseUrl(client, did),
+          client.getProfile({ actor: did }).then((p) => (p.data as { avatar?: string }).avatar).catch(() => undefined),
+        ])
         baseUrlCache.set(did, base)
+        if (profile) didToAvatar.set(did, profile)
       })
     )
     const results = await Promise.all(
@@ -553,6 +656,7 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
           const { records } = await listStandardSiteDocuments(client, did, { limit: limitPerRepo, reverse: true })
           const baseUrl = baseUrlCache.get(did) ?? undefined
           const handle = didToHandle.get(did)
+          const avatar = didToAvatar.get(did)
           return records.map((r) => {
             const path = r.value.path ?? r.uri.split('/').pop() ?? ''
             return {
@@ -565,6 +669,7 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
               createdAt: r.value.createdAt,
               baseUrl: baseUrl ?? undefined,
               authorHandle: handle,
+              authorAvatar: avatar,
             }
           })
         } catch {

@@ -1,0 +1,364 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import {
+  getStandardSiteDocument,
+  deleteStandardSiteDocument,
+  updateStandardSiteDocument,
+  searchPostsByDomain,
+  createPost,
+  getSession,
+  agent,
+  type StandardSiteDocumentView,
+} from '../lib/bsky'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import Layout from '../components/Layout'
+import PostText from '../components/PostText'
+import styles from './ForumPostDetailPage.module.css'
+import postBlockStyles from './PostDetailPage.module.css'
+
+function documentUrl(doc: StandardSiteDocumentView): string | null {
+  if (!doc.baseUrl) return null
+  const base = doc.baseUrl.replace(/\/$/, '')
+  const path = (doc.path ?? '').replace(/^\//, '')
+  return path ? `${base}/${path}` : base
+}
+
+function domainFromBaseUrl(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).hostname
+  } catch {
+    return ''
+  }
+}
+
+type ReplyPost = {
+  uri: string
+  cid: string
+  author: { did: string; handle?: string; avatar?: string; displayName?: string }
+  record: { text?: string; createdAt?: string }
+  likeCount?: number
+  viewer?: { like?: string }
+}
+
+export default function ForumPostDetailPage() {
+  const { uri } = useParams<{ uri: string }>()
+  const navigate = useNavigate()
+  const decodedUri = uri ? decodeURIComponent(uri) : ''
+  const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [replyPosts, setReplyPosts] = useState<ReplyPost[]>([])
+  const [replyLoading, setReplyLoading] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editPath, setEditPath] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [likeLoadingMap, setLikeLoadingMap] = useState<Record<string, boolean>>({})
+  const [likeUriOverrideMap, setLikeUriOverrideMap] = useState<Record<string, string>>({})
+  const session = getSession()
+  const isOwn = session?.did && doc?.did === session.did;
+  const docUrl = doc ? documentUrl(doc) : null
+  const domain = doc?.baseUrl ? domainFromBaseUrl(doc.baseUrl) : ''
+
+  const loadDoc = useCallback(async () => {
+    if (!decodedUri) return
+    setLoading(true)
+    setError(null)
+    try {
+      const d = await getStandardSiteDocument(decodedUri)
+      setDoc(d)
+      if (d) {
+        setEditTitle(d.title ?? '')
+        setEditPath(d.path ?? '')
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load post')
+    } finally {
+      setLoading(false)
+    }
+  }, [decodedUri])
+
+  const loadReplies = useCallback(async () => {
+    if (!domain) return
+    setReplyLoading(true)
+    try {
+      const { posts } = await searchPostsByDomain(domain)
+      setReplyPosts((posts ?? []).map((p) => ({
+        uri: p.uri,
+        cid: p.cid,
+        author: p.author as ReplyPost['author'],
+        record: (p.record ?? {}) as ReplyPost['record'],
+        likeCount: (p as { likeCount?: number }).likeCount,
+        viewer: (p as { viewer?: { like?: string } }).viewer,
+      })))
+    } catch {
+      setReplyPosts([])
+    } finally {
+      setReplyLoading(false)
+    }
+  }, [domain])
+
+  useEffect(() => {
+    setDoc(null)
+    loadDoc()
+  }, [loadDoc])
+
+  useEffect(() => {
+    if (doc) loadReplies()
+  }, [doc, loadReplies])
+
+  async function handleReplySubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!session || !doc || !replyText.trim() || posting) return
+    setPosting(true)
+    try {
+      const link = docUrl || doc.uri
+      const text = `${replyText.trim()}\n\n${link}`
+      await createPost(text)
+      setReplyText('')
+      await loadReplies()
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to post')
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  async function handleEditSave() {
+    if (!doc || !decodedUri || editSaving) return
+    setEditSaving(true)
+    try {
+      const updated = await updateStandardSiteDocument(decodedUri, { title: editTitle || undefined, path: editPath || undefined })
+      setDoc(updated)
+      setEditMode(false)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!decodedUri || !deleteConfirm || deleteLoading) return
+    setDeleteLoading(true)
+    try {
+      await deleteStandardSiteDocument(decodedUri)
+      navigate('/forum', { replace: true })
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  async function handleLikePost(post: ReplyPost) {
+    const likedUri = likeUriOverrideMap[post.uri] ?? post.viewer?.like
+    const isLiked = !!likedUri
+    setLikeLoadingMap((m) => ({ ...m, [post.uri]: true }))
+    try {
+      if (isLiked) {
+        await agent.deleteLike(likedUri)
+        setLikeUriOverrideMap((m) => {
+          const next = { ...m }
+          delete next[post.uri]
+          return next
+        })
+      } else {
+        const res = await agent.like(post.uri, post.cid)
+        setLikeUriOverrideMap((m) => ({ ...m, [post.uri]: res.uri }))
+      }
+      await loadReplies()
+    } catch {
+      // leave state unchanged
+    } finally {
+      setLikeLoadingMap((m) => ({ ...m, [post.uri]: false }))
+    }
+  }
+
+  if (!decodedUri) {
+    navigate('/forum', { replace: true })
+    return null
+  }
+
+  return (
+    <Layout title={doc?.title ?? 'Forum post'} showNav showColumnView={false}>
+      <div className={styles.wrap}>
+        {loading && <div className={styles.loading}>Loading…</div>}
+        {error && <p className={styles.error}>{error}</p>}
+        {doc && !loading && (
+          <>
+            <article className={`${postBlockStyles.postBlock} ${postBlockStyles.rootPostBlock}`}>
+              <div className={postBlockStyles.postBlockContent}>
+                <div className={postBlockStyles.postHead}>
+                  {doc.authorAvatar ? (
+                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} />
+                  ) : (
+                    <span className={styles.avatarPlaceholder} aria-hidden>{(doc.authorHandle ?? doc.did).slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <div className={postBlockStyles.authorRow}>
+                    <Link to={`/profile/${encodeURIComponent(doc.authorHandle ?? doc.did)}`} className={postBlockStyles.handleLink}>
+                      @{doc.authorHandle ?? doc.did}
+                    </Link>
+                    {doc.createdAt && (
+                      <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(doc.createdAt)}>
+                        {formatRelativeTime(doc.createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!editMode ? (
+                  <>
+                    <h1 className={styles.docTitle}>{doc.title || doc.path || 'Untitled'}</h1>
+                    {docUrl && (
+                      <p className={styles.docLink}>
+                        <a href={docUrl} target="_blank" rel="noopener noreferrer" className={styles.externalLink}>
+                          Open full post →
+                        </a>
+                      </p>
+                    )}
+                    {isOwn && (
+                      <div className={styles.actions}>
+                        <button type="button" className={styles.actionBtn} onClick={() => setEditMode(true)}>
+                          Edit
+                        </button>
+                        {!deleteConfirm ? (
+                          <button type="button" className={styles.actionBtnDanger} onClick={() => setDeleteConfirm(true)}>
+                            Delete
+                          </button>
+                        ) : (
+                          <>
+                            <span className={styles.deleteConfirmText}>Delete this post?</span>
+                            <button type="button" className={styles.actionBtn} onClick={() => setDeleteConfirm(false)} disabled={deleteLoading}>
+                              Cancel
+                            </button>
+                            <button type="button" className={styles.actionBtnDanger} onClick={handleDelete} disabled={deleteLoading}>
+                              {deleteLoading ? 'Deleting…' : 'Yes, delete'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.editForm}>
+                    <label className={styles.editLabel}>
+                      Title
+                      <input
+                        type="text"
+                        className={styles.editInput}
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="Title"
+                      />
+                    </label>
+                    <label className={styles.editLabel}>
+                      Path
+                      <input
+                        type="text"
+                        className={styles.editInput}
+                        value={editPath}
+                        onChange={(e) => setEditPath(e.target.value)}
+                        placeholder="path-slug"
+                      />
+                    </label>
+                    <div className={styles.editActions}>
+                      <button type="button" className={styles.actionBtn} onClick={() => setEditMode(false)} disabled={editSaving}>
+                        Cancel
+                      </button>
+                      <button type="button" className={styles.actionBtnPrimary} onClick={handleEditSave} disabled={editSaving}>
+                        {editSaving ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </article>
+
+            {session && (
+              <section className={styles.replySection}>
+                <h2 className={styles.replySectionTitle}>Reply</h2>
+                <form onSubmit={handleReplySubmit} className={styles.replyForm}>
+                  <textarea
+                    className={styles.replyTextarea}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply…"
+                    rows={3}
+                    disabled={posting}
+                  />
+                  <button type="submit" className={styles.replySubmit} disabled={posting || !replyText.trim()}>
+                    {posting ? 'Posting…' : 'Post reply'}
+                  </button>
+                </form>
+              </section>
+            )}
+
+            <section className={styles.repliesSection}>
+              <h2 className={styles.replySectionTitle}>Replies & discussion</h2>
+              {replyLoading ? (
+                <p className={styles.muted}>Loading…</p>
+              ) : replyPosts.length === 0 ? (
+                <p className={styles.muted}>No replies yet. Post a reply above or share this post.</p>
+              ) : (
+                <ul className={styles.replyList}>
+                  {replyPosts.map((p) => {
+                    const likedUri = likeUriOverrideMap[p.uri] ?? p.viewer?.like
+                    const isLiked = !!likedUri
+                    const likeLoading = likeLoadingMap[p.uri]
+                    const handle = p.author.handle ?? p.author.did
+                    return (
+                      <li key={p.uri} className={styles.replyItem}>
+                        <div className={postBlockStyles.postHead}>
+                          {p.author.avatar ? (
+                            <img src={p.author.avatar} alt="" className={postBlockStyles.avatar} />
+                          ) : (
+                            <span className={styles.avatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
+                          )}
+                          <div className={postBlockStyles.authorRow}>
+                            <Link to={`/profile/${encodeURIComponent(handle)}`} className={postBlockStyles.handleLink}>
+                              @{handle}
+                            </Link>
+                            {p.record.createdAt && (
+                              <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(p.record.createdAt)}>
+                                {formatRelativeTime(p.record.createdAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {p.record.text && (
+                          <div className={styles.replyText}>
+                            <PostText text={p.record.text} />
+                          </div>
+                        )}
+                        <div className={styles.replyItemActions}>
+                          <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.viewPostLink}>
+                            View post
+                          </Link>
+                          {session && (
+                            <button
+                              type="button"
+                              className={isLiked ? styles.likeBtnLiked : styles.likeBtn}
+                              onClick={() => handleLikePost(p)}
+                              disabled={likeLoading}
+                              title={isLiked ? 'Unlike' : 'Like'}
+                            >
+                              ♥ {p.likeCount ?? 0}
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </Layout>
+  )
+}

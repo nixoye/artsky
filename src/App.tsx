@@ -12,6 +12,7 @@ import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import TagPage from './pages/TagPage'
 import ForumPage from './pages/ForumPage'
+import ForumPostDetailPage from './pages/ForumPostDetailPage'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -61,6 +62,7 @@ function AppRoutes() {
       <Route path="/profile/:handle" element={<ProfilePage />} />
       <Route path="/tag/:tag" element={<TagPage />} />
       <Route path="/forum" element={<ForumPage />} />
+      <Route path="/forum/post/:uri" element={<ForumPostDetailPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>

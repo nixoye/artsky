@@ -87,58 +87,44 @@ export default function ForumPage() {
               const url = documentUrl(doc)
               const createdAt = doc.createdAt
               const title = doc.title || doc.path || 'Untitled'
+              const forumPostUrl = `/forum/post/${encodeURIComponent(doc.uri)}`
+              const head = (
+                <div className={postBlockStyles.postHead}>
+                  {doc.authorAvatar ? (
+                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} />
+                  ) : (
+                    <span className={styles.avatarPlaceholder} aria-hidden>{(handle || doc.did).slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <div className={postBlockStyles.authorRow}>
+                    <Link
+                      to={`/profile/${encodeURIComponent(handle)}`}
+                      className={postBlockStyles.handleLink}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      @{handle}
+                    </Link>
+                    {createdAt && (
+                      <span
+                        className={postBlockStyles.postTimestamp}
+                        title={formatExactDateTime(createdAt)}
+                      >
+                        {formatRelativeTime(createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
               return (
                 <li key={doc.uri}>
-                  {url ? (
-                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.postLink}>
-                      <article className={postBlockStyles.postBlock}>
-                        <div className={postBlockStyles.postBlockContent}>
-                          <div className={postBlockStyles.postHead}>
-                            <div className={postBlockStyles.authorRow}>
-                              <Link
-                                to={`/profile/${encodeURIComponent(handle)}`}
-                                className={postBlockStyles.handleLink}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                @{handle}
-                              </Link>
-                              {createdAt && (
-                                <span
-                                  className={postBlockStyles.postTimestamp}
-                                  title={formatExactDateTime(createdAt)}
-                                >
-                                  {formatRelativeTime(createdAt)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <p className={postBlockStyles.postText}>{title}</p>
-                        </div>
-                      </article>
-                    </a>
-                  ) : (
+                  <Link to={forumPostUrl} className={styles.postLink}>
                     <article className={postBlockStyles.postBlock}>
                       <div className={postBlockStyles.postBlockContent}>
-                        <div className={postBlockStyles.postHead}>
-                          <div className={postBlockStyles.authorRow}>
-                            <Link to={`/profile/${encodeURIComponent(handle)}`} className={postBlockStyles.handleLink}>
-                              @{handle}
-                            </Link>
-                            {createdAt && (
-                              <span
-                                className={postBlockStyles.postTimestamp}
-                                title={formatExactDateTime(createdAt)}
-                              >
-                                {formatRelativeTime(createdAt)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                        {head}
                         <p className={postBlockStyles.postText}>{title}</p>
-                        <p className={styles.noUrl}>No publication URL</p>
+                        {!url && <p className={styles.noUrl}>No publication URL</p>}
                       </div>
                     </article>
-                  )}
+                  </Link>
                 </li>
               )
             })}
