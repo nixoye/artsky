@@ -398,8 +398,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
 
   function closeCompose() {
     setComposeOpen(false)
-    setComposeText('')
-    setComposeImages([])
     setComposeError(null)
   }
 
@@ -424,6 +422,8 @@ export default function Layout({ title, children, showNav, showColumnView = true
     setComposePosting(true)
     try {
       await createPost(composeText, composeImages.length > 0 ? composeImages : undefined)
+      setComposeText('')
+      setComposeImages([])
       closeCompose()
       navigate('/feed')
     } catch (err) {
