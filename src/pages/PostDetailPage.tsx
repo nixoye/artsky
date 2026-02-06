@@ -11,7 +11,7 @@ import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
 import styles from './PostDetailPage.module.css'
 
-function ReplyAsRow({
+export function ReplyAsRow({
   replyAs,
   sessionsList,
   switchAccount,

@@ -269,6 +269,43 @@
   color: var(--text);
 }
 
+/* Separate theme buttons (account menu) */
+.themeButtonGroup {
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.themeBtn,
+.themeBtnActive {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-highlight);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.themeBtn svg,
+.themeBtnActive svg {
+  width: 16px;
+  height: 16px;
+}
+
+.themeBtn:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.themeBtnActive {
+  border-color: var(--accent);
+  background: rgba(124, 58, 237, 0.18);
+  color: var(--accent);
+}
+
 @media (min-width: 768px) {
   .headerBtnActive {
     color: var(--accent);
@@ -490,8 +527,8 @@
   }
   .menuOption,
   .menuOptionActive {
-    padding: 0.2rem 0.35rem;
-    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
     border-radius: 0.35rem;
     border: 1px solid var(--glass-border);
     background: var(--glass-highlight);
@@ -503,8 +540,8 @@
   }
   .menuRow .menuOption svg,
   .menuRow .menuOptionActive svg {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
   }
   .menuOption:hover {
     border-color: var(--muted);
@@ -1205,8 +1242,8 @@
 
 .accountPopupContent .menuOption,
 .accountPopupContent .menuOptionActive {
-  padding: 0.2rem 0.35rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
   border-radius: 0.35rem;
   border: 1px solid var(--glass-border);
   background: var(--glass-highlight);
@@ -1220,8 +1257,8 @@
 
 .accountPopupContent .menuRow .menuOption svg,
 .accountPopupContent .menuRow .menuOptionActive svg {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
 }
 
 .accountPopupContent .menuOptionActive {

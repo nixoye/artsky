@@ -9,13 +9,16 @@ import {
   createStandardSiteComment,
   getSession,
   agent,
+  publicAgent,
   type StandardSiteDocumentView,
   type StandardSiteDocumentBlobRef,
   type ForumReplyView,
 } from '../lib/bsky'
+import { useSession } from '../context/SessionContext'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
 import PostText from '../components/PostText'
+import { ReplyAsRow } from './PostDetailPage'
 import styles from './ForumPostDetailPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
@@ -77,7 +80,10 @@ export default function ForumPostDetailPage() {
   const [replyingTo, setReplyingTo] = useState<ForumReplyView | null>(null)
   const [likeLoadingMap, setLikeLoadingMap] = useState<Record<string, boolean>>({})
   const [likeUriOverrideMap, setLikeUriOverrideMap] = useState<Record<string, string>>({})
+  const [replyAs, setReplyAs] = useState<{ handle: string; avatar?: string }>({ handle: '' })
   const session = getSession()
+  const { sessionsList, switchAccount, currentDid } = useSession()
+  const inlineReplyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const isOwn = session?.did && doc?.did === session.did
   const docUrl = doc ? documentUrl(doc) : null
   const domain = doc?.baseUrl ? domainFromBaseUrl(doc.baseUrl) : ''
@@ -88,6 +94,30 @@ export default function ForumPostDetailPage() {
   useEffect(() => {
     return () => editNewPreviewUrls.forEach((u) => URL.revokeObjectURL(u))
   }, [editNewPreviewUrls])
+
+  useEffect(() => {
+    if (!session?.did) {
+      setReplyAs({ handle: '' })
+      return
+    }
+    let cancelled = false
+    publicAgent.getProfile({ actor: session.did }).then((res) => {
+      if (cancelled) return
+      const data = res.data as { handle?: string; avatar?: string }
+      setReplyAs({ handle: data.handle ?? session.did, avatar: data.avatar })
+    }).catch(() => {
+      if (!cancelled) setReplyAs({ handle: (session as { handle?: string }).handle ?? session.did })
+    })
+    return () => { cancelled = true }
+  }, [session?.did])
+
+  useEffect(() => {
+    if (!replyingTo) return
+    const id = requestAnimationFrame(() => {
+      inlineReplyTextareaRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [replyingTo])
 
   const loadDoc = useCallback(async () => {
     if (!decodedUri) return
@@ -128,6 +158,15 @@ export default function ForumPostDetailPage() {
     setDoc(null)
     loadDoc()
   }, [loadDoc])
+
+  useEffect(() => {
+    if (!decodedUri) return
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadDoc()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [decodedUri, loadDoc])
 
   useEffect(() => {
     if (doc) loadReplies()
@@ -207,7 +246,6 @@ export default function ForumPostDetailPage() {
 
   function handleReplyToComment(post: ForumReplyView) {
     setReplyingTo(post)
-    requestAnimationFrame(() => replyFormRef.current?.querySelector('textarea')?.focus())
   }
 
   async function handleEditSave() {
@@ -222,8 +260,8 @@ export default function ForumPostDetailPage() {
         media = [...media, ...uploaded]
       }
       const updated = await updateStandardSiteDocument(decodedUri, {
-        title: editTitle || undefined,
-        body: editBody.trim() || undefined,
+        title: editTitle,
+        body: editBody.trim(),
         media,
       })
       setDoc(updated)
@@ -467,7 +505,7 @@ export default function ForumPostDetailPage() {
               </div>
             </article>
 
-            {session && (
+            {session && !replyingTo && (
               <section className={styles.replySection}>
                 <div
                   ref={replyFormWrapRef}
@@ -475,15 +513,6 @@ export default function ForumPostDetailPage() {
                   onFocus={() => setKeyboardFocusIndex(forumFocusTotal - 1)}
                 >
                 <h2 className={styles.replySectionTitle}>Reply</h2>
-                {replyingTo && (
-                  <p className={styles.replyingTo}>
-                    <span className={styles.replyingToLabel}>Replying to</span>
-                    <span className={styles.replyingToHandle}>@{replyingTo.author.handle ?? replyingTo.author.did}</span>
-                    <button type="button" className={styles.replyingToCancel} onClick={() => setReplyingTo(null)} aria-label="Cancel reply">
-                      ×
-                    </button>
-                  </p>
-                )}
                 <form ref={replyFormRef} onSubmit={handleReplySubmit} className={styles.replyForm}>
                   <textarea
                     className={styles.replyTextarea}
@@ -495,7 +524,7 @@ export default function ForumPostDetailPage() {
                         if (replyText.trim() && !posting) replyFormRef.current?.requestSubmit()
                       }
                     }}
-                    placeholder={replyingTo ? `Reply to @${replyingTo.author.handle ?? replyingTo.author.did}…` : 'Write a reply…'}
+                    placeholder="Write a reply…"
                     rows={3}
                     disabled={posting}
                   />
@@ -579,6 +608,61 @@ export default function ForumPostDetailPage() {
                             </button>
                           )}
                         </div>
+                        {session && replyingTo?.uri === p.uri && (
+                          <div className={postBlockStyles.inlineReplyFormWrap}>
+                            <form onSubmit={handleReplySubmit} className={postBlockStyles.inlineReplyForm}>
+                              <div className={postBlockStyles.inlineReplyFormHeader}>
+                                <button
+                                  type="button"
+                                  className={postBlockStyles.cancelReply}
+                                  onClick={() => setReplyingTo(null)}
+                                  aria-label="Cancel reply"
+                                >
+                                  ×
+                                </button>
+                                {replyAs.handle && sessionsList?.length && switchAccount && currentDid ? (
+                                  <ReplyAsRow
+                                    replyAs={replyAs}
+                                    sessionsList={sessionsList}
+                                    switchAccount={switchAccount}
+                                    currentDid={currentDid}
+                                  />
+                                ) : (
+                                  <p className={postBlockStyles.replyAs}>
+                                    <span className={postBlockStyles.replyAsLabel}>Replying as</span>
+                                    <span className={postBlockStyles.replyAsUserChip}>
+                                      {replyAs.avatar ? (
+                                        <img src={replyAs.avatar} alt="" className={postBlockStyles.replyAsAvatar} />
+                                      ) : (
+                                        <span className={postBlockStyles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
+                                      )}
+                                      <span className={postBlockStyles.replyAsHandle}>@{replyAs.handle}</span>
+                                    </span>
+                                  </p>
+                                )}
+                              </div>
+                              <textarea
+                                ref={inlineReplyTextareaRef}
+                                placeholder={`Reply to @${handle}…`}
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if ((e.key === 'Enter' || e.key === 'E') && (e.metaKey || e.ctrlKey)) {
+                                    e.preventDefault()
+                                    if (replyText.trim() && !posting) (e.target.form as HTMLFormElement)?.requestSubmit()
+                                  }
+                                }}
+                                className={postBlockStyles.textarea}
+                                rows={2}
+                                maxLength={300}
+                              />
+                              <p className={postBlockStyles.hint}>⌘ Enter or ⌘ E to post</p>
+                              <button type="submit" className={postBlockStyles.submit} disabled={posting || !replyText.trim()}>
+                                {posting ? 'Posting…' : 'Post reply'}
+                              </button>
+                            </form>
+                          </div>
+                        )}
                       </li>
                     )
                   })}

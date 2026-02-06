@@ -214,28 +214,39 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => { cancelled = true }
   }, [sessionsDidKey, sessionsList])
   const { theme, setTheme } = useTheme()
-  const themeThumbLeft = theme === 'light' ? '0' : theme === 'system' ? '33.333%' : '66.666%'
-  const cycleTheme = () => setTheme(theme === 'light' ? 'system' : theme === 'system' ? 'dark' : 'light')
-  const themeSwitchControl = (
-    <button
-      type="button"
-      className={styles.themeSwitchTrack}
-      onClick={cycleTheme}
-      role="switch"
-      aria-label={`Theme: ${theme === 'light' ? 'Light' : theme === 'system' ? 'Auto' : 'Dark'}. Click to cycle.`}
-      title={theme === 'light' ? 'Light' : theme === 'system' ? 'Auto (system)' : 'Dark'}
-    >
-      <span className={styles.themeSwitchThumb} style={{ left: themeThumbLeft }} aria-hidden />
-      <span className={styles.themeSwitchIconZone} style={{ left: 0 }} aria-hidden>
+  const themeButtons = (
+    <div className={styles.themeButtonGroup} role="group" aria-label="Theme">
+      <button
+        type="button"
+        className={theme === 'light' ? styles.themeBtnActive : styles.themeBtn}
+        onClick={() => setTheme('light')}
+        title="Light"
+        aria-label="Light"
+        aria-pressed={theme === 'light'}
+      >
         <ThemeSunIcon />
-      </span>
-      <span className={styles.themeSwitchIconZone} style={{ left: '33.333%' }} aria-hidden>
+      </button>
+      <button
+        type="button"
+        className={theme === 'system' ? styles.themeBtnActive : styles.themeBtn}
+        onClick={() => setTheme('system')}
+        title="Auto (system)"
+        aria-label="Auto"
+        aria-pressed={theme === 'system'}
+      >
         <ThemeAutoIcon />
-      </span>
-      <span className={styles.themeSwitchIconZone} style={{ left: '66.666%' }} aria-hidden>
+      </button>
+      <button
+        type="button"
+        className={theme === 'dark' ? styles.themeBtnActive : styles.themeBtn}
+        onClick={() => setTheme('dark')}
+        title="Dark"
+        aria-label="Dark"
+        aria-pressed={theme === 'dark'}
+      >
         <ThemeMoonIcon />
-      </span>
-    </button>
+      </button>
+    </div>
   )
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
@@ -556,7 +567,7 @@ export default function Layout({ title, children, showNav }: Props) {
     <>
       <section className={styles.menuSection}>
         <div className={styles.menuTopRow}>
-          {themeSwitchControl}
+          {themeButtons}
           <div className={styles.menuRow}>
             {viewOptions.map((m) => (
               <button
@@ -684,7 +695,7 @@ export default function Layout({ title, children, showNav }: Props) {
         </div>
       )}
       <div className={styles.menuCompactRow}>
-        {themeSwitchControl}
+        {themeButtons}
         {viewOptions.map((m) => (
           <button
             key={m}
