@@ -7,6 +7,8 @@ import styles from './SearchBar.module.css'
 
 const DEBOUNCE_MS = 200
 
+export type SearchFilter = 'all' | 'users' | 'feeds'
+
 interface Props {
   onSelectFeed?: (source: FeedSource) => void
 }
@@ -14,6 +16,7 @@ interface Props {
 export default function SearchBar({ onSelectFeed }: Props) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<SearchFilter>('all')
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [actors, setActors] = useState<AppBskyActorDefs.ProfileViewBasic[]>([])
@@ -25,10 +28,10 @@ export default function SearchBar({ onSelectFeed }: Props) {
   const trimmed = query.trim()
   const isHashtag = trimmed.startsWith('#')
   const tagSlug = isHashtag ? trimmed.slice(1).replace(/\s.*$/, '').toLowerCase() : ''
-  const hashtagOption = isHashtag && tagSlug ? { type: 'tag' as const, tag: tagSlug } : null
+  const hashtagOption = isHashtag && tagSlug && filter !== 'feeds' ? { type: 'tag' as const, tag: tagSlug } : null
 
   const fetchActors = useCallback(async (q: string) => {
-    if (!q || q.startsWith('#')) {
+    if (!q || q.startsWith('#') || filter === 'feeds') {
       setActors([])
       return
     }
@@ -41,24 +44,24 @@ export default function SearchBar({ onSelectFeed }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filter])
 
   useEffect(() => {
-    if (!trimmed || trimmed.startsWith('#')) {
+    if (!trimmed || trimmed.startsWith('#') || filter === 'feeds') {
       setActors([])
       return
     }
     const t = setTimeout(() => fetchActors(trimmed), DEBOUNCE_MS)
     return () => clearTimeout(t)
-  }, [trimmed, fetchActors])
+  }, [trimmed, filter, fetchActors])
 
   useEffect(() => {
-    if (open && !trimmed) {
+    if (open && (filter === 'feeds' || filter === 'all') && !trimmed) {
       getSuggestedFeeds(6).then((feeds) => setSuggestedFeeds(feeds ?? []))
     } else {
       setSuggestedFeeds([])
     }
-  }, [open, trimmed])
+  }, [open, trimmed, filter])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -74,8 +77,8 @@ export default function SearchBar({ onSelectFeed }: Props) {
     | { type: 'feed'; view: AppBskyFeedDefs.GeneratorView }
   > = []
   if (hashtagOption) options.push(hashtagOption)
-  actors.forEach((a) => options.push({ type: 'actor', handle: a.handle, did: a.did, avatar: a.avatar, displayName: a.displayName }))
-  if (!trimmed && suggestedFeeds.length) suggestedFeeds.forEach((f) => options.push({ type: 'feed', view: f }))
+  if (filter !== 'feeds') actors.forEach((a) => options.push({ type: 'actor', handle: a.handle, did: a.did, avatar: a.avatar, displayName: a.displayName }))
+  if ((filter === 'feeds' || filter === 'all') && (!trimmed && suggestedFeeds.length)) suggestedFeeds.forEach((f) => options.push({ type: 'feed', view: f }))
 
   useEffect(() => {
     setActiveIndex(0)
@@ -92,12 +95,20 @@ export default function SearchBar({ onSelectFeed }: Props) {
     } else if (opt.type === 'actor') {
       navigate(`/profile/${encodeURIComponent(opt.handle)}`)
       inputRef.current?.blur()
-    } else if (opt.type === 'feed' && onSelectFeed) {
+    } else if (opt.type === 'feed') {
       const v = opt.view
-      onSelectFeed({ kind: 'custom', label: v.displayName ?? v.uri, uri: v.uri })
+      const source: FeedSource = { kind: 'custom', label: v.displayName ?? v.uri, uri: v.uri }
+      if (onSelectFeed) {
+        onSelectFeed(source)
+      } else {
+        navigate('/feed', { state: { feedSource: source } })
+      }
       inputRef.current?.blur()
     }
   }
+
+  const placeholder =
+    filter === 'users' ? 'Search users, #hashtags…' : filter === 'feeds' ? 'Browse feeds…' : 'Search users, feeds, #hashtags…'
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (!open || options.length === 0) {
@@ -120,10 +131,22 @@ export default function SearchBar({ onSelectFeed }: Props) {
 
   return (
     <div className={styles.wrap} ref={containerRef}>
+      <div className={styles.filters}>
+        {(['all', 'users', 'feeds'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            className={filter === f ? styles.filterActive : styles.filterBtn}
+            onClick={() => setFilter(f)}
+          >
+            {f === 'all' ? 'All' : f === 'users' ? 'Users' : 'Feeds'}
+          </button>
+        ))}
+      </div>
       <input
         ref={inputRef}
         type="search"
-        placeholder="Search users, feeds, #hashtags…"
+        placeholder={placeholder}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)

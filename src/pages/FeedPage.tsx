@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { agent, getPostMediaInfo, type TimelineItem } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
-import SearchBar from '../components/SearchBar'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import styles from './FeedPage.module.css'
@@ -12,12 +12,22 @@ const DEFAULT_SOURCES: FeedSource[] = [
 ]
 
 export default function FeedPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [source, setSource] = useState<FeedSource>(DEFAULT_SOURCES[0])
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
+    if (stateSource) {
+      setSource(stateSource)
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location.state, location.pathname, navigate])
 
   const load = useCallback(async (nextCursor?: string) => {
     try {
@@ -51,9 +61,6 @@ export default function FeedPage() {
   return (
     <Layout title="Feed" showNav>
       <div className={styles.wrap}>
-        <div className={styles.searchRow}>
-          <SearchBar onSelectFeed={setSource} />
-        </div>
         <FeedSelector
           value={source}
           onChange={setSource}

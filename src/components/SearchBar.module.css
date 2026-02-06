@@ -1,7 +1,33 @@
 .wrap {
   position: relative;
   width: 100%;
-  max-width: 320px;
+}
+
+.filters {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.filterBtn,
+.filterActive {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.filterBtn:hover {
+  color: var(--text);
+}
+
+.filterActive {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .input {

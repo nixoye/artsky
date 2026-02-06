@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
+import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
 interface Props {
@@ -28,6 +29,11 @@ export default function Layout({ title, children, showNav }: Props) {
             <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
             <span className={styles.logoText}>ArtSky</span>
           </Link>
+        )}
+        {showNav && (
+          <div className={styles.searchSlot}>
+            <SearchBar />
+          </div>
         )}
         <h1 className={styles.title}>{title}</h1>
         {showNav && session && (
