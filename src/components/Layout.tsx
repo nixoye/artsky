@@ -169,16 +169,6 @@ function ThemeAutoIcon() {
   )
 }
 
-function ComposeIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 19l7-7 3 3-7 7-3-3z" />
-      <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-      <path d="M2 2l7.586 7.586" />
-    </svg>
-  )
-}
-
 const DESKTOP_BREAKPOINT = 768
 function getDesktopSnapshot() {
   return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
@@ -243,6 +233,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow' | 'like'>('all')
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string }[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -483,10 +474,10 @@ export default function Layout({ title, children, showNav, showColumnView = true
         type="button"
         className={styles.navBtn}
         onClick={openCompose}
-        aria-label="New post"
+        aria-label="Create post"
       >
-        <span className={styles.navIcon}><ComposeIcon /></span>
-        <span className={styles.navLabel}>Post</span>
+        <span className={styles.navIcon}><PlusIcon /></span>
+        <span className={styles.navLabel}>Create</span>
       </button>
       <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
         <span className={styles.navIcon}><SearchIcon /></span>
@@ -502,11 +493,11 @@ export default function Layout({ title, children, showNav, showColumnView = true
         type="button"
         className={styles.navBtn}
         onClick={() => openAccountPanel()}
-        aria-label="Account and settings"
+        aria-label="Accounts and settings"
         aria-expanded={accountSheetOpen || accountMenuOpen}
       >
         <span className={styles.navIcon}><AccountIcon /></span>
-        <span className={styles.navLabel}>Account</span>
+        <span className={styles.navLabel}>Accounts</span>
       </button>
     </>
   )
@@ -726,10 +717,10 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   type="button"
                   className={styles.headerBtn}
                   onClick={openCompose}
-                  aria-label="New post"
-                  title="New post"
+                  aria-label="Create post"
+                  title="Create post"
                 >
-                  <ComposeIcon />
+                  <PlusIcon />
                 </button>
               )}
               {showColumnView && (
@@ -773,13 +764,25 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   {notificationsOpen && (
                     <div ref={notificationsMenuRef} className={styles.notificationsMenu} role="dialog" aria-label="Notifications">
                       <h2 className={styles.menuTitle}>Notifications</h2>
+                      <div className={styles.notificationFilters}>
+                        <button type="button" className={notificationFilter === 'all' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('all')}>All</button>
+                        <button type="button" className={notificationFilter === 'reply' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('reply')}>Replies</button>
+                        <button type="button" className={notificationFilter === 'follow' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('follow')}>Follows</button>
+                        <button type="button" className={notificationFilter === 'like' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('like')}>Likes & reposts</button>
+                      </div>
                       {notificationsLoading ? (
                         <p className={styles.notificationsLoading}>Loading…</p>
-                      ) : notifications.length === 0 ? (
-                        <p className={styles.notificationsEmpty}>No notifications yet.</p>
-                      ) : (
+                      ) : (() => {
+                        const filtered = notificationFilter === 'all' ? notifications : notificationFilter === 'like'
+                          ? notifications.filter((n) => n.reason === 'like' || n.reason === 'repost')
+                          : notifications.filter((n) => n.reason === notificationFilter)
+                        return filtered.length === 0 ? (
+                          <p className={styles.notificationsEmpty}>
+                            {notificationFilter === 'all' ? 'No notifications yet.' : 'No matching notifications.'}
+                          </p>
+                        ) : (
                         <ul className={styles.notificationsList}>
-                          {notifications.map((n) => {
+                          {filtered.map((n) => {
                             const handle = n.author.handle ?? n.author.did
                             const isFollow = n.reason === 'follow'
                             const href = isFollow ? `/profile/${encodeURIComponent(handle)}` : `/post/${encodeURIComponent(n.reasonSubject ?? n.uri)}`
@@ -811,7 +814,8 @@ export default function Layout({ title, children, showNav, showColumnView = true
                             )
                           })}
                         </ul>
-                      )}
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -822,14 +826,14 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   type="button"
                   className={styles.headerBtn}
                   onClick={() => setAccountMenuOpen((o) => !o)}
-                  aria-label="Account and settings"
+                  aria-label="Accounts and settings"
                   aria-expanded={accountMenuOpen}
                 >
                   <AccountIcon />
                 </button>
                 {accountMenuOpen && (
-                  <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Account and settings">
-                    <h2 className={styles.menuTitle}>Account</h2>
+                  <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
+                    <h2 className={styles.menuTitle}>Accounts</h2>
                     {accountPanelContent}
                   </div>
                 )}
@@ -877,7 +881,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 onClick={() => setAccountSheetOpen(false)}
                 aria-hidden
               />
-              <div className={styles.accountPopup} role="dialog" aria-label="Account and settings">
+              <div className={styles.accountPopup} role="dialog" aria-label="Accounts and settings">
                 <div className={styles.accountPopupContentCompact}>
                   {accountPanelContentCompact}
                 </div>

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type TimelineItem } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
@@ -16,37 +15,6 @@ const LONG_PRESS_MOVE_THRESHOLD = 14
 
 interface Props {
   item: TimelineItem
-}
-
-function VideoIcon() {
-  return (
-    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M8 5v14l11-7L8 5z" />
-    </svg>
-  )
-}
-
-/* Multiple images: 2x2 grid of frames */
-function ImagesIcon() {
-  return (
-    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2" y="2" width="9" height="9" rx="1" />
-      <rect x="13" y="2" width="9" height="9" rx="1" />
-      <rect x="2" y="13" width="9" height="9" rx="1" />
-      <rect x="13" y="13" width="9" height="9" rx="1" />
-    </svg>
-  )
-}
-
-/* Single image: one frame */
-function ImageIcon() {
-  return (
-    <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <path d="M21 15l-5-5L5 21" />
-    </svg>
-  )
 }
 
 function RepostIcon() {
@@ -89,7 +57,6 @@ export default function PostCard({ item }: Props) {
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
-  const createdAt = (post.record as { createdAt?: string })?.createdAt
   const authorViewer = (post.author as { viewer?: { following?: string } }).viewer
   const isFollowingAuthor = !!authorViewer?.following
   const isOwnPost = session?.did === post.author.did
@@ -226,7 +193,6 @@ export default function PostCard({ item }: Props) {
 
   const isVideo = media.type === 'video' && media.videoPlaylist
   const isMultipleImages = media.type === 'image' && (media.imageCount ?? 0) > 1
-  const isSingleImage = media.type === 'image' && (media.imageCount ?? 0) <= 1
   const allMedia = getPostAllMedia(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : media.url
@@ -599,31 +565,6 @@ export default function PostCard({ item }: Props) {
                 )}
               </div>
             </span>
-            </div>
-            <div className={styles.metaBadgeRow}>
-              {isVideo && (
-                <span className={styles.mediaBadge} title="Video">
-                  <VideoIcon />
-                </span>
-              )}
-              {isMultipleImages && (
-                <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
-                  <ImagesIcon />
-                </span>
-              )}
-              {isSingleImage && (
-                <span className={styles.mediaBadge} title="Image">
-                  <ImageIcon />
-                </span>
-              )}
-              {createdAt && (
-                <span
-                  className={styles.timestamp}
-                  title={formatExactDateTime(createdAt)}
-                >
-                  {formatRelativeTime(createdAt)}
-                </span>
-              )}
             </div>
           </div>
           {text ? (

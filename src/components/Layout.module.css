@@ -282,6 +282,32 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     z-index: 30;
   }
+  .notificationFilters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .notificationFilter,
+  .notificationFilterActive {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--glass-radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .notificationFilter:hover {
+    color: var(--text);
+  }
+  .notificationFilterActive {
+    background: rgba(124, 58, 237, 0.2);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
   .notificationsList {
     list-style: none;
     padding: 0;
