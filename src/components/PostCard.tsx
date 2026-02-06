@@ -626,7 +626,6 @@ export default function PostCard({ item }: Props) {
               )}
             </div>
           </div>
-        </div>
           {text ? (
             <p className={styles.text}>
               <PostText text={text} maxLength={80} stopPropagation />
