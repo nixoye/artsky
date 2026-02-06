@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
-import { useViewMode } from '../context/ViewModeContext'
+import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -81,9 +81,9 @@ export default function Layout({ title, children, showNav }: Props) {
               onClick={() => setViewMenuOpen((o) => !o)}
               aria-expanded={viewMenuOpen}
               aria-haspopup="true"
-              title="View size"
+              title="Grid size"
             >
-              View {viewMode} ▾
+              {VIEW_LABELS[viewMode]} ▾
             </button>
             {viewMenuOpen && (
               <div className={styles.viewDropdown}>
@@ -94,7 +94,7 @@ export default function Layout({ title, children, showNav }: Props) {
                     className={m === viewMode ? styles.viewOptionActive : styles.viewOption}
                     onClick={() => { setViewMode(m); setViewMenuOpen(false); }}
                   >
-                    View {m} {m === '1' ? '(smallest)' : m === '5' ? '(largest)' : ''}
+                    {VIEW_LABELS[m]}
                   </button>
                 ))}
               </div>

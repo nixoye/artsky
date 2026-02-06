@@ -143,7 +143,13 @@ export default function ProfilePage() {
   const mediaItems = authorFeedItems.filter((item) => getPostMediaInfo(item.post))
   const likedMediaItems = likedItems.filter((item) => getPostMediaInfo(item.post))
   const postText = (post: TimelineItem['post']) => (post.record as { text?: string })?.text?.trim() ?? ''
-  const textItems = authorFeedItems.filter((item) => postText(item.post).length > 0)
+  const isReply = (post: TimelineItem['post']) => !!(post.record as { reply?: unknown })?.reply
+  const textItems = authorFeedItems.filter(
+    (item) =>
+      postText(item.post).length > 0 &&
+      !getPostMediaInfo(item.post) &&
+      !isReply(item.post),
+  )
 
   async function handleFollow() {
     if (!profile || followLoading || isFollowing) return
@@ -271,7 +277,7 @@ export default function ProfilePage() {
           <div className={styles.loading}>Loading…</div>
         ) : tab === 'text' ? (
           textItems.length === 0 ? (
-            <div className={styles.empty}>No posts with text.</div>
+            <div className={styles.empty}>No text-only posts (no media, no replies).</div>
           ) : (
             <>
               <ul className={styles.textList}>

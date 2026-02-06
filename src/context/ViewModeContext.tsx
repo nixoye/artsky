@@ -5,6 +5,15 @@ export type ViewMode = '1' | '2' | '3' | '4' | '5'
 
 const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3', '4', '5']
 
+/** Human-readable labels for the view size dropdown */
+export const VIEW_LABELS: Record<ViewMode, string> = {
+  '1': 'Compact',
+  '2': 'Small',
+  '3': 'Medium',
+  '4': 'Large',
+  '5': 'Wide',
+}
+
 type ViewModeContextValue = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
