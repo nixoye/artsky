@@ -184,7 +184,7 @@ function PostBlock({
   const replies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
   const hasReplies = replies.length > 0
   const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
-  const canCollapse = hasReplies && onToggleCollapse
+  const canCollapse = !!onToggleCollapse
   const isReplyTarget = replyingTo?.uri === post.uri
 
   return (
@@ -296,26 +296,41 @@ function PostBlock({
             </button>
           ) : (
             <div className={styles.replies}>
-              {replies.map((r) => (
-                <PostBlock
-                  key={isThreadViewPost(r) ? r.post.uri : Math.random()}
-                  node={r}
-                  depth={depth + 1}
-                  collapsedThreads={collapsedThreads}
-                  onToggleCollapse={onToggleCollapse}
-                  onReply={onReply}
-                  rootPostUri={rootPostUri}
-                  rootPostCid={rootPostCid}
-                  replyingTo={replyingTo}
-                  replyComment={replyComment}
-                  setReplyComment={setReplyComment}
-                  onReplySubmit={onReplySubmit}
-                  replyPosting={replyPosting}
-                  clearReplyingTo={clearReplyingTo}
-                  commentFormRef={commentFormRef}
-                  replyAs={replyAs}
-                />
-              ))}
+              {replies.map((r) => {
+                if (!isThreadViewPost(r)) return null
+                const replyDepth = depth + 1
+                if (collapsedThreads?.has(r.post.uri)) {
+                  const replyCount = 'replies' in r && Array.isArray(r.replies) ? (r.replies as unknown[]).length : 0
+                  const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
+                  return (
+                    <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: replyDepth * 12 }}>
+                      <button type="button" className={styles.repliesCollapsed} onClick={() => onToggleCollapse?.(r.post.uri)}>
+                        {label}
+                      </button>
+                    </div>
+                  )
+                }
+                return (
+                  <PostBlock
+                    key={r.post.uri}
+                    node={r}
+                    depth={replyDepth}
+                    collapsedThreads={collapsedThreads}
+                    onToggleCollapse={onToggleCollapse}
+                    onReply={onReply}
+                    rootPostUri={rootPostUri}
+                    rootPostCid={rootPostCid}
+                    replyingTo={replyingTo}
+                    replyComment={replyComment}
+                    setReplyComment={setReplyComment}
+                    onReplySubmit={onReplySubmit}
+                    replyPosting={replyPosting}
+                    clearReplyingTo={clearReplyingTo}
+                    commentFormRef={commentFormRef}
+                    replyAs={replyAs}
+                  />
+                )
+              })}
             </div>
           )}
         </div>
@@ -550,7 +565,7 @@ export default function PostDetailPage() {
         {error && <p className={styles.error}>{error}</p>}
         {thread && isThreadViewPost(thread) && (
           <>
-            <article className={styles.postBlock}>
+            <article className={`${styles.postBlock} ${styles.rootPostBlock}`}>
               {rootMedia.length > 0 && <MediaGallery items={rootMedia} autoPlayFirstVideo />}
               <div className={styles.postHead}>
                 {thread.post.author.avatar && (
@@ -694,26 +709,40 @@ export default function PostDetailPage() {
             </section>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div className={styles.replies}>
-                {(thread.replies as (typeof thread)[]).map((r) => (
-                  <PostBlock
-                    key={isThreadViewPost(r) ? r.post.uri : Math.random()}
-                    node={r}
-                    depth={0}
-                    collapsedThreads={collapsedThreads}
-                    onToggleCollapse={toggleCollapse}
-                    onReply={handleReplyTo}
-                    rootPostUri={thread.post.uri}
-                    rootPostCid={thread.post.cid}
-                    replyingTo={replyingTo}
-                    replyComment={comment}
-                    setReplyComment={setComment}
-                    onReplySubmit={handlePostReply}
-                    replyPosting={posting}
-                    clearReplyingTo={() => setReplyingTo(null)}
-                    commentFormRef={commentFormRef}
-                    replyAs={replyAs}
-                  />
-                ))}
+                {(thread.replies as (typeof thread)[]).map((r) => {
+                  if (!isThreadViewPost(r)) return null
+                  if (collapsedThreads.has(r.post.uri)) {
+                    const replyCount = 'replies' in r && Array.isArray(r.replies) ? (r.replies as unknown[]).length : 0
+                    const label = replyCount === 0 ? 'Comment' : `${replyCount} reply${replyCount !== 1 ? 's' : ''}`
+                    return (
+                      <div key={r.post.uri} className={styles.collapsedCommentWrap} style={{ marginLeft: 0 }}>
+                        <button type="button" className={styles.repliesCollapsed} onClick={() => toggleCollapse(r.post.uri)}>
+                          {label}
+                        </button>
+                      </div>
+                    )
+                  }
+                  return (
+                    <PostBlock
+                      key={r.post.uri}
+                      node={r}
+                      depth={0}
+                      collapsedThreads={collapsedThreads}
+                      onToggleCollapse={toggleCollapse}
+                      onReply={handleReplyTo}
+                      rootPostUri={thread.post.uri}
+                      rootPostCid={thread.post.cid}
+                      replyingTo={replyingTo}
+                      replyComment={comment}
+                      setReplyComment={setComment}
+                      onReplySubmit={handlePostReply}
+                      replyPosting={posting}
+                      clearReplyingTo={() => setReplyingTo(null)}
+                      commentFormRef={commentFormRef}
+                      replyAs={replyAs}
+                    />
+                  )
+                })}
               </div>
             )}
             {!replyingTo && (

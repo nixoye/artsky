@@ -24,6 +24,11 @@
   margin-bottom: 0.75rem;
 }
 
+/* Root post on detail page: media on top, username and text below */
+.rootPostBlock {
+  flex-direction: column;
+}
+
 .collapseStrip {
   width: 14px;
   min-width: 14px;
@@ -367,6 +372,15 @@
 
 .repliesCollapsed:hover {
   color: var(--accent);
+}
+
+.collapsedCommentWrap {
+  margin-bottom: 0.5rem;
+}
+
+.collapsedCommentWrap .repliesCollapsed {
+  display: block;
+  width: 100%;
 }
 
 .replies {
