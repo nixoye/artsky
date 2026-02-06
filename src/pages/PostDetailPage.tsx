@@ -870,10 +870,12 @@ export default function PostDetailPage() {
           const commentIdx = idx - (mediaCount + 1)
           setPostSectionIndex(postSectionCount - 1)
           setFocusedCommentIndex(commentIdx)
+          const uri = threadRepliesFlat[commentIdx]?.uri
           requestAnimationFrame(() => {
+            if (!uri) return
             const commentsSection = commentsSectionRef.current
-            const commentEls = commentsSection?.querySelectorAll<HTMLElement>('[data-comment-uri]')
-            const el = commentEls?.[commentIdx]
+            const nodes = commentsSection?.querySelectorAll<HTMLElement>('[data-comment-uri]')
+            const el = nodes ? Array.from(nodes).find((n) => n.getAttribute('data-comment-uri') === uri) : null
             if (el) {
               el.focus()
               el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
