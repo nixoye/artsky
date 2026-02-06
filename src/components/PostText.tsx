@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import styles from './PostText.module.css'
 
-/** Matches: explicit URLs, www. URLs, bare domains (e.g. example.com), and hashtags. */
+/** Matches: explicit URLs, www. URLs, bare domains, hashtags, and @mentions (not after alphanumeric, to avoid emails). */
 const LINKIFY_REGEX =
-  /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"'\],;:)!?]+)|(?<![@\/])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)|(#[\w]+)/gi
+  /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"'\],;:)!?]+)|(?<![@\/])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)|(#[\w]+)|(?<![a-zA-Z0-9])(@[\w.-]+)/gi
 
 export interface PostTextProps {
   text: string
@@ -16,7 +16,7 @@ export interface PostTextProps {
 
 export default function PostText({ text, className, maxLength, stopPropagation }: PostTextProps) {
   const displayText = maxLength != null && text.length > maxLength ? text.slice(0, maxLength) + '…' : text
-  const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag'; value: string }> = []
+  const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string }> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
   const re = new RegExp(LINKIFY_REGEX.source, 'gi')
@@ -24,13 +24,15 @@ export default function PostText({ text, className, maxLength, stopPropagation }
     if (match.index > lastIndex) {
       segments.push({ type: 'text', value: displayText.slice(lastIndex, match.index) })
     }
-    const value = match[1] ?? match[2] ?? match[3] ?? match[4]
+    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]
     if (match[1]) {
       segments.push({ type: 'url', value })
     } else if (match[2] || match[3]) {
       segments.push({ type: 'bareUrl', value })
-    } else {
+    } else if (match[4]) {
       segments.push({ type: 'hashtag', value })
+    } else if (match[5]) {
+      segments.push({ type: 'mention', value })
     }
     lastIndex = re.lastIndex
   }
@@ -80,15 +82,19 @@ export default function PostText({ text, className, maxLength, stopPropagation }
             </a>
           )
         }
-        // hashtag: value is e.g. "#art" -> link to /tag/art
-        const tagSlug = encodeURIComponent(seg.value.slice(1))
+        if (seg.type === 'hashtag') {
+          const tagSlug = encodeURIComponent(seg.value.slice(1))
+          return (
+            <Link key={i} to={`/tag/${tagSlug}`} className={styles.hashtag} onClick={onClick}>
+              {seg.value}
+            </Link>
+          )
+        }
+        // mention: value is e.g. "@user" -> link to /profile/user
+        const handle = seg.value.slice(1)
+        const profileSlug = encodeURIComponent(handle)
         return (
-          <Link
-            key={i}
-            to={`/tag/${tagSlug}`}
-            className={styles.hashtag}
-            onClick={onClick}
-          >
+          <Link key={i} to={`/profile/${profileSlug}`} className={styles.mention} onClick={onClick}>
             {seg.value}
           </Link>
         )

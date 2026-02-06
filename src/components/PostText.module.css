@@ -1,14 +1,17 @@
 .link,
-.hashtag {
+.hashtag,
+.mention {
   color: var(--accent);
   text-decoration: none;
 }
 
 .link:hover,
-.hashtag:hover {
+.hashtag:hover,
+.mention:hover {
   text-decoration: underline;
 }
 
-.hashtag {
+.hashtag,
+.mention {
   font-weight: 500;
 }
