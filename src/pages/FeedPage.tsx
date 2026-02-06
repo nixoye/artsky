@@ -110,8 +110,10 @@ export default function FeedPage() {
 
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
   const columnCount = Number(viewMode) || 1
-  const columns = Array.from({ length: columnCount }, (_, colIndex) =>
-    mediaItems.filter((_, i) => i % columnCount === colIndex)
+  const PAGE_SIZE = 30
+  const pages = Array.from(
+    { length: Math.ceil(mediaItems.length / PAGE_SIZE) },
+    (_, i) => mediaItems.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE)
   )
 
   return (
@@ -175,15 +177,22 @@ export default function FeedPage() {
           <div className={styles.empty}>No posts with images or videos in this feed.</div>
         ) : (
           <>
-            <div className={styles.masonryRow}>
-              {columns.map((colItems, colIndex) => (
-                <div key={colIndex} className={styles.masonryColumn}>
-                  {colItems.map((item) => (
-                    <PostCard key={item.post.uri} item={item} />
+            {pages.map((pageItems, pageIndex) => {
+              const pageColumns = Array.from({ length: columnCount }, (_, colIndex) =>
+                pageItems.filter((_, i) => i % columnCount === colIndex)
+              )
+              return (
+                <div key={pageIndex} className={styles.masonryRow}>
+                  {pageColumns.map((colItems, colIndex) => (
+                    <div key={colIndex} className={styles.masonryColumn}>
+                      {colItems.map((item) => (
+                        <PostCard key={item.post.uri} item={item} />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
+              )
+            })}
             {cursor && (
               <button
                 type="button"
