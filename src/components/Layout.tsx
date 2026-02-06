@@ -388,16 +388,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
     searchInputRef.current?.blur()
   }
 
-  function cycleViewMode() {
-    if (isDesktop) {
-      setViewMode(viewMode === '1' ? '2' : viewMode === '2' ? '3' : '1')
-    } else {
-      const idx = viewOptions.indexOf(viewMode)
-      const next = (idx + 1) % viewOptions.length
-      setViewMode(viewOptions[next])
-    }
-  }
-
   function openAccountPanel() {
     if (isDesktop) setAccountMenuOpen(true)
     else setAccountSheetOpen(true)
@@ -569,22 +559,22 @@ export default function Layout({ title, children, showNav, showColumnView = true
       <section className={styles.menuSection}>
         <div className={styles.menuTopRow}>
           {themeSwitchControl}
-        </div>
-        <div className={styles.menuRow}>
-          {viewOptions.map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={viewMode === m ? styles.menuOptionActive : styles.menuOption}
-              onClick={() => setViewMode(m)}
-              title={VIEW_LABELS[m]}
-              aria-label={VIEW_LABELS[m]}
-            >
-              {m === '1' && <Column1Icon />}
-              {m === '2' && <Column2Icon />}
-              {m === '3' && <Column3Icon />}
-            </button>
-          ))}
+          <div className={styles.menuRow}>
+            {viewOptions.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={viewMode === m ? styles.menuOptionActive : styles.menuOption}
+                onClick={() => setViewMode(m)}
+                title={VIEW_LABELS[m]}
+                aria-label={VIEW_LABELS[m]}
+              >
+                {m === '1' && <Column1Icon />}
+                {m === '2' && <Column2Icon />}
+                {m === '3' && <Column3Icon />}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
       {session && (
@@ -697,8 +687,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
       )}
       <div className={styles.menuCompactRow}>
         {themeSwitchControl}
-      </div>
-      <div className={styles.menuCompactRow}>
         {viewOptions.map((m) => (
           <button
             key={m}
@@ -760,19 +748,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 <>
                   {isDesktop && (
                     <>
-                      {showColumnView && (
-                        <button
-                          type="button"
-                          className={styles.headerBtn}
-                          onClick={cycleViewMode}
-                          aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                          title={VIEW_LABELS[viewMode]}
-                        >
-                          {viewMode === '1' && <Column1Icon />}
-                          {viewMode === '2' && <Column2Icon />}
-                          {viewMode === '3' && <Column3Icon />}
-                        </button>
-                      )}
                       <Link to="/login" className={styles.headerAuthLink}>
                         Log in
                       </Link>
@@ -815,19 +790,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 >
                   <PlusIcon />
                   <span className={styles.headerBtnLabel}>New</span>
-                </button>
-              )}
-              {showColumnView && isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerBtn}
-                  onClick={cycleViewMode}
-                  aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                  title={VIEW_LABELS[viewMode]}
-                >
-                  {viewMode === '1' && <Column1Icon />}
-                  {viewMode === '2' && <Column2Icon />}
-                  {viewMode === '3' && <Column3Icon />}
                 </button>
               )}
               {!isDesktop && (
