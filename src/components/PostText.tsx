@@ -69,7 +69,7 @@ export default function PostText({ text, className, maxLength, stopPropagation, 
         }
       } else {
         displaySegments.push(seg)
-        used += seg.value.length
+        /* Never truncate links/mentions/hashtags: add in full and don't count toward limit */
       }
     }
   } else {

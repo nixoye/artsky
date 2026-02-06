@@ -207,6 +207,16 @@
 
 .textPostLink:hover {
   color: inherit;
+  text-decoration: none;
+}
+
+.textPostLink:hover *,
+.textPostLink * {
+  text-decoration: none;
+}
+
+.textPostHandleLink:hover {
+  text-decoration: underline;
 }
 
 .textLink {

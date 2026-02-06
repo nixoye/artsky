@@ -10,6 +10,7 @@ import styles from './ProfilePage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
 const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
+const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
 
 type ProfileTab = 'posts' | 'reposts' | 'liked' | 'text' | 'feeds'
 
@@ -74,7 +75,7 @@ export default function ProfilePage() {
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
-      const res = await readAgent.getAuthorFeed({ actor: handle, limit: 30, cursor: nextCursor })
+      const res = await readAgent.getAuthorFeed({ actor: handle, limit: 30, cursor: nextCursor, includePins: true })
       setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
       setCursor(res.data.cursor ?? undefined)
     } catch (err: unknown) {
@@ -200,7 +201,18 @@ export default function ProfilePage() {
   const showFollowButton = !!session && !!profile && !isOwnProfile
 
   const isRepost = (item: TimelineItem) => (item.reason as { $type?: string })?.$type === REASON_REPOST
-  const authorFeedItems = tab === 'posts' ? items.filter((i) => !isRepost(i)) : tab === 'reposts' ? items.filter(isRepost) : items
+  const isPinned = (item: TimelineItem) => (item.reason as { $type?: string })?.$type === REASON_PIN
+  const isQuotePost = (item: TimelineItem) => {
+    const embed = (item.post as { embed?: { $type?: string } })?.embed
+    return !!embed && (embed.$type === 'app.bsky.embed.record#view' || embed.$type === 'app.bsky.embed.recordWithMedia#view')
+  }
+  const isRepostOrQuote = (item: TimelineItem) => isRepost(item) || isQuotePost(item)
+  const authorFeedItemsRaw =
+    tab === 'posts' ? items.filter((i) => !isRepostOrQuote(i)) : tab === 'reposts' ? items.filter(isRepostOrQuote) : items
+  const authorFeedItems =
+    tab === 'posts'
+      ? [...authorFeedItemsRaw].sort((a, b) => (isPinned(b) ? 1 : 0) - (isPinned(a) ? 1 : 0))
+      : authorFeedItemsRaw
   const mediaItems = authorFeedItems.filter((item) => getPostMediaInfo(item.post))
   const likedMediaItems = likedItems.filter((item) => getPostMediaInfo(item.post))
   const postText = (post: TimelineItem['post']) => (post.record as { text?: string })?.text?.trim() ?? ''
@@ -363,7 +375,7 @@ export default function ProfilePage() {
                               <div className={postBlockStyles.authorRow}>
                                 <Link
                                   to={`/profile/${encodeURIComponent(handle)}`}
-                                  className={postBlockStyles.handleLink}
+                                  className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   @{handle}
