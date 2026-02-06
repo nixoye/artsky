@@ -103,7 +103,7 @@ function flattenVisibleReplies(
     if (collapsed.has(uri)) return [{ uri, handle }]
     const nested =
       'replies' in r && Array.isArray(r.replies)
-        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x))
+        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x as Parameters<typeof isThreadViewPost>[0]))
         : []
     return [{ uri, handle }, ...flattenVisibleReplies(nested, collapsed)]
   })
@@ -117,7 +117,7 @@ function findReplyByUri(
     if (r.post.uri === uri) return r
     const nested =
       'replies' in r && Array.isArray(r.replies)
-        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x))
+        ? (r.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x as Parameters<typeof isThreadViewPost>[0]))
         : []
     const found = findReplyByUri(nested, uri)
     if (found) return found
@@ -951,7 +951,7 @@ export default function PostDetailPage() {
             </section>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div ref={commentsSectionRef} className={styles.replies}>
-                {threadReplies.map((r, idx) => {
+                {threadReplies.map((r) => {
                   const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
                   const isFocused = hasRepliesSection && postSectionIndex === postSectionCount - 1 && flatIndex >= 0 && flatIndex === focusedCommentIndex
                   if (collapsedThreads.has(r.post.uri)) {
@@ -978,8 +978,6 @@ export default function PostDetailPage() {
                       </div>
                     )
                   }
-                  const flatIndex = threadRepliesFlat.findIndex((f) => f.uri === r.post.uri)
-                  const isFocused = hasRepliesSection && postSectionIndex === postSectionCount - 1 && flatIndex >= 0 && flatIndex === focusedCommentIndex
                   return (
                     <div
                       key={r.post.uri}
