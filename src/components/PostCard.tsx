@@ -6,6 +6,7 @@ import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getA
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
 import PostActionsMenu from './PostActionsMenu'
@@ -29,6 +30,10 @@ interface Props {
   onAddClose?: () => void
   /** When provided, opening the post calls this instead of navigating to /post/:uri (e.g. open in modal) */
   onPostClick?: (uri: string, options?: { openReply?: boolean }) => void
+  /** Feed name to show in ... menu (e.g. "Following", feed label) */
+  feedLabel?: string
+  /** When this changes, open the ... menu (e.g. M key) */
+  openActionsMenuTrigger?: number
 }
 
 function RepostIcon() {
@@ -59,7 +64,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -645,6 +650,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   </div>
                 )}
               </div>
+                {(post.record as { createdAt?: string })?.createdAt && (
+                  <span className={styles.postTime} title={formatExactDateTime((post.record as { createdAt: string }).createdAt)}>
+                    {formatRelativeTime((post.record as { createdAt: string }).createdAt)}
+                  </span>
+                )}
                 <div onClick={(e) => e.stopPropagation()}>
                   <PostActionsMenu
                     postUri={post.uri}
@@ -652,6 +662,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     authorDid={post.author.did}
                     rootUri={post.uri}
                     isOwnPost={isOwnPost}
+                    feedLabel={feedLabel}
+                    openTrigger={isSelected ? openActionsMenuTrigger : undefined}
                   />
                 </div>
             </span>

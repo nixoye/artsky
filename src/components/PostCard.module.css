@@ -362,6 +362,12 @@
   margin-left: auto;
 }
 
+.postTime {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .mobileActions {
   display: none;
 }

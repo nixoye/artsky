@@ -58,8 +58,17 @@ export function FeedMixProvider({ children }: { children: ReactNode }) {
   const addEntry = useCallback((source: FeedSource) => {
     setEntries((prev) => {
       if (prev.some((e) => (e.source.uri ?? e.source.label) === (source.uri ?? source.label))) return prev
-      return [...prev, { source, percent: 0 }]
+      const next = [...prev, { source, percent: 0 }]
+      const n = next.length
+      const base = Math.floor(100 / n)
+      let remainder = 100 - base * n
+      next.forEach((e, i) => {
+        next[i] = { ...e, percent: base + (remainder > 0 ? 1 : 0) }
+        if (remainder > 0) remainder -= 1
+      })
+      return next
     })
+    setEnabledState(true)
   }, [])
 
   const removeEntry = useCallback((index: number) => {

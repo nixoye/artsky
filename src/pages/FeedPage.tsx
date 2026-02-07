@@ -61,6 +61,7 @@ export default function FeedPage() {
   const [blockConfirm, setBlockConfirm] = useState<{ did: string; handle: string; avatar?: string } | null>(null)
   const blockCancelRef = useRef<HTMLButtonElement>(null)
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
+  const [actionsMenuTrigger, setActionsMenuTrigger] = useState(0)
 
   const allSources = [...PRESET_SOURCES, ...savedFeedSources]
 
@@ -153,6 +154,12 @@ export default function FeedPage() {
     totalPercent: mixTotalPercent,
   } = useFeedMix()
   const [mixEditorOpen, setMixEditorOpen] = useState(false)
+  const feedLabel =
+    mixEnabled && mixEntries.length > 0
+      ? 'Feed mix'
+      : source.kind === 'timeline'
+        ? 'Following'
+        : source.label ?? undefined
 
   const load = useCallback(async (nextCursor?: string) => {
     try {
@@ -278,7 +285,7 @@ export default function FeedPage() {
         }
         return // let Tab/Enter reach the dialog buttons
       }
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm') e.preventDefault()
 
       if (key === 'h') {
         const item = items[i]
@@ -340,6 +347,10 @@ export default function FeedPage() {
       }
       if (key === 'c') {
         setKeyboardAddOpen(true)
+        return
+      }
+      if (key === 'm') {
+        setActionsMenuTrigger((t) => t + 1)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -396,15 +407,21 @@ export default function FeedPage() {
             </button>
             {mixEditorOpen && (
               <div className={styles.feedMixEditor}>
-                <label className={styles.feedMixUseLabel}>
-                  <input
-                    type="checkbox"
-                    checked={mixEnabled}
-                    onChange={(e) => setMixEnabled(e.target.checked)}
-                  />
-                  Use feed mix
-                </label>
-                <p className={styles.feedMixHint}>Add feeds and set percentage of posts from each (total must be 100%).</p>
+                <div className={styles.feedMixAddRow}>
+                  <span className={styles.feedMixAddLabel}>Add feed:</span>
+                  {allSources.filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label))).length > 0 ? (
+                    allSources
+                      .filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label)))
+                      .map((s) => (
+                        <button key={s.uri ?? s.label} type="button" className={styles.feedMixAddBtn} onClick={() => addEntry(s)}>
+                          + {s.label}
+                        </button>
+                      ))
+                  ) : (
+                    <span className={styles.feedMixAddMuted}>All feeds added</span>
+                  )}
+                </div>
+                <p className={styles.feedMixHint}>Percents are split equally when you add feeds. Adjust below if you like (total must be 100%).</p>
                 {mixEntries.map((entry, idx) => (
                   <div key={idx} className={styles.feedMixRow}>
                     <span className={styles.feedMixLabel}>{entry.source.label}</span>
@@ -423,20 +440,14 @@ export default function FeedPage() {
                 <div className={styles.feedMixTotal}>
                   Total: {mixTotalPercent}% {mixTotalPercent !== 100 && mixEntries.length > 0 && '(must be 100% to use mix)'}
                 </div>
-                <div className={styles.feedMixAddRow}>
-                  <span className={styles.feedMixAddLabel}>Add feed:</span>
-                  {allSources.filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label))).length > 0 ? (
-                    allSources
-                      .filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label)))
-                      .map((s) => (
-                        <button key={s.uri ?? s.label} type="button" className={styles.feedMixAddBtn} onClick={() => addEntry(s)}>
-                          + {s.label}
-                        </button>
-                      ))
-                  ) : (
-                    <span className={styles.feedMixAddMuted}>All feeds added</span>
-                  )}
-                </div>
+                <label className={styles.feedMixUseLabel}>
+                  <input
+                    type="checkbox"
+                    checked={mixEnabled}
+                    onChange={(e) => setMixEnabled(e.target.checked)}
+                  />
+                  Use feed mix
+                </label>
               </div>
             )}
           </div>
@@ -534,6 +545,8 @@ export default function FeedPage() {
                           openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                           onAddClose={() => setKeyboardAddOpen(false)}
                           onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                          feedLabel={feedLabel}
+                          openActionsMenuTrigger={actionsMenuTrigger}
                         />
                       </div>
                     )
@@ -565,6 +578,8 @@ export default function FeedPage() {
                     openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                     onAddClose={() => setKeyboardAddOpen(false)}
                     onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                    feedLabel={feedLabel}
+                    openActionsMenuTrigger={actionsMenuTrigger}
                   />
                 </div>
               ))}

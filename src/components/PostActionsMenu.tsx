@@ -20,6 +20,10 @@ interface PostActionsMenuProps {
   className?: string
   /** When true, use compact styling (e.g. for comments) */
   compact?: boolean
+  /** When set, show "From: {feedLabel}" at top of menu (e.g. feed name) */
+  feedLabel?: string
+  /** When this number changes, open the menu (e.g. from M key) */
+  openTrigger?: number
 }
 
 export default function PostActionsMenu({
@@ -31,6 +35,8 @@ export default function PostActionsMenu({
   onHidden,
   className,
   compact,
+  feedLabel,
+  openTrigger,
 }: PostActionsMenuProps) {
   const session = getSession()
   const { addHidden } = useHiddenPosts()
@@ -38,10 +44,18 @@ export default function PostActionsMenu({
   const [loading, setLoading] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const lastOpenTriggerRef = useRef<number>(0)
 
   useEffect(() => {
     if (!open) triggerRef.current?.blur()
   }, [open])
+
+  useEffect(() => {
+    if (openTrigger != null && openTrigger !== lastOpenTriggerRef.current) {
+      lastOpenTriggerRef.current = openTrigger
+      setOpen(true)
+    }
+  }, [openTrigger])
 
   useEffect(() => {
     if (!open) return
@@ -129,6 +143,9 @@ export default function PostActionsMenu({
       </button>
       {open && (
         <div className={styles.dropdown} role="menu">
+          {feedLabel ? (
+            <div className={styles.feedLabel} role="presentation">From: {feedLabel}</div>
+          ) : null}
           {!isOwnPost && (
             <button
               type="button"
