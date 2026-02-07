@@ -47,6 +47,14 @@ export default function PostDetailModal({ uri, openReply, onClose, onBack, canGo
     >
       <div className={styles.pane}>
         <div className={styles.modalTopBar}>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Close all"
+          >
+            ×
+          </button>
           {canGoBack ? (
             <button
               type="button"
@@ -56,17 +64,7 @@ export default function PostDetailModal({ uri, openReply, onClose, onBack, canGo
             >
               ←
             </button>
-          ) : (
-            <span className={styles.backBtnPlaceholder} aria-hidden />
-          )}
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label="Close all"
-          >
-            ×
-          </button>
+          ) : null}
         </div>
         <div className={styles.scroll}>
           <PostDetailContent

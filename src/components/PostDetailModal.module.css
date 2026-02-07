@@ -37,21 +37,16 @@
   min-height: 0;
 }
 
+/* Top bar 75% less height: compact padding and smaller buttons */
 .modalTopBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.25rem;
   flex-shrink: 0;
-  padding: 0.5rem 0.5rem 0.25rem;
+  padding: 0.25rem 0.5rem;
+  min-height: 0;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-}
-
-.backBtnPlaceholder {
-  display: inline-block;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex-shrink: 0;
 }
 
 .backBtn,
@@ -59,14 +54,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   border: none;
   border-radius: 50%;
   background: var(--glass-bg-strong);
   color: var(--text);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -87,8 +82,4 @@
 .backBtn:active,
 .closeBtn:active {
   transform: scale(0.96);
-}
-
-.closeBtn {
-  margin-left: auto;
 }
