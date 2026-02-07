@@ -15,47 +15,50 @@
   gap: 0.2rem;
 }
 
-/* Ratio control: "X in 10" under the feed pill, visually part of the same block */
-.ratioRow {
+/* Feed pill with − and + on the sides when in mix */
+.feedPillRow {
   display: flex;
   align-items: center;
-  gap: 0.2rem;
-  margin-top: 0.25rem;
-  padding: 0.2rem 0.35rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  width: fit-content;
+  gap: 0.25rem;
 }
 
-.ratioBtn {
-  width: 1.5rem;
-  height: 1.5rem;
+.ratioBtnSide {
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1;
   font-weight: 600;
   color: var(--muted);
-  background: transparent;
-  border: none;
-  border-radius: 0.2rem;
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
-.ratioBtn:hover {
+.ratioBtnSide:hover {
   color: var(--accent);
-  background: var(--glass-highlight);
+  border-color: var(--accent);
 }
 
-.ratioValue {
-  font-size: 0.75rem;
-  color: var(--muted);
-  min-width: 4.5rem;
+.feedPillWithFill {
+  padding: 0.5rem 0.75rem;
+  min-height: var(--touch-min);
+  min-width: 4rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--glass-radius-sm);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   text-align: center;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 .mixTotal {

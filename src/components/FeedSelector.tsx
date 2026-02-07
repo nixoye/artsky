@@ -55,18 +55,11 @@ export default function FeedSelector({
           const in10 = entry ? Math.max(1, Math.min(10, Math.round(entry.percent / 10))) : 1
           return (
             <div key={s.uri ?? s.label} className={styles.feedPillWrap}>
-              <button
-                type="button"
-                className={isInMix ? styles.active : ''}
-                onClick={() => onToggle(s)}
-              >
-                {s.label}
-              </button>
-              {showRatio && (
-                <div className={styles.ratioRow}>
+              {showRatio ? (
+                <div className={styles.feedPillRow}>
                   <button
                     type="button"
-                    className={styles.ratioBtn}
+                    className={styles.ratioBtnSide}
                     onClick={(e) => {
                       e.stopPropagation()
                       const next = Math.max(1, in10 - 1)
@@ -76,10 +69,19 @@ export default function FeedSelector({
                   >
                     −
                   </button>
-                  <span className={styles.ratioValue}>{in10} in 10 posts</span>
                   <button
                     type="button"
-                    className={styles.ratioBtn}
+                    className={styles.feedPillWithFill}
+                    style={{
+                      background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${entry.percent}%, var(--glass-highlight) ${entry.percent}%)`,
+                    }}
+                    onClick={() => onToggle(s)}
+                  >
+                    {s.label}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ratioBtnSide}
                     onClick={(e) => {
                       e.stopPropagation()
                       const next = Math.min(10, in10 + 1)
@@ -90,6 +92,14 @@ export default function FeedSelector({
                     +
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  className={isInMix ? styles.active : ''}
+                  onClick={() => onToggle(s)}
+                >
+                  {s.label}
+                </button>
               )}
             </div>
           )
