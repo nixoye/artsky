@@ -352,8 +352,8 @@ export default function Layout({ title, children, showNav }: Props) {
       setSearchOverlayBottom(0)
       requestAnimationFrame(() => {
         setTimeout(() => {
-          searchInputRef.current?.focus()
-        }, 100)
+          searchInputRef.current?.focus({ preventScroll: false })
+        }, 200)
       })
     }
   }
@@ -938,13 +938,13 @@ export default function Layout({ title, children, showNav }: Props) {
                 aria-hidden
               />
               <div
-                className={`${styles.searchOverlayCenter} ${styles.searchOverlayAboveKeyboard}`}
+                className={`${styles.searchOverlayCenter} ${!isDesktop ? styles.searchOverlayMobileTop : styles.searchOverlayAboveKeyboard}`}
                 role="dialog"
                 aria-label="Search"
-                style={{ bottom: searchOverlayBottom }}
+                style={!isDesktop ? undefined : { bottom: searchOverlayBottom }}
               >
                 <div className={styles.searchOverlayCard}>
-                  <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove />
+                  <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove={isDesktop} />
                 </div>
               </div>
             </>

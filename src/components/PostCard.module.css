@@ -27,6 +27,9 @@
 }
 
 @media (max-width: 767px) {
+  .card {
+    outline: none;
+  }
   .cardSelected {
     outline: none;
   }
@@ -47,6 +50,9 @@
 
 @media (max-width: 767px) {
   .cardLink:focus-visible {
+    outline: none;
+  }
+  .card:focus-within .cardLink {
     outline: none;
   }
 }
@@ -340,9 +346,47 @@
   margin-left: auto;
 }
 
+.mobileActions {
+  display: none;
+}
+
+.mobileLikeBtn,
+.mobileLikeBtnLiked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  border-radius: 0.35rem;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobileLikeBtn:hover,
+.mobileLikeBtnLiked:hover {
+  color: var(--accent);
+}
+
+.mobileLikeBtnLiked {
+  color: var(--accent);
+}
+
+.mobileLikeCount {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.mobileLikeBtnLiked .mobileLikeCount {
+  color: inherit;
+}
+
 @media (max-width: 767px) {
   .meta {
     position: relative;
+    padding-bottom: 0.5rem;
   }
   .handleRow {
     flex-direction: row;
@@ -354,11 +398,18 @@
     min-width: 0;
   }
   .handleRowMeta {
-    position: absolute;
-    bottom: 0.35rem;
-    right: 0.35rem;
-    margin-left: 0;
-    width: auto;
+    display: none;
+  }
+  .mobileActions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border);
+  }
+  .mobileActions .addWrap {
+    opacity: 1;
   }
   .addWrap {
     opacity: 1;
@@ -513,11 +564,11 @@
 
 @media (max-width: 767px) {
   .text {
-    font-size: clamp(0.65rem, 2.2vw + 0.5rem, 0.8rem);
-    max-height: 3.6em;
+    font-size: clamp(0.75rem, 2.2vw + 0.5rem, 0.85rem);
+    max-height: none;
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
   }
   .card .addWrap {

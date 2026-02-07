@@ -71,6 +71,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isFollowingAuthor = !!authorViewer?.following
   const isOwnPost = session?.did === post.author.did
   const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
+  const postViewer = (post as { viewer?: { like?: string }; likeCount?: number })
+  const initialLikedUri = postViewer.viewer?.like
+  const [likedUri, setLikedUri] = useState<string | undefined>(initialLikedUri)
+  const [likeCount, setLikeCount] = useState(postViewer.likeCount ?? 0)
+  const [likeLoading, setLikeLoading] = useState(false)
 
   const [imageIndex, setImageIndex] = useState(0)
   const [multiImageExpanded, setMultiImageExpanded] = useState(false)
@@ -81,6 +86,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const [showLongPressMenu, setShowLongPressMenu] = useState(false)
   const [longPressViewport, setLongPressViewport] = useState({ x: 0, y: 0 })
   const addRef = useRef<HTMLDivElement>(null)
+  const addRefMobile = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const longPressMenuRef = useRef<HTMLDivElement>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -90,6 +96,36 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const touchStartRef = useRef({ x: 0, y: 0 })
   const lastTapRef = useRef(0)
   const didDoubleTapRef = useRef(false)
+
+  useEffect(() => {
+    setLikedUri(initialLikedUri)
+    setLikeCount(postViewer.likeCount ?? 0)
+  }, [post.uri, initialLikedUri, postViewer.likeCount])
+
+  async function handleLikeClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!session?.did || likeLoading) return
+    const isLiked = !!likedUri
+    setLikeLoading(true)
+    try {
+      if (isLiked) {
+        if (likedUri) await agent.deleteLike(likedUri)
+        setLikedUri(undefined)
+        setLikeCount((c) => Math.max(0, c - 1))
+      } else {
+        const res = await agent.like(post.uri, post.cid)
+        setLikedUri(res.uri)
+        setLikeCount((c) => c + 1)
+      }
+    } catch {
+      // revert
+      setLikedUri(initialLikedUri)
+      setLikeCount(postViewer.likeCount ?? 0)
+    } finally {
+      setLikeLoading(false)
+    }
+  }
 
   const clearLongPressTimer = useCallback(() => {
     if (longPressTimerRef.current !== null) {
@@ -142,7 +178,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   useEffect(() => {
     if (!addOpen) return
     function onDocClick(e: MouseEvent) {
-      if (addRef.current && !addRef.current.contains(e.target as Node)) setAddOpen(false)
+      const target = e.target as Node
+      if (addRef.current?.contains(target) || addRefMobile.current?.contains(target)) return
+      setAddOpen(false)
     }
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
@@ -602,6 +640,86 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation />
             </p>
           ) : null}
+          <div className={styles.mobileActions}>
+            {session && (
+              <button
+                type="button"
+                className={likedUri ? styles.mobileLikeBtnLiked : styles.mobileLikeBtn}
+                onClick={handleLikeClick}
+                disabled={likeLoading}
+                aria-label={likedUri ? 'Unlike' : 'Like'}
+                title={likedUri ? 'Unlike' : 'Like'}
+              >
+                <HeartIcon filled={!!likedUri} />
+                {likeCount > 0 && <span className={styles.mobileLikeCount}>{likeCount}</span>}
+              </button>
+            )}
+            <div
+              ref={addRefMobile}
+              className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className={styles.addToBoardBtn}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setAddOpen((o) => !o)
+                }}
+                aria-label="Add to artboard"
+                aria-expanded={addOpen}
+              >
+                +
+              </button>
+              {addOpen && (
+                <div className={styles.addDropdown}>
+                  {boards.length === 0 ? null : (
+                    <>
+                      {boards.map((b) => {
+                        const alreadyIn = isPostInArtboard(b.id, post.uri)
+                        const selected = addToBoardIds.has(b.id)
+                        return (
+                          <label key={b.id} className={styles.addBoardLabel}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
+                              disabled={alreadyIn}
+                              className={styles.addBoardCheckbox}
+                            />
+                            <span className={styles.addBoardText}>
+                              {alreadyIn ? <>✓ {b.name}</> : b.name}
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </>
+                  )}
+                  <div className={styles.addDropdownNew}>
+                    <input
+                      type="text"
+                      placeholder="New collection name"
+                      value={newBoardName}
+                      onChange={(e) => setNewBoardName(e.target.value)}
+                      className={styles.addBoardInput}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
+                    />
+                  </div>
+                  <div className={styles.addDropdownActions}>
+                    <button
+                      type="button"
+                      className={styles.addBoardSubmit}
+                      onClick={handleAddToArtboard}
+                      disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
+                    >
+                      Add to selected
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         )}
       </div>
