@@ -216,6 +216,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (postModalState) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -265,7 +266,7 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols])
+  }, [location.pathname, cols, postModalState])
 
   return (
     <Layout title="Feed" showNav>
