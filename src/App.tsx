@@ -10,6 +10,7 @@ import { FeedMixProvider } from './context/FeedMixContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
 import { HiddenPostsProvider } from './context/HiddenPostsContext'
+import { ModerationProvider } from './context/ModerationContext'
 import LoginPage from './pages/LoginPage'
 import FeedPage from './pages/FeedPage'
 import ArtboardsPage from './pages/ArtboardsPage'
@@ -19,6 +20,7 @@ import ProfilePage from './pages/ProfilePage'
 import TagPage from './pages/TagPage'
 import ForumPage from './pages/ForumPage'
 import ForumPostDetailPage from './pages/ForumPostDetailPage'
+import ModerationPage from './pages/ModerationPage'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -69,6 +71,7 @@ function AppRoutes() {
       <Route path="/tag/:tag" element={<TagPage />} />
       <Route path="/forum" element={<ForumPage />} />
       <Route path="/forum/post/*" element={<ForumPostDetailPage />} />
+      <Route path="/settings/moderation" element={<ModerationPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>
@@ -88,7 +91,9 @@ export default function App() {
                       <EditProfileProvider>
                     <ProfileModalProvider>
                   <HiddenPostsProvider>
-                    <AppRoutes />
+                    <ModerationProvider>
+                      <AppRoutes />
+                    </ModerationProvider>
                   </HiddenPostsProvider>
                     </ProfileModalProvider>
                       </EditProfileProvider>

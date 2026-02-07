@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { agent, searchPostsByTag, getPostMediaInfo } from '../lib/bsky'
+import { agent, searchPostsByTag, getPostMediaInfo, isPostNsfw } from '../lib/bsky'
 import type { TimelineItem } from '../lib/bsky'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useViewMode } from '../context/ViewModeContext'
+import { useModeration } from '../context/ModerationContext'
 import styles from './TagPage.module.css'
 
 /** Wrap PostView into TimelineItem shape for PostCard */
@@ -57,7 +58,10 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
     }
   }, [tag, load])
 
-  const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
+  const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
+  const mediaItems = items
+    .filter((item) => getPostMediaInfo(item.post))
+    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   mediaItemsRef.current = mediaItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -160,6 +164,8 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
                   openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                   onAddClose={() => setKeyboardAddOpen(false)}
                   onPostClick={inModal ? (uri) => openPostModal(uri) : undefined}
+                  nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                  onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                 />
               </div>
             ))}

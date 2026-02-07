@@ -162,7 +162,6 @@ function PencilIcon() {
   )
 }
 
-const BSKY_MODERATION_URL = 'https://bsky.app/settings'
 
 function ShieldIcon() {
   return (
@@ -709,10 +708,8 @@ export default function Layout({ title, children, showNav }: Props) {
             >
               Edit profile
             </button>
-            <a
-              href={BSKY_MODERATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/settings/moderation"
               className={styles.menuActionBtn}
               onClick={() => {
                 setAccountMenuOpen(false)
@@ -720,7 +717,7 @@ export default function Layout({ title, children, showNav }: Props) {
               }}
             >
               Moderation
-            </a>
+            </Link>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
             </button>
@@ -795,17 +792,15 @@ export default function Layout({ title, children, showNav }: Props) {
             <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
               <PencilIcon />
             </button>
-            <a
-              href={BSKY_MODERATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/settings/moderation"
               className={styles.menuCompactActionBtn}
               onClick={() => setAccountSheetOpen(false)}
               title="Moderation"
               aria-label="Moderation"
             >
               <ShieldIcon />
-            </a>
+            </Link>
             <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
               <PlusIcon />
             </button>

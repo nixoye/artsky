@@ -223,6 +223,18 @@ export type TimelineResponse = Awaited<ReturnType<typeof agent.getTimeline>>
 export type TimelineItem = TimelineResponse['data']['feed'][number]
 export type PostView = TimelineItem['post']
 
+/** NSFW/adult label values (self-labels or from labeler) that we treat as sensitive. */
+const NSFW_LABEL_VALS = new Set(['porn', 'sexual', 'nudity', 'graphic-media'])
+
+/** True if the post has NSFW/adult content labels (self-labels on record or labels on post view). */
+export function isPostNsfw(post: PostView): boolean {
+  const record = post.record as { labels?: { values?: { val: string }[] } } | undefined
+  const selfLabels = record?.labels?.values
+  if (selfLabels?.some((v) => NSFW_LABEL_VALS.has(v.val))) return true
+  const viewLabels = (post as { labels?: { val: string }[] }).labels
+  return !!viewLabels?.some((l) => NSFW_LABEL_VALS.has(l.val))
+}
+
 /** Entry for mixed feed: source identifier and percentage (0–100). */
 export type FeedMixEntryInput = { source: { kind: 'timeline' | 'custom'; uri?: string }; percent: number }
 

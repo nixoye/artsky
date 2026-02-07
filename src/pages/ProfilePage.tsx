@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
-import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, isPostNsfw, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
 import Layout from '../components/Layout'
 import { useViewMode } from '../context/ViewModeContext'
+import { useModeration } from '../context/ModerationContext'
 import styles from './ProfilePage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
@@ -237,8 +238,13 @@ export function ProfileContent({
     tab === 'posts'
       ? [...authorFeedItemsRaw].sort((a, b) => (isPinned(b) ? 1 : 0) - (isPinned(a) ? 1 : 0))
       : authorFeedItemsRaw
-  const mediaItems = authorFeedItems.filter((item) => getPostMediaInfo(item.post))
-  const likedMediaItems = likedItems.filter((item) => getPostMediaInfo(item.post))
+  const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
+  const mediaItems = authorFeedItems
+    .filter((item) => getPostMediaInfo(item.post))
+    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
+  const likedMediaItems = likedItems
+    .filter((item) => getPostMediaInfo(item.post))
+    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const profileGridItems = tab === 'liked' ? likedMediaItems : mediaItems
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   profileGridItemsRef.current = profileGridItems
@@ -659,6 +665,8 @@ export function ProfileContent({
                       openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
                       onAddClose={() => setKeyboardAddOpen(false)}
                       onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                     />
                   </div>
                 ))}
@@ -691,6 +699,8 @@ export function ProfileContent({
                     openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
                     onAddClose={() => setKeyboardAddOpen(false)}
                     onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                    nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                    onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                   />
                 </div>
               ))}

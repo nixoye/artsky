@@ -44,6 +44,10 @@ interface Props {
   onAspectRatio?: (aspect: number) => void
   /** When true, card fills grid cell height and media uses object-fit: cover (bento mode) */
   fillCell?: boolean
+  /** When true, show media blurred with a "Tap to reveal" overlay (NSFW blurred mode) */
+  nsfwBlurred?: boolean
+  /** Called when user taps to reveal NSFW content */
+  onNsfwUnblur?: () => void
 }
 
 function RepostIcon() {
@@ -74,7 +78,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -571,6 +575,27 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             <>
               <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" onLoad={handleImageLoad} />
             </>
+          )}
+          {nsfwBlurred && onNsfwUnblur && hasMedia && (
+            <div
+              className={styles.nsfwOverlay}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onNsfwUnblur()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onNsfwUnblur()
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Reveal sensitive content"
+            >
+              <span className={styles.nsfwOverlayText}>Tap to reveal</span>
+            </div>
           )}
         </div>
         {!artOnly && (

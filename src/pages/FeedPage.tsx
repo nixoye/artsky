@@ -10,6 +10,7 @@ import {
   resolveFeedUri,
   addSavedFeed,
   getMixedFeed,
+  isPostNsfw,
   type TimelineItem,
 } from '../lib/bsky'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
@@ -25,6 +26,7 @@ import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useFeedMix } from '../context/FeedMixContext'
 import { blockAccount } from '../lib/bsky'
 import { useViewMode } from '../context/ViewModeContext'
+import { useModeration } from '../context/ModerationContext'
 import styles from './FeedPage.module.css'
 
 const PRESET_SOURCES: FeedSource[] = [
@@ -242,9 +244,11 @@ export default function FeedPage() {
 
   const { isHidden, addHidden } = useHiddenPosts()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
+  const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const displayItems = items
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => !isHidden(item.post.uri))
+    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -582,6 +586,8 @@ export default function FeedPage() {
                             onActionsMenuClose={() => setOpenMenuIndex(null)}
                             onAspectRatio={undefined}
                             fillCell={false}
+                            nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                            onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                           />
                         </div>
                       ))}
@@ -613,6 +619,8 @@ export default function FeedPage() {
                       onActionsMenuClose={() => setOpenMenuIndex(null)}
                       onAspectRatio={undefined}
                       fillCell={false}
+                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                     />
                   </div>
                 ))}
