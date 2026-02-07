@@ -515,32 +515,27 @@ export default function FeedPage() {
         ) : (
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {displayItems.map((item, index) => {
-                const ar = aspectRatios[index]
-                const isPortrait = ar != null && ar < 0.85
-                const bentoSpan = cols >= 2 ? (isPortrait ? styles.bentoSpan2 : styles.bentoSpan1) : ''
-                return (
-                  <div
-                    key={item.post.uri}
-                    className={cols >= 2 ? `${styles.bentoItem} ${bentoSpan}` : ''}
-                    onMouseEnter={() => setKeyboardFocusIndex(index)}
-                  >
-                    <PostCard
-                      item={item}
-                      isSelected={index === keyboardFocusIndex}
-                      cardRef={(el) => { cardRefsRef.current[index] = el }}
-                      openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                      onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                      feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-                      openActionsMenu={openMenuIndex === index}
-                      onActionsMenuClose={() => setOpenMenuIndex(null)}
-                      onAspectRatio={cols >= 2 ? (aspect) => setAspectRatio(index, aspect) : undefined}
-                      fillCell={cols >= 2}
-                    />
-                  </div>
-                )
-              })}
+              {displayItems.map((item, index) => (
+                <div
+                  key={item.post.uri}
+                  className={cols >= 2 ? styles.gridItem : ''}
+                  onMouseEnter={() => setKeyboardFocusIndex(index)}
+                >
+                  <PostCard
+                    item={item}
+                    isSelected={index === keyboardFocusIndex}
+                    cardRef={(el) => { cardRefsRef.current[index] = el }}
+                    openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                    onAddClose={() => setKeyboardAddOpen(false)}
+                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                    feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                    openActionsMenu={openMenuIndex === index}
+                    onActionsMenuClose={() => setOpenMenuIndex(null)}
+                    onAspectRatio={cols >= 2 ? (aspect) => setAspectRatio(index, aspect) : undefined}
+                    fillCell={false}
+                  />
+                </div>
+              ))}
             </div>
             {cursor && (
               <>

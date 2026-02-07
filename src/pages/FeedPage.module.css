@@ -327,11 +327,11 @@
   }
 }
 
-/* Bento-style 2/3 col: dense packing, portrait cards span 2 rows to reduce gaps */
+/* 2/3 col: row height follows card content so cards scale with media aspect ratio */
 .gridView2,
 .gridView3 {
-  grid-auto-rows: 160px;
-  grid-auto-flow: dense;
+  grid-auto-rows: min-content;
+  align-items: start;
 }
 .gridView2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -342,22 +342,9 @@
   gap: 0.5rem;
 }
 
-.bentoItem {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.bentoItem > div {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.bentoSpan1 {
-  grid-row: span 1;
-}
-.bentoSpan2 {
-  grid-row: span 2;
+/* Wrapper so card can size naturally; min-width prevents overflow in grid */
+.gridItem {
+  min-width: 0;
 }
 
 /* Column-based layout for 2/3 cols: items flow vertically per column to avoid big gaps between vertical and horizontal posts */
