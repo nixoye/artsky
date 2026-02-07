@@ -68,7 +68,7 @@ export default function ProfileModal({ handle, onClose, onBack, canGoBack }: Pro
           ) : null}
         </div>
         <div className={styles.scroll}>
-          <ProfileContent handle={handle} openProfileModal={openProfileModal} />
+          <ProfileContent handle={handle} openProfileModal={openProfileModal} inModal />
         </div>
       </div>
     </div>

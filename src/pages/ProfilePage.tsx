@@ -30,9 +30,12 @@ type GeneratorView = { uri: string; displayName: string; description?: string; a
 export function ProfileContent({
   handle,
   openProfileModal,
+  inModal = false,
 }: {
   handle: string
   openProfileModal: (h: string) => void
+  /** When true, we are the profile popup content so keyboard shortcuts always apply. When false, skip if another modal (e.g. post) is open. */
+  inModal?: boolean
 }) {
   const [tab, setTab] = useState<ProfileTab>('posts')
   const [items, setItems] = useState<TimelineItem[]>([])
@@ -265,7 +268,8 @@ export function ProfileContent({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isModalOpen) return
+      /* When on full page, don't steal keys if another modal (e.g. post) is open. When we are the profile popup (inModal), always handle. */
+      if (!inModal && isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -310,7 +314,7 @@ export function ProfileContent({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tab, cols, isModalOpen, openPostModal])
+  }, [tab, cols, isModalOpen, openPostModal, inModal])
 
   const postText = (post: TimelineItem['post']) => (post.record as { text?: string })?.text?.trim() ?? ''
   const isReply = (post: TimelineItem['post']) => !!(post.record as { reply?: unknown })?.reply
