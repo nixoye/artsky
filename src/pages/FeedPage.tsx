@@ -527,35 +527,73 @@ export default function FeedPage() {
           </div>
         ) : (
           <>
-            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {displayItems.map((item, index) => (
-                <div
-                  key={item.post.uri}
-                  className={cols >= 2 ? styles.gridItem : ''}
-                  onMouseEnter={() => {
-                  if (mouseMovedRef.current) {
-                    mouseMovedRef.current = false
-                    setKeyboardFocusIndex(index)
-                  }
-                }}
-                >
-                  <PostCard
-                    item={item}
-                    isSelected={index === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[index] = el }}
-                    openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                    feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-openActionsMenu={openMenuIndex === index}
+            {cols >= 2 ? (
+              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
+                {Array.from({ length: cols }, (_, colIndex) => (
+                  <div key={colIndex} className={styles.gridColumn}>
+                    {displayItems
+                      .map((item, index) => ({ item, index }))
+                      .filter(({ index }) => index % cols === colIndex)
+                      .map(({ item, index }) => (
+                        <div
+                          key={item.post.uri}
+                          className={styles.gridItem}
+                          onMouseEnter={() => {
+                            if (mouseMovedRef.current) {
+                              mouseMovedRef.current = false
+                              setKeyboardFocusIndex(index)
+                            }
+                          }}
+                        >
+                          <PostCard
+                            item={item}
+                            isSelected={index === keyboardFocusIndex}
+                            cardRef={(el) => { cardRefsRef.current[index] = el }}
+                            openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                            onAddClose={() => setKeyboardAddOpen(false)}
+                            onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                            feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                            openActionsMenu={openMenuIndex === index}
+                            onActionsMenuOpen={() => setOpenMenuIndex(index)}
+                            onActionsMenuClose={() => setOpenMenuIndex(null)}
+                            onAspectRatio={undefined}
+                            fillCell={false}
+                          />
+                        </div>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
+                {displayItems.map((item, index) => (
+                  <div
+                    key={item.post.uri}
+                    onMouseEnter={() => {
+                      if (mouseMovedRef.current) {
+                        mouseMovedRef.current = false
+                        setKeyboardFocusIndex(index)
+                      }
+                    }}
+                  >
+                    <PostCard
+                      item={item}
+                      isSelected={index === keyboardFocusIndex}
+                      cardRef={(el) => { cardRefsRef.current[index] = el }}
+                      openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                      onAddClose={() => setKeyboardAddOpen(false)}
+                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                      openActionsMenu={openMenuIndex === index}
                       onActionsMenuOpen={() => setOpenMenuIndex(index)}
                       onActionsMenuClose={() => setOpenMenuIndex(null)}
-                    onAspectRatio={undefined}
-                    fillCell={false}
-                  />
-                </div>
-              ))}
-            </div>
+                      onAspectRatio={undefined}
+                      fillCell={false}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             {cursor && (
               <>
                 <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />
