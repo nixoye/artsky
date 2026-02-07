@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
@@ -27,9 +28,13 @@ type ProfileState = {
 
 type GeneratorView = { uri: string; displayName: string; description?: string; avatar?: string; likeCount?: number }
 
-export default function ProfilePage() {
-  const { handle: handleParam } = useParams<{ handle: string }>()
-  const handle = handleParam ? decodeURIComponent(handleParam) : ''
+export function ProfileContent({
+  handle,
+  openProfileModal,
+}: {
+  handle: string
+  openProfileModal: (h: string) => void
+}) {
   const [tab, setTab] = useState<ProfileTab>('posts')
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
@@ -346,18 +351,8 @@ export default function ProfilePage() {
     }
   }
 
-  if (!handle) {
-    return (
-      <Layout title="Profile" showNav>
-        <div className={styles.wrap}>
-          <p className={styles.empty}>No profile specified.</p>
-        </div>
-      </Layout>
-    )
-  }
-
   return (
-    <Layout title={`@${handle}`} showNav>
+    <>
       {postModalState && (
         <PostDetailModal
           uri={postModalState.uri}
@@ -484,7 +479,11 @@ export default function ProfilePage() {
                                   <Link
                                     to={`/profile/${encodeURIComponent(authorHandle)}`}
                                     className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      openProfileModal(authorHandle)
+                                    }}
                                   >
                                     @{authorHandle}
                                   </Link>
@@ -510,6 +509,10 @@ export default function ProfilePage() {
                                 <Link
                                   to={`/profile/${encodeURIComponent(authorHandle)}`}
                                   className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    openProfileModal(authorHandle)
+                                  }}
                                 >
                                   @{authorHandle}
                                 </Link>
@@ -566,7 +569,11 @@ export default function ProfilePage() {
                                 <Link
                                   to={`/profile/${encodeURIComponent(handle)}`}
                                   className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    openProfileModal(handle)
+                                  }}
                                 >
                                   @{handle}
                                 </Link>
@@ -673,6 +680,28 @@ export default function ProfilePage() {
         )}
         </div>
       </div>
+    </>
+  )
+}
+
+export default function ProfilePage() {
+  const { handle: handleParam } = useParams<{ handle: string }>()
+  const handle = handleParam ? decodeURIComponent(handleParam) : ''
+  const { openProfileModal } = useProfileModal()
+
+  if (!handle) {
+    return (
+      <Layout title="Profile" showNav>
+        <div className={styles.wrap}>
+          <p className={styles.empty}>No profile specified.</p>
+        </div>
+      </Layout>
+    )
+  }
+
+  return (
+    <Layout title={`@${handle}`} showNav>
+      <ProfileContent handle={handle} openProfileModal={openProfileModal} />
     </Layout>
   )
 }

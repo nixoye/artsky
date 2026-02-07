@@ -5,6 +5,7 @@ import { SessionProvider } from './context/SessionContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
 import { ArtOnlyProvider } from './context/ArtOnlyContext'
+import { ProfileModalProvider } from './context/ProfileModalContext'
 import LoginPage from './pages/LoginPage'
 import FeedPage from './pages/FeedPage'
 import ArtboardsPage from './pages/ArtboardsPage'
@@ -163,7 +164,9 @@ export default function App() {
           <SessionProvider>
             <ViewModeProvider>
               <ArtOnlyProvider>
-                <AppRoutes />
+                <ProfileModalProvider>
+                  <AppRoutes />
+                </ProfileModalProvider>
               </ArtOnlyProvider>
             </ViewModeProvider>
           </SessionProvider>
