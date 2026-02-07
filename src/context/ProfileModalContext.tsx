@@ -2,17 +2,16 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import PostDetailModal from '../components/PostDetailModal'
 import ProfileModal from '../components/ProfileModal'
 
-type ModalState =
+type ModalItem =
   | { type: 'post'; uri: string; openReply?: boolean }
   | { type: 'profile'; handle: string }
-  | null
 
 type ProfileModalContextValue = {
   openProfileModal: (handle: string) => void
   closeProfileModal: () => void
   openPostModal: (uri: string, openReply?: boolean) => void
   closePostModal: () => void
-  /** Close whichever modal is open (post or profile). */
+  /** Go back to previous modal (Q) or close if only one open. */
   closeModal: () => void
   /** True if any modal (post or profile) is open. */
   isModalOpen: boolean
@@ -21,35 +20,30 @@ type ProfileModalContextValue = {
 const ProfileModalContext = createContext<ProfileModalContextValue | null>(null)
 
 export function ProfileModalProvider({ children }: { children: ReactNode }) {
-  const [modalState, setModalState] = useState<ModalState>(null)
+  const [modalStack, setModalStack] = useState<ModalItem[]>([])
 
   const openProfileModal = useCallback((handle: string) => {
-    setModalState({ type: 'profile', handle })
+    setModalStack((prev) => [...prev, { type: 'profile', handle }])
   }, [])
 
-  const closeProfileModal = useCallback(() => {
-    setModalState((s) => (s?.type === 'profile' ? null : s))
-  }, [])
 
   const openPostModal = useCallback((uri: string, openReply?: boolean) => {
-    setModalState({ type: 'post', uri, openReply })
+    setModalStack((prev) => [...prev, { type: 'post', uri, openReply }])
   }, [])
 
-  const closePostModal = useCallback(() => {
-    setModalState((s) => (s?.type === 'post' ? null : s))
-  }, [])
-
+  /** Q / Escape / close button: go back to previous popup or close if none. */
   const closeModal = useCallback(() => {
-    setModalState(null)
+    setModalStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : []))
   }, [])
 
-  const isModalOpen = modalState !== null
+  const isModalOpen = modalStack.length > 0
+  const currentModal = modalStack[modalStack.length - 1] ?? null
 
   const value: ProfileModalContextValue = {
     openProfileModal,
-    closeProfileModal,
+    closeProfileModal: closeModal,
+    closePostModal: closeModal,
     openPostModal,
-    closePostModal,
     closeModal,
     isModalOpen,
   }
@@ -57,16 +51,16 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
   return (
     <ProfileModalContext.Provider value={value}>
       {children}
-      {modalState?.type === 'post' && (
+      {currentModal?.type === 'post' && (
         <PostDetailModal
-          uri={modalState.uri}
-          openReply={modalState.openReply}
+          uri={currentModal.uri}
+          openReply={currentModal.openReply}
           onClose={closeModal}
         />
       )}
-      {modalState?.type === 'profile' && (
+      {currentModal?.type === 'profile' && (
         <ProfileModal
-          handle={modalState.handle}
+          handle={currentModal.handle}
           onClose={closeModal}
         />
       )}
