@@ -162,6 +162,16 @@ function PencilIcon() {
   )
 }
 
+const BSKY_MODERATION_URL = 'https://bsky.app/settings'
+
+function ShieldIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  )
+}
+
 function ThemeSunIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -650,6 +660,18 @@ export default function Layout({ title, children, showNav }: Props) {
             >
               Edit profile
             </button>
+            <a
+              href={BSKY_MODERATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.menuActionBtn}
+              onClick={() => {
+                setAccountMenuOpen(false)
+                setAccountSheetOpen(false)
+              }}
+            >
+              Moderation
+            </a>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
             </button>
@@ -715,6 +737,17 @@ export default function Layout({ title, children, showNav }: Props) {
             <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
               <PencilIcon />
             </button>
+            <a
+              href={BSKY_MODERATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.menuCompactActionBtn}
+              onClick={() => setAccountSheetOpen(false)}
+              title="Moderation"
+              aria-label="Moderation"
+            >
+              <ShieldIcon />
+            </a>
             <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
               <PlusIcon />
             </button>
