@@ -51,6 +51,8 @@ export default function FeedPage() {
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
   const lastScrollIntoViewIndexRef = useRef<number>(-1)
+  /** Only scroll into view when focus was changed by keyboard (W/S/A/D), not by mouse hover */
+  const scrollIntoViewFromKeyboardRef = useRef(false)
 
   const allSources = [...PRESET_SOURCES, ...savedFeedSources]
 
@@ -200,8 +202,10 @@ export default function FeedPage() {
     setKeyboardFocusIndex((i) => (mediaItems.length ? Math.min(i, mediaItems.length - 1) : 0))
   }, [mediaItems.length])
 
-  // Scroll focused card into view when changing focus with WASD (match post detail behavior)
+  // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
+    if (!scrollIntoViewFromKeyboardRef.current) return
+    scrollIntoViewFromKeyboardRef.current = false
     if (keyboardFocusIndex === lastScrollIntoViewIndexRef.current) return
     lastScrollIntoViewIndexRef.current = keyboardFocusIndex
     const index = keyboardFocusIndex
@@ -230,18 +234,22 @@ export default function FeedPage() {
       if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c') e.preventDefault()
 
       if (key === 'w') {
+        scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
       if (key === 's') {
+        scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
+        scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
+        scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
         return
       }
