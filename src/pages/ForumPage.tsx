@@ -5,6 +5,7 @@ import { FORUM_DISCOVERY_URLS } from '../config/forumDiscovery'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
+import { useProfileModal } from '../context/ProfileModalContext'
 import styles from './ForumPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
@@ -45,6 +46,7 @@ export default function ForumPage() {
   const [focusedIndex, setFocusedIndex] = useState(0)
   const session = getSession()
   const navigate = useNavigate()
+  const { isModalOpen } = useProfileModal()
   const listRef = useRef<HTMLUListElement>(null)
   const focusedIndexRef = useRef(focusedIndex)
   focusedIndexRef.current = focusedIndex
@@ -93,6 +95,7 @@ export default function ForumPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -116,7 +119,7 @@ export default function ForumPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [filteredDocuments, navigate])
+  }, [filteredDocuments, navigate, isModalOpen])
 
   const showSignInForTab = (tab === 'followed' || tab === 'mine') && !session
 

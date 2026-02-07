@@ -5,6 +5,7 @@ import type { TimelineItem } from '../lib/bsky'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './TagPage.module.css'
 
@@ -18,6 +19,7 @@ export default function TagPage() {
   const tag = tagParam ? decodeURIComponent(tagParam) : ''
   const navigate = useNavigate()
   const { viewMode } = useViewMode()
+  const { isModalOpen } = useProfileModal()
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
@@ -71,6 +73,7 @@ export default function TagPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -113,7 +116,7 @@ export default function TagPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [mediaItems.length, cols, navigate])
+  }, [mediaItems.length, cols, navigate, isModalOpen])
 
   if (!tag) {
     return (

@@ -13,6 +13,7 @@ import {
   type StandardSiteDocumentBlobRef,
   type ForumReplyView,
 } from '../lib/bsky'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
@@ -118,6 +119,7 @@ export default function ForumPostDetailPage() {
   const [likeUriOverrideMap, setLikeUriOverrideMap] = useState<Record<string, string>>({})
   const [replyAs, setReplyAs] = useState<{ handle: string; avatar?: string }>({ handle: '' })
   const { session, sessionsList, switchAccount } = useSession()
+  const { isModalOpen } = useProfileModal()
   const currentDid = session?.did ?? ''
   const inlineReplyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const loadDocRetriedRef = useRef(false)
@@ -234,6 +236,7 @@ export default function ForumPostDetailPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -276,7 +279,7 @@ export default function ForumPostDetailPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pathname, doc, forumFocusTotal, replyTreeFlat.length])
+  }, [pathname, doc, forumFocusTotal, replyTreeFlat.length, isModalOpen])
 
   async function handleReplySubmit(e: React.FormEvent) {
     e.preventDefault()
