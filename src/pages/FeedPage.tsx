@@ -199,13 +199,19 @@ export default function FeedPage() {
     setKeyboardFocusIndex((i) => (mediaItems.length ? Math.min(i, mediaItems.length - 1) : 0))
   }, [mediaItems.length])
 
-  // Scroll focused card into view only when user changes focus (WASD etc.); skip on POP and when index was only clamped after load more
+  // Scroll focused card into view when user changes focus (WASD etc.); use block: 'start' so S reliably scrolls the page down
   useEffect(() => {
     if (navigationType === 'POP') return
     if (keyboardFocusIndex === lastScrollIntoViewIndexRef.current) return
     lastScrollIntoViewIndexRef.current = keyboardFocusIndex
-    const el = cardRefsRef.current[keyboardFocusIndex]
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    const index = keyboardFocusIndex
+    const raf = requestAnimationFrame(() => {
+      const el = cardRefsRef.current[index]
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+      }
+    })
+    return () => cancelAnimationFrame(raf)
   }, [keyboardFocusIndex, navigationType])
 
   useEffect(() => {
