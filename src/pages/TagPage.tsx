@@ -14,12 +14,10 @@ function toTimelineItem(post: AppBskyFeedDefs.PostView): TimelineItem {
   return { post }
 }
 
-export default function TagPage() {
-  const { tag: tagParam } = useParams<{ tag: string }>()
-  const tag = tagParam ? decodeURIComponent(tagParam) : ''
+export function TagContent({ tag, inModal = false }: { tag: string; inModal?: boolean }) {
   const navigate = useNavigate()
   const { viewMode } = useViewMode()
-  const { isModalOpen } = useProfileModal()
+  const { isModalOpen, openPostModal } = useProfileModal()
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
@@ -73,7 +71,7 @@ export default function TagPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isModalOpen) return
+      if (!inModal && isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -102,7 +100,10 @@ export default function TagPage() {
       }
       if (key === 'e' || key === 'enter') {
         const item = items[i]
-        if (item) navigate(`/post/${encodeURIComponent(item.post.uri)}`)
+        if (item) {
+          if (inModal) openPostModal(item.post.uri)
+          else navigate(`/post/${encodeURIComponent(item.post.uri)}`)
+        }
         return
       }
       if (key === 'f') {
@@ -116,7 +117,58 @@ export default function TagPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [mediaItems.length, cols, navigate, isModalOpen])
+  }, [mediaItems.length, cols, navigate, isModalOpen, inModal, openPostModal])
+
+  if (!tag) return null
+
+  return (
+    <div className={styles.wrap}>
+      <header className={styles.header}>
+        <h2 className={styles.title}>#{tag}</h2>
+      </header>
+      {error && <p className={styles.error}>{error}</p>}
+      {loading ? (
+        <div className={styles.loading}>Loading…</div>
+      ) : mediaItems.length === 0 ? (
+        <div className={styles.empty}>No posts with images or videos for this tag.</div>
+      ) : (
+        <>
+          <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
+            {mediaItems.map((item, index) => (
+              <div
+                key={item.post.uri}
+                onMouseEnter={() => setKeyboardFocusIndex(index)}
+              >
+                <PostCard
+                  item={item}
+                  isSelected={index === keyboardFocusIndex}
+                  cardRef={(el) => { cardRefsRef.current[index] = el }}
+                  openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                  onAddClose={() => setKeyboardAddOpen(false)}
+                  onPostClick={inModal ? (uri) => openPostModal(uri) : undefined}
+                />
+              </div>
+            ))}
+          </div>
+          {cursor && (
+            <button
+              type="button"
+              className={styles.more}
+              onClick={() => load(cursor)}
+              disabled={loadingMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function TagPage() {
+  const { tag: tagParam } = useParams<{ tag: string }>()
+  const tag = tagParam ? decodeURIComponent(tagParam) : ''
 
   if (!tag) {
     return (
@@ -130,46 +182,7 @@ export default function TagPage() {
 
   return (
     <Layout title={`#${tag}`} showNav>
-      <div className={styles.wrap}>
-        <header className={styles.header}>
-          <h2 className={styles.title}>#{tag}</h2>
-        </header>
-        {error && <p className={styles.error}>{error}</p>}
-        {loading ? (
-          <div className={styles.loading}>Loading…</div>
-        ) : mediaItems.length === 0 ? (
-          <div className={styles.empty}>No posts with images or videos for this tag.</div>
-        ) : (
-          <>
-            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {mediaItems.map((item, index) => (
-                <div
-                  key={item.post.uri}
-                  onMouseEnter={() => setKeyboardFocusIndex(index)}
-                >
-                  <PostCard
-                    item={item}
-                    isSelected={index === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[index] = el }}
-                    openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                  />
-                </div>
-              ))}
-            </div>
-            {cursor && (
-              <button
-                type="button"
-                className={styles.more}
-                onClick={() => load(cursor)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? 'Loading…' : 'Load more'}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+      <TagContent tag={tag} />
     </Layout>
   )
 }

@@ -32,7 +32,7 @@ interface Props {
 
 export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, compact, onClose, suggestionsAbove }: Props) {
   const navigate = useNavigate()
-  const { openProfileModal } = useProfileModal()
+  const { openProfileModal, openTagModal } = useProfileModal()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
   const [open, setOpen] = useState(false)
@@ -113,7 +113,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
     setOpen(false)
     setQuery('')
     if (opt.type === 'tag') {
-      navigate(`/tag/${encodeURIComponent(opt.tag)}`)
+      openTagModal(opt.tag)
       inputRef.current?.blur()
       onClose?.()
     } else if (opt.type === 'actor') {
