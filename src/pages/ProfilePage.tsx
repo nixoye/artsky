@@ -298,21 +298,25 @@ export function ProfileContent({
       if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'f' || key === 'c') e.preventDefault()
 
       if (key === 'w') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
       if (key === 's') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
         return

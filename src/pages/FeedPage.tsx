@@ -309,6 +309,7 @@ export default function FeedPage() {
         const item = items[i]
         if (item?.post?.uri) {
           addHidden(item.post.uri)
+          mouseMovedRef.current = false
           setKeyboardFocusIndex((idx) => Math.max(0, Math.min(idx, items.length - 2)))
         }
         return
@@ -327,22 +328,26 @@ export default function FeedPage() {
       }
 
       if (key === 'w') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
       if (key === 's') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         // Move to the item to the left (previous index = same row previous column in grid)
         setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
+        mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         // Move to the item to the right (next index = same row next column in grid)
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
