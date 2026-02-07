@@ -1,9 +1,9 @@
 .wrap {
-  padding: 0.5rem;
+  padding: 0.25rem 0.5rem;
   padding-left: max(0.5rem, env(safe-area-inset-left));
   padding-right: max(0.5rem, env(safe-area-inset-right));
-  padding-bottom: 5rem;
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  padding-bottom: 2.5rem;
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 767px) {
@@ -14,7 +14,7 @@
 }
 
 .filterRow {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .filterBtn,
@@ -40,7 +40,7 @@
 }
 
 .feedMixSection {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .feedMixToggle {
@@ -188,7 +188,7 @@
 }
 
 .guestSection {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .guestHint {
@@ -317,7 +317,7 @@
   gap: 0.35rem;
   width: 100%;
   min-width: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 /* 1-column: constrain card media height so full preview fits in viewport when scrolling */
