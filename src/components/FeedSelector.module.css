@@ -68,54 +68,108 @@
   color: white;
 }
 
+/* Custom feeds section: clear grouping */
+.customSection {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+}
+
+.customSectionLabel {
+  display: block;
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .customForm {
-  margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.input {
+.customForm .input {
   padding: 0.5rem 0.75rem;
   min-height: var(--touch-min);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
-  background: var(--glass-highlight);
+  background: var(--bg);
   color: var(--text);
   font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.addFeed {
-  margin-top: 0.5rem;
-  padding: 0.4rem 0;
-  background: none;
-  border: none;
+.customForm .input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.customForm .input::placeholder {
   color: var(--muted);
-  font-size: 0.85rem;
-  cursor: pointer;
 }
 
 .customActions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .btn {
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 1rem;
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: 0.4rem;
+  border-radius: var(--glass-radius-sm);
   font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .btnSecondary {
-  padding: 0.4rem 0.75rem;
-  background: var(--surface);
+  padding: 0.5rem 1rem;
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 0.4rem;
+  border-radius: var(--glass-radius-sm);
   font-size: 0.9rem;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.addFeed {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.addFeed:hover {
+  text-decoration: underline;
 }

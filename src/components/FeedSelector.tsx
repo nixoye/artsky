@@ -97,30 +97,34 @@ export default function FeedSelector({
       {mixEntries.length >= 2 && (
         <p className={styles.mixTotal}>Total: {mixTotalPercent}%</p>
       )}
-      {showCustom ? (
-        <form onSubmit={handleAddCustom} className={styles.customForm}>
-          <input
-            type="text"
-            placeholder="https://bsky.app/profile/handle.bsky.social/feed/feed-name"
-            value={customInput}
-            onChange={(e) => setCustomInput(e.target.value)}
-            className={styles.input}
-            disabled={adding}
-          />
-          <div className={styles.customActions}>
-            <button type="submit" className={styles.btn} disabled={adding}>
-              {adding ? 'Adding…' : 'Add'}
-            </button>
-            <button type="button" className={styles.btnSecondary} onClick={() => setShowCustom(false)} disabled={adding}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      ) : (
-        <button type="button" className={styles.addFeed} onClick={() => setShowCustom(true)}>
-          + Add custom feed
-        </button>
-      )}
+      <div className={styles.customSection}>
+        <span className={styles.customSectionLabel}>Custom feeds</span>
+        {showCustom ? (
+          <form onSubmit={handleAddCustom} className={styles.customForm}>
+            <input
+              type="text"
+              placeholder="Feed URL or handle/feed (e.g. handle.bsky.social/feed/name)"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              className={styles.input}
+              disabled={adding}
+              aria-label="Custom feed URL"
+            />
+            <div className={styles.customActions}>
+              <button type="submit" className={styles.btn} disabled={adding}>
+                {adding ? 'Adding…' : 'Add feed'}
+              </button>
+              <button type="button" className={styles.btnSecondary} onClick={() => setShowCustom(false)} disabled={adding}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" className={styles.addFeed} onClick={() => setShowCustom(true)}>
+            + Add custom feed
+          </button>
+        )}
+      </div>
     </div>
   )
 }

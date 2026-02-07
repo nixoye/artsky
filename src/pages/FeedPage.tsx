@@ -64,7 +64,9 @@ export default function FeedPage() {
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null)
   const [aspectRatios, setAspectRatios] = useState<(number | null)[]>([])
 
-  const allSources = [...PRESET_SOURCES, ...savedFeedSources]
+  const presetUris = new Set((PRESET_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
+  const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
+  const allSources = [...PRESET_SOURCES, ...savedDeduped]
 
   const loadSavedFeeds = useCallback(async () => {
     if (!session) {
