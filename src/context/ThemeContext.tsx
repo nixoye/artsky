@@ -18,7 +18,7 @@ function getStored(): ThemeMode {
   } catch {
     // ignore
   }
-  return 'dark'
+  return 'system'
 }
 
 function getResolved(mode: ThemeMode): 'light' | 'dark' {
