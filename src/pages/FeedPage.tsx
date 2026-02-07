@@ -379,7 +379,26 @@ export default function FeedPage() {
         const item = items[i]
         const author = item?.post?.author as { did: string; viewer?: { following?: string } } | undefined
         if (author && session?.did && session.did !== author.did && !author.viewer?.following) {
-          agent.follow(author.did).catch(() => {})
+          const postUri = item.post.uri
+          agent.follow(author.did).then((res) => {
+            setItems((prev) =>
+              prev.map((it) => {
+                if (it.post.uri !== postUri) return it
+                const post = it.post
+                const auth = post.author as { did: string; handle?: string; viewer?: { following?: string } }
+                return {
+                  ...it,
+                  post: {
+                    ...post,
+                    author: {
+                      ...auth,
+                      viewer: { ...auth.viewer, following: res.uri },
+                    },
+                  },
+                }
+              })
+            )
+          }).catch(() => {})
         }
       }
     }
