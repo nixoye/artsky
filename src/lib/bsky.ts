@@ -569,6 +569,33 @@ export async function listMyDownvotes(): Promise<Record<string, string>> {
   return out
 }
 
+/** Block an account by DID. Requires session. */
+export async function blockAccount(did: string): Promise<void> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  await agent.app.bsky.graph.block.create(
+    { repo: session.did },
+    { subject: did, createdAt: new Date().toISOString() }
+  )
+}
+
+/** Report a post (or record). Requires session. reasonType defaults to com.atproto.moderation.defs#reasonOther */
+export async function reportPost(uri: string, cid: string, reasonType?: string): Promise<void> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  await agent.com.atproto.moderation.createReport({
+    reasonType: reasonType ?? 'com.atproto.moderation.defs#reasonOther',
+    subject: { $type: 'com.atproto.repo.strongRef', uri, cid },
+  })
+}
+
+/** Mute a thread (root post URI). Requires session. */
+export async function muteThread(rootUri: string): Promise<void> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  await agent.app.bsky.graph.muteThread({ root: rootUri })
+}
+
 /** Upload a blob for use in a standard.site document media array. Requires session. */
 export async function uploadStandardSiteDocumentBlob(
   file: File

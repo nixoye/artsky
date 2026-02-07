@@ -1,0 +1,94 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wrapCompact .trigger {
+  padding: 0.2rem 0.35rem;
+  font-size: 0.85rem;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trigger:hover {
+  color: var(--text);
+  background: var(--glass-highlight);
+}
+
+.trigger:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.trigger[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--glass-highlight);
+}
+
+.dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 0.25rem;
+  min-width: 160px;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.wrapCompact .dropdown {
+  min-width: 140px;
+  padding: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled) {
+  background: var(--glass-highlight);
+}
+
+.item:disabled {
+  opacity: 0.8;
+  cursor: default;
+}
+
+.wrapCompact .item {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}

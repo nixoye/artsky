@@ -196,6 +196,10 @@
   flex-wrap: wrap;
 }
 
+.commentActionsMenu {
+  margin-left: auto;
+}
+
 .replyBtn {
   padding: 0.2rem 0.5rem;
   font-size: 0.8rem;

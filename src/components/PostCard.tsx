@@ -8,6 +8,7 @@ import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
+import PostActionsMenu from './PostActionsMenu'
 import styles from './PostCard.module.css'
 
 const LONG_PRESS_MS = 350
@@ -728,6 +729,17 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             </div>
           </div>
         </div>
+        )}
+        {!artOnly && (
+          <div className={styles.optionsRow} onClick={(e) => e.stopPropagation()}>
+            <PostActionsMenu
+              postUri={post.uri}
+              postCid={post.cid}
+              authorDid={post.author.did}
+              rootUri={post.uri}
+              isOwnPost={isOwnPost}
+            />
+          </div>
         )}
       </div>
       {showLongPressMenu && (

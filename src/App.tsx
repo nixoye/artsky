@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
 import { ArtOnlyProvider } from './context/ArtOnlyContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
+import { HiddenPostsProvider } from './context/HiddenPostsContext'
 import LoginPage from './pages/LoginPage'
 import FeedPage from './pages/FeedPage'
 import ArtboardsPage from './pages/ArtboardsPage'
@@ -80,7 +81,9 @@ export default function App() {
             <ViewModeProvider>
               <ArtOnlyProvider>
                 <ProfileModalProvider>
-                  <AppRoutes />
+                  <HiddenPostsProvider>
+                    <AppRoutes />
+                  </HiddenPostsProvider>
                 </ProfileModalProvider>
               </ArtOnlyProvider>
             </ViewModeProvider>

@@ -207,6 +207,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const { openProfileModal } = useProfileModal()
   const { session, sessionsList, logout, switchAccount } = useSession()
   const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
+  const [accountProfilesVersion, setAccountProfilesVersion] = useState(0)
   const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
   const currentAccountAvatar = session ? accountProfiles[session.did]?.avatar : null
 
@@ -267,7 +268,6 @@ export default function Layout({ title, children, showNav }: Props) {
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [editProfileOpen, setEditProfileOpen] = useState(false)
-  const [accountProfilesVersion, setAccountProfilesVersion] = useState(0)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow' | 'like'>('all')
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])

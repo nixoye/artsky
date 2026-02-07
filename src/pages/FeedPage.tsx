@@ -19,6 +19,7 @@ import ProfileLink from '../components/ProfileLink'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
+import { useHiddenPosts } from '../context/HiddenPostsContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
 
@@ -185,7 +186,10 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, load])
 
-  const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
+  const { isHidden } = useHiddenPosts()
+  const mediaItems = items
+    .filter((item) => getPostMediaInfo(item.post))
+    .filter((item) => !isHidden(item.post.uri))
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   mediaItemsRef.current = mediaItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -218,6 +222,57 @@ export default function FeedPage() {
     return () => cancelAnimationFrame(raf)
   }, [keyboardFocusIndex])
 
+  /** Find the card index that is spatially to the left or right of the current card (by on-screen position). */
+  function findSpatialNeighbor(
+    currentIndex: number,
+    direction: 'left' | 'right',
+    refs: (HTMLDivElement | null)[],
+    count: number
+  ): number {
+    const current = refs[currentIndex]
+    if (!current) return currentIndex
+    const rect = current.getBoundingClientRect()
+    const midX = rect.left + rect.width / 2
+    const midY = rect.top + rect.height / 2
+    const ROW_WEIGHT = 1e6
+    let best: number | null = null
+    let bestScore = Infinity
+    for (let i = 0; i < count; i++) {
+      if (i === currentIndex) continue
+      const el = refs[i]
+      if (!el) continue
+      const r = el.getBoundingClientRect()
+      const otherMidX = r.left + r.width / 2
+      const otherMidY = r.top + r.height / 2
+      if (direction === 'right') {
+        if (otherMidX <= midX) continue
+        const dx = otherMidX - midX
+        const dy = Math.abs(otherMidY - midY)
+        const score = dy * ROW_WEIGHT + dx
+        if (score < bestScore) {
+          bestScore = score
+          best = i
+        }
+      } else {
+        if (otherMidX >= midX) continue
+        const dx = midX - otherMidX
+        const dy = Math.abs(otherMidY - midY)
+        const score = dy * ROW_WEIGHT + dx
+        if (score < bestScore) {
+          bestScore = score
+          best = i
+        }
+      }
+    }
+    if (best !== null) return best
+    if (direction === 'right') {
+      const fallback = currentIndex + 1
+      return Math.min(count - 1, fallback)
+    }
+    const fallback = currentIndex - 1
+    return Math.max(0, fallback)
+  }
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isModalOpen) return
@@ -245,22 +300,12 @@ export default function FeedPage() {
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         scrollIntoViewFromKeyboardRef.current = true
-        // Same row, previous column (stay at left edge) so A always moves left
-        setKeyboardFocusIndex((idx) => {
-          const col = idx % cols
-          if (col <= 0) return idx
-          return idx - 1
-        })
+        setKeyboardFocusIndex((idx) => findSpatialNeighbor(idx, 'left', cardRefsRef.current, items.length))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         scrollIntoViewFromKeyboardRef.current = true
-        // Same row, next column (stay at right edge) so D always moves right
-        setKeyboardFocusIndex((idx) => {
-          const col = idx % cols
-          if (col >= cols - 1) return idx
-          return Math.min(items.length - 1, idx + 1)
-        })
+        setKeyboardFocusIndex((idx) => findSpatialNeighbor(idx, 'right', cardRefsRef.current, items.length))
         return
       }
       if (key === 'e' || key === 'enter') {

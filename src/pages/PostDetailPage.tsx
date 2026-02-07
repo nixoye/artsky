@@ -10,7 +10,9 @@ import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
+import PostActionsMenu from '../components/PostActionsMenu'
 import { useProfileModal } from '../context/ProfileModalContext'
+import { useHiddenPosts } from '../context/HiddenPostsContext'
 import styles from './PostDetailPage.module.css'
 
 export function ReplyAsRow({
@@ -314,6 +316,7 @@ function PostBlock({
   myDownvotes,
   likeLoadingUri,
   downvoteLoadingUri,
+  isHidden,
 }: {
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
   depth?: number
@@ -341,9 +344,11 @@ function PostBlock({
   myDownvotes?: Record<string, string>
   likeLoadingUri?: string | null
   downvoteLoadingUri?: string | null
+  isHidden?: (uri: string) => boolean
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
+  if (isHidden?.(post.uri)) return null
   const postViewer = post as { viewer?: { like?: string }; likeCount?: number }
   const likedUri = likeOverrides?.[post.uri] !== undefined ? likeOverrides[post.uri] : postViewer.viewer?.like
   const downvotedUri = myDownvotes?.[post.uri]
@@ -353,7 +358,8 @@ function PostBlock({
   const handle = post.author.handle ?? post.author.did
   const avatar = post.author.avatar ?? undefined
   const createdAt = (post.record as { createdAt?: string })?.createdAt
-  const replies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
+  const rawReplies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
+  const replies = isHidden ? rawReplies.filter((r) => !isThreadViewPost(r) || !isHidden((r as AppBskyFeedDefs.ThreadViewPost).post.uri)) : rawReplies
   const hasReplies = replies.length > 0
   const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
   const canCollapse = !!onToggleCollapse
@@ -442,6 +448,15 @@ function PostBlock({
               ↓
             </button>
           )}
+          <PostActionsMenu
+            postUri={post.uri}
+            postCid={post.cid}
+            authorDid={post.author.did}
+            rootUri={rootPostUri ?? post.uri}
+            isOwnPost={currentDid === post.author.did}
+            compact
+            className={styles.commentActionsMenu}
+          />
         </div>
       )}
       {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
@@ -552,6 +567,7 @@ function PostBlock({
                     myDownvotes={myDownvotes}
                     likeLoadingUri={likeLoadingUri}
                     downvoteLoadingUri={downvoteLoadingUri}
+                    isHidden={isHidden}
                   />
                 )
               })}
@@ -574,7 +590,9 @@ export interface PostDetailContentProps {
 }
 
 export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: PostDetailContentProps) {
+  const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
+  const { isHidden } = useHiddenPosts()
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -875,9 +893,13 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const threadReplies = thread && isThreadViewPost(thread) && 'replies' in thread && Array.isArray(thread.replies)
     ? (thread.replies as (typeof thread)[]).filter((r): r is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(r))
     : []
+  const threadRepliesVisible = useMemo(
+    () => threadReplies.filter((r) => !isHidden(r.post.uri)),
+    [threadReplies, isHidden]
+  )
   const threadRepliesFlat = useMemo(
-    () => flattenVisibleReplies(threadReplies, collapsedThreads),
-    [threadReplies, collapsedThreads]
+    () => flattenVisibleReplies(threadRepliesVisible, collapsedThreads),
+    [threadRepliesVisible, collapsedThreads]
   )
   const threadRepliesFlatRef = useRef(threadRepliesFlat)
   threadRepliesFlatRef.current = threadRepliesFlat
@@ -889,14 +911,14 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     for (let i = 0; i < rootMediaForNav.length; i++) items.push({ type: 'rootMedia', index: i })
     items.push({ type: 'description' })
     for (const flat of threadRepliesFlat) {
-      const node = findReplyByUri(threadReplies, flat.uri)
+      const node = findReplyByUri(threadRepliesVisible, flat.uri)
       const media = node ? getPostAllMedia(node.post) : []
       for (let i = 0; i < media.length; i++) items.push({ type: 'commentMedia', commentUri: flat.uri, mediaIndex: i })
       items.push({ type: 'comment', commentUri: flat.uri })
     }
     items.push({ type: 'replyForm' })
     return items
-  }, [rootMediaForNav.length, threadRepliesFlat, threadReplies])
+  }, [rootMediaForNav.length, threadRepliesFlat, threadRepliesVisible])
 
   const navTotalItems = focusItems.length
   const handleCommentMediaFocus = useCallback((commentUri: string, mediaIndex: number) => {
@@ -1244,6 +1266,16 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                 >
                   {repostLoading ? '…' : 'Repost'}
                 </button>
+                {thread && isThreadViewPost(thread) && (
+                  <PostActionsMenu
+                    postUri={thread.post.uri}
+                    postCid={thread.post.cid}
+                    authorDid={thread.post.author.did}
+                    rootUri={thread.post.uri}
+                    isOwnPost={session?.did === thread.post.author.did}
+                    onHidden={() => navigate('/feed')}
+                  />
+                )}
               </div>
               {addedToBoard && (
                 <p className={styles.added}>
@@ -1278,7 +1310,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                   }
                 }}
               >
-                {threadReplies.map((r) => {
+                {threadRepliesVisible.map((r) => {
                   const currentItem = focusItems[keyboardFocusIndex]
                   const focusedCommentUri = (currentItem?.type === 'comment' || currentItem?.type === 'commentMedia') ? currentItem.commentUri : undefined
                   const commentContentFocusIndex = focusItems.findIndex((it) => it.type === 'comment' && it.commentUri === r.post.uri)
