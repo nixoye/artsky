@@ -361,3 +361,93 @@
   padding: 0.75rem;
   margin: 0;
 }
+
+/* Block confirmation dialog */
+.blockOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.blockDialog {
+  width: 100%;
+  max-width: 320px;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--shadow-card);
+}
+
+.blockTitle {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.blockUser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.blockAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.blockAvatarPlaceholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--glass-highlight);
+}
+
+.blockHandle {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.blockActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.blockCancelBtn,
+.blockConfirmBtn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.blockCancelBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.blockConfirmBtn {
+  background: var(--danger, #c00);
+  border-color: var(--danger, #c00);
+  color: #fff;
+}
+
+.blockConfirmBtn:hover {
+  opacity: 0.9;
+}

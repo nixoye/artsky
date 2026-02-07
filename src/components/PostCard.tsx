@@ -645,6 +645,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   </div>
                 )}
               </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <PostActionsMenu
+                    postUri={post.uri}
+                    postCid={post.cid}
+                    authorDid={post.author.did}
+                    rootUri={post.uri}
+                    isOwnPost={isOwnPost}
+                  />
+                </div>
             </span>
             </div>
           </div>
@@ -734,17 +743,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             </div>
           </div>
         </div>
-        )}
-        {!artOnly && (
-          <div className={styles.optionsRow} onClick={(e) => e.stopPropagation()}>
-            <PostActionsMenu
-              postUri={post.uri}
-              postCid={post.cid}
-              authorDid={post.author.did}
-              rootUri={post.uri}
-              isOwnPost={isOwnPost}
-            />
-          </div>
         )}
       </div>
       {showLongPressMenu && (

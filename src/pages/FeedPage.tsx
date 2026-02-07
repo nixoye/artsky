@@ -23,6 +23,7 @@ import { useSession } from '../context/SessionContext'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useFeedMix } from '../context/FeedMixContext'
+import { blockAccount } from '../lib/bsky'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
 
@@ -57,6 +58,9 @@ export default function FeedPage() {
   const lastScrollIntoViewIndexRef = useRef<number>(-1)
   /** Only scroll into view when focus was changed by keyboard (W/S/A/D), not by mouse hover */
   const scrollIntoViewFromKeyboardRef = useRef(false)
+  const [blockConfirm, setBlockConfirm] = useState<{ did: string; handle: string; avatar?: string } | null>(null)
+  const blockCancelRef = useRef<HTMLButtonElement>(null)
+  const blockConfirmRef = useRef<HTMLButtonElement>(null)
 
   const allSources = [...PRESET_SOURCES, ...savedFeedSources]
 
@@ -210,13 +214,13 @@ export default function FeedPage() {
         loadingMoreRef.current = true
         load(cursor)
       },
-      { rootMargin: '200px', threshold: 0 }
+      { rootMargin: '600px', threshold: 0 }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [cursor, load])
 
-  const { isHidden } = useHiddenPosts()
+  const { isHidden, addHidden } = useHiddenPosts()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const displayItems = items
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
@@ -266,7 +270,36 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c') e.preventDefault()
+      if (blockConfirm) {
+        if (key === 'escape') {
+          e.preventDefault()
+          setBlockConfirm(null)
+          return
+        }
+        return // let Tab/Enter reach the dialog buttons
+      }
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b') e.preventDefault()
+
+      if (key === 'h') {
+        const item = items[i]
+        if (item?.post?.uri) {
+          addHidden(item.post.uri)
+          setKeyboardFocusIndex((idx) => Math.max(0, Math.min(idx, items.length - 2)))
+        }
+        return
+      }
+      if (key === 'b') {
+        const item = items[i]
+        if (item?.post?.author && session?.did !== item.post.author.did) {
+          setBlockConfirm({
+            did: item.post.author.did,
+            handle: item.post.author.handle ?? item.post.author.did,
+            avatar: item.post.author.avatar,
+          })
+          requestAnimationFrame(() => blockCancelRef.current?.focus())
+        }
+        return
+      }
 
       if (key === 'w') {
         scrollIntoViewFromKeyboardRef.current = true
@@ -319,10 +352,15 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols, isModalOpen, openPostModal])
+  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session])
+
+  useEffect(() => {
+    if (blockConfirm) blockCancelRef.current?.focus()
+  }, [blockConfirm])
 
   return (
     <Layout title="Feed" showNav>
+      <>
       <div className={styles.wrap}>
         {session && (
           <FeedSelector
@@ -550,6 +588,53 @@ export default function FeedPage() {
           </>
         )}
       </div>
+      {blockConfirm && (
+        <div
+          className={styles.blockOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="block-dialog-title"
+          onKeyDown={(e) => e.key === 'Escape' && setBlockConfirm(null)}
+          onClick={() => setBlockConfirm(null)}
+        >
+          <div className={styles.blockDialog} onClick={(e) => e.stopPropagation()}>
+            <h2 id="block-dialog-title" className={styles.blockTitle}>Block user?</h2>
+            <div className={styles.blockUser}>
+              {blockConfirm.avatar ? (
+                <img src={blockConfirm.avatar} alt="" className={styles.blockAvatar} />
+              ) : (
+                <div className={styles.blockAvatarPlaceholder} />
+              )}
+              <span className={styles.blockHandle}>@{blockConfirm.handle}</span>
+            </div>
+            <div className={styles.blockActions}>
+              <button
+                ref={blockCancelRef}
+                type="button"
+                className={styles.blockCancelBtn}
+                onClick={() => setBlockConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                ref={blockConfirmRef}
+                type="button"
+                className={styles.blockConfirmBtn}
+                onClick={async () => {
+                  if (!blockConfirm) return
+                  try {
+                    await blockAccount(blockConfirm.did)
+                    setBlockConfirm(null)
+                  } catch (_) {}
+                }}
+              >
+                Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     </Layout>
   )
 }
