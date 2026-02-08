@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { useProfileModal } from '../context/ProfileModalContext'
+import { useLoginModal } from '../context/LoginModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
@@ -198,6 +199,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
+  const { openLoginModal } = useLoginModal()
   const editProfile = useEditProfile()
   const { session, sessionsList, logout, switchAccount } = useSession()
   const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
@@ -433,14 +435,13 @@ export default function Layout({ title, children, showNav }: Props) {
   function handleAddAccount() {
     setAccountSheetOpen(false)
     setAccountMenuOpen(false)
-    navigate('/login', { replace: true })
+    openLoginModal()
   }
 
   function handleLogout() {
     setAccountSheetOpen(false)
     setAccountMenuOpen(false)
     logout()
-    navigate('/login', { replace: true })
   }
 
   const POST_MAX_LENGTH = 300
@@ -728,7 +729,7 @@ export default function Layout({ title, children, showNav }: Props) {
             onClick={() => {
               setAccountMenuOpen(false)
               setAccountSheetOpen(false)
-              navigate('/login')
+              openLoginModal()
             }}
           >
             Log in
@@ -797,23 +798,28 @@ export default function Layout({ title, children, showNav }: Props) {
       )}
       {!session && (
         <div className={styles.menuCompactAuthRow}>
-          <Link
-            to="/login"
+          <button
+            type="button"
             className={styles.menuCompactAuthBtn}
-            onClick={() => setAccountSheetOpen(false)}
+            onClick={() => {
+              setAccountSheetOpen(false)
+              openLoginModal()
+            }}
           >
             <LogInIcon />
             <span>Log in</span>
-          </Link>
-          <Link
-            to="/login"
-            state={{ mode: 'create' }}
+          </button>
+          <button
+            type="button"
             className={styles.menuCompactAuthBtnPrimary}
-            onClick={() => setAccountSheetOpen(false)}
+            onClick={() => {
+              setAccountSheetOpen(false)
+              openLoginModal('create')
+            }}
           >
             <UserPlusIcon />
             <span>Create account</span>
-          </Link>
+          </button>
         </div>
       )}
       <div className={styles.menuCompactRow}>
@@ -912,12 +918,20 @@ export default function Layout({ title, children, showNav }: Props) {
             <div className={styles.headerRight}>
               {!session && isDesktop && (
                 <>
-                  <Link to="/login" className={styles.headerAuthLink}>
+                  <button
+                    type="button"
+                    className={styles.headerAuthLink}
+                    onClick={() => openLoginModal()}
+                  >
                     Log in
-                  </Link>
-                  <Link to="/login" state={{ mode: 'create' }} className={styles.headerAuthLinkPrimary}>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.headerAuthLinkPrimary}
+                    onClick={() => openLoginModal('create')}
+                  >
                     Create account
-                  </Link>
+                  </button>
                 </>
               )}
               {session && isDesktop && (
@@ -1116,7 +1130,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   <h2 className={styles.composeTitle}>New post</h2>
                   {!session ? (
                     <p className={styles.composeSignIn}>
-                      <Link to="/login" onClick={closeCompose}>Log in</Link> to post.
+                      <button type="button" className={styles.composeSignInLink} onClick={() => { closeCompose(); openLoginModal(); }}>Log in</button> to post.
                     </p>
                   ) : (
                     <form ref={composeFormRef} onSubmit={handleComposeSubmit}>

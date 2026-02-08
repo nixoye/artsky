@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
   publicAgent,
@@ -20,6 +20,7 @@ import PostCard from '../components/PostCard'
 import ProfileLink from '../components/ProfileLink'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
+import { useLoginModal } from '../context/LoginModalContext'
 import { useSession } from '../context/SessionContext'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
@@ -58,6 +59,7 @@ export default function FeedPage() {
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const { openPostModal, isModalOpen } = useProfileModal()
+  const { openLoginModal } = useLoginModal()
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
@@ -537,9 +539,9 @@ export default function FeedPage() {
                   })}
                 </div>
                 <div className={styles.guestSignInRow}>
-                  <Link to="/login" className={styles.guestSignInBtn}>
+                  <button type="button" className={styles.guestSignInBtn} onClick={() => openLoginModal()}>
                     Log in
-                  </Link>
+                  </button>
                   <span className={styles.guestSignInSuffix}> to see your feed</span>
                 </div>
               </>

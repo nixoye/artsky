@@ -1,0 +1,32 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 200;
+  animation: loginModalFadeIn 0.2s ease;
+}
+
+.center {
+  position: fixed;
+  inset: 0;
+  z-index: 201;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.cardWrap {
+  pointer-events: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes loginModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

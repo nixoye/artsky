@@ -8,6 +8,7 @@ import { ArtOnlyProvider } from './context/ArtOnlyContext'
 import { MediaOnlyProvider } from './context/MediaOnlyContext'
 import { FeedMixProvider } from './context/FeedMixContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
+import { LoginModalProvider } from './context/LoginModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
 import { HiddenPostsProvider } from './context/HiddenPostsContext'
 import { ModerationProvider } from './context/ModerationContext'
@@ -91,9 +92,11 @@ export default function App() {
                       <EditProfileProvider>
                     <ModerationProvider>
                     <ProfileModalProvider>
+                    <LoginModalProvider>
                   <HiddenPostsProvider>
                       <AppRoutes />
                   </HiddenPostsProvider>
+                    </LoginModalProvider>
                     </ProfileModalProvider>
                     </ModerationProvider>
                       </EditProfileProvider>
