@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from '../context/SessionContext'
 import * as bsky from '../lib/bsky'
+import * as oauth from '../lib/oauth'
 import type { AppBskyActorDefs } from '@atproto/api'
 import styles from '../pages/LoginPage.module.css'
 
-const BLUESKY_SIGNIN_URL = 'https://bsky.app/signin'
-const BLUESKY_SIGNUP_URL = 'https://bsky.app/signup'
+const BLUESKY_SIGNIN_URL = 'https://account.bsky.app/signin'
+const BLUESKY_SIGNUP_URL = 'https://bsky.app'
 const DEBOUNCE_MS = 250
 
 export type LoginMode = 'signin' | 'create'
@@ -80,25 +81,35 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    const id = identifier.trim()
+    const id = identifier.trim().replace(/^@/, '')
     if (!id) return
 
-    if (!password.trim()) {
-      setError(
-        'Enter an App Password to log in here (Bluesky Settings → App passwords), or use the link below to log in on Bluesky.',
-      )
+    if (password.trim()) {
+      setLoading(true)
+      try {
+        await login(id, password)
+        onSuccess?.()
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === 'object' && 'message' in err
+            ? String((err as { message: string }).message)
+            : 'Log in failed. Use your Bluesky handle (or email) and an App Password from Settings → App passwords.'
+        setError(message)
+      } finally {
+        setLoading(false)
+      }
       return
     }
 
     setLoading(true)
+    setError('')
     try {
-      await login(id, password)
-      onSuccess?.()
+      await oauth.signInWithOAuthRedirect(id)
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String((err as { message: string }).message)
-          : 'Log in failed. Use your Bluesky handle (or email) and an App Password from Settings → App passwords.'
+          : 'Could not start sign-in. Check your handle and try again.'
       setError(message)
     } finally {
       setLoading(false)
@@ -155,20 +166,15 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
         >
           Log in
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'create'}
-          aria-controls="create-panel"
+        <a
+          href="https://bsky.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.tab}
           id="tab-create"
-          className={mode === 'create' ? styles.tabActive : styles.tab}
-          onClick={() => {
-            setMode('create')
-            setError('')
-          }}
         >
-          Create account
-        </button>
+          Create Account
+        </a>
       </div>
 
       {mode === 'signin' ? (

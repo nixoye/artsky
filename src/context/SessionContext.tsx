@@ -1,13 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { Agent } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
 import * as bsky from '../lib/bsky'
+import * as oauth from '../lib/oauth'
 
 interface SessionContextValue {
   session: AtpSessionData | null
   sessionsList: AtpSessionData[]
   loading: boolean
   login: (identifier: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   switchAccount: (did: string) => Promise<boolean>
   refreshSession: () => void
 }
@@ -34,12 +36,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
 
-    Promise.race([
-      bsky.resumeSession(),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxWaitMs - 500)),
-    ])
-      .then((ok) => finish(ok))
-      .catch(() => finish(false))
+    async function init() {
+      try {
+        const oauthResult = await oauth.initOAuth()
+        if (cancelled) return
+        if (oauthResult?.session) {
+          const agent = new Agent(oauthResult.session)
+          bsky.setOAuthAgent(agent, oauthResult.session)
+          finish(true)
+          return
+        }
+      } catch {
+        // OAuth init failed (e.g. no client metadata); fall back to credential
+      }
+      const ok = await Promise.race([
+        bsky.resumeSession(),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxWaitMs - 500)),
+      ])
+      finish(ok)
+    }
+    init().catch(() => finish(false))
 
     return () => {
       cancelled = true
@@ -52,8 +68,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(bsky.getSession())
   }, [])
 
-  const logout = useCallback(() => {
-    const stillLoggedIn = bsky.logoutCurrentAccount()
+  const logout = useCallback(async () => {
+    const stillLoggedIn = await bsky.logoutCurrentAccount()
     setSession(stillLoggedIn ? bsky.getSession() : null)
   }, [])
 

@@ -809,17 +809,16 @@ export default function Layout({ title, children, showNav }: Props) {
             <LogInIcon />
             <span>Log in</span>
           </button>
-          <button
-            type="button"
+          <a
+            href="https://bsky.app"
+            target="_blank"
+            rel="noopener noreferrer"
             className={styles.menuCompactAuthBtnPrimary}
-            onClick={() => {
-              setAccountSheetOpen(false)
-              openLoginModal('create')
-            }}
+            onClick={() => setAccountSheetOpen(false)}
           >
             <UserPlusIcon />
             <span>Create account</span>
-          </button>
+          </a>
         </div>
       )}
       <div className={styles.menuCompactRow}>
@@ -925,13 +924,14 @@ export default function Layout({ title, children, showNav }: Props) {
                   >
                     Log in
                   </button>
-                  <button
-                    type="button"
+                  <a
+                    href="https://bsky.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={styles.headerAuthLinkPrimary}
-                    onClick={() => openLoginModal('create')}
                   >
                     Create account
-                  </button>
+                  </a>
                 </>
               )}
               {session && isDesktop && (

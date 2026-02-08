@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@atproto/api": "^0.18.20",
+    "@atproto/oauth-client-browser": "^0.3.40",
     "hls.js": "^1.6.15",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

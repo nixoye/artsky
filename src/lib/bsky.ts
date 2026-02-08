@@ -1,4 +1,4 @@
-import { AtpAgent, RichText, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
+import { Agent, AtpAgent, RichText, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
 import type { AppBskyActorDefs, AppBskyFeedDefs } from '@atproto/api'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 
@@ -81,8 +81,11 @@ function getStoredSession(): AtpSessionData | null {
   return accounts.sessions[accounts.activeDid] ?? null
 }
 
-/** All stored sessions (for account switcher). */
+/** All stored sessions (for account switcher). When OAuth is active, returns single OAuth session. */
 export function getSessionsList(): AtpSessionData[] {
+  if (oauthAgentInstance?.did) {
+    return [{ did: oauthAgentInstance.did } as AtpSessionData]
+  }
   const accounts = getAccounts()
   if (Object.keys(accounts.sessions).length === 0) {
     const single = getStoredSession()
@@ -92,25 +95,47 @@ export function getSessionsList(): AtpSessionData[] {
   return Object.values(accounts.sessions)
 }
 
-/** Switch active account to the given did; resumes that session on the agent. */
+/** Switch active account to the given did; resumes that session on the agent. Only applies to credential (app password) accounts. */
 export async function switchAccount(did: string): Promise<boolean> {
   const accounts = getAccounts()
   const session = accounts.sessions[did]
   if (!session?.accessJwt) return false
   try {
+    setOAuthAgent(null, null)
     accounts.activeDid = did
     saveAccounts(accounts)
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    await agent.resumeSession(session)
+    await credentialAgent.resumeSession(session)
     return true
   } catch {
     return false
   }
 }
 
-export const agent = new AtpAgent({
+const credentialAgent = new AtpAgent({
   service: BSKY_SERVICE,
   persistSession,
+})
+
+let oauthAgentInstance: Agent | null = null
+let oauthSessionRef: { signOut(): Promise<void> } | null = null
+
+/** Set the current OAuth session agent (from initOAuth). Pass null to use credential agent only. */
+export function setOAuthAgent(agent: Agent | null, session?: { signOut(): Promise<void> } | null): void {
+  oauthAgentInstance = agent
+  oauthSessionRef = session ?? null
+}
+
+/** Current agent for API calls: OAuth session if set, otherwise credential (app password) session. */
+export function getAgent(): AtpAgent | Agent {
+  return oauthAgentInstance ?? credentialAgent
+}
+
+/** Single agent reference that always delegates to getAgent() for OAuth/credential switching. */
+export const agent = new Proxy(credentialAgent, {
+  get(_, prop) {
+    return (getAgent() as unknown as Record<string, unknown>)[prop as string]
+  },
 })
 
 /** Agent for unauthenticated reads (profiles, author feeds). Use when no session. */
@@ -153,7 +178,7 @@ export async function resumeSession(): Promise<boolean> {
   const session = getStoredSession()
   if (!session?.accessJwt) return false
   try {
-    await agent.resumeSession(session)
+    await credentialAgent.resumeSession(session)
     return true
   } catch {
     try {
@@ -166,7 +191,8 @@ export async function resumeSession(): Promise<boolean> {
 }
 
 export async function login(identifier: string, password: string) {
-  const res = await agent.login({ identifier, password })
+  setOAuthAgent(null, null)
+  const res = await credentialAgent.login({ identifier, password })
   return res
 }
 
@@ -175,7 +201,7 @@ export async function createAccount(opts: {
   password: string
   handle: string
 }) {
-  const res = await agent.createAccount({
+  const res = await credentialAgent.createAccount({
     email: opts.email.trim(),
     password: opts.password,
     handle: opts.handle.trim().toLowerCase().replace(/^@/, ''),
@@ -184,7 +210,16 @@ export async function createAccount(opts: {
 }
 
 /** Remove current account from the list. If another account exists, switch to it. Returns true if still logged in (switched to another). */
-export function logoutCurrentAccount(): boolean {
+export async function logoutCurrentAccount(): Promise<boolean> {
+  if (oauthAgentInstance && oauthSessionRef) {
+    try {
+      await oauthSessionRef.signOut()
+    } catch {
+      // ignore
+    }
+    setOAuthAgent(null, null)
+    return false
+  }
   const accounts = getAccounts()
   if (accounts.activeDid) {
     delete accounts.sessions[accounts.activeDid]
@@ -195,7 +230,7 @@ export function logoutCurrentAccount(): boolean {
       const next = accounts.sessions[accounts.activeDid]
       try {
         localStorage.setItem(SESSION_KEY, JSON.stringify(next))
-        agent.resumeSession(next)
+        credentialAgent.resumeSession(next)
         return true
       } catch {
         return false
@@ -210,14 +245,16 @@ export function logoutCurrentAccount(): boolean {
   return false
 }
 
-export function logout() {
-  if (!logoutCurrentAccount()) {
-    // No other account; storage already cleared
-  }
+export async function logout(): Promise<void> {
+  await logoutCurrentAccount()
 }
 
-export function getSession() {
-  return agent.session ?? null
+export function getSession(): AtpSessionData | null {
+  const a = getAgent()
+  const atp = a as AtpAgent
+  if (atp.session != null) return atp.session
+  if (a.did) return { did: a.did } as AtpSessionData
+  return null
 }
 
 export type TimelineResponse = Awaited<ReturnType<typeof agent.getTimeline>>

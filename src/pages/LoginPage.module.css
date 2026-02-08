@@ -55,12 +55,15 @@
   color: var(--muted);
   font-size: clamp(0.9rem, 2.2vw, 0.95rem);
   cursor: pointer;
+  text-decoration: none;
+  text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
 
 .tab:hover {
   color: var(--text);
   border-color: var(--muted);
+  text-decoration: none;
 }
 
 .tabActive {
