@@ -1,8 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
 import { useScrollLock } from '../context/ScrollLockContext'
+import { useSwipeToClose } from '../hooks/useSwipeToClose'
 import styles from './PostDetailModal.module.css'
+
+const MOBILE_BREAKPOINT = 768
+function subscribeMobile(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+function getMobileSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false
+}
 
 interface AppModalProps {
   /** Accessible name for the dialog */
@@ -32,6 +44,12 @@ export default function AppModal({
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
   const scrollLock = useScrollLock()
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
+  const handleSwipeRight = () => (canGoBack ? onBack() : onClose())
+  const swipe = useSwipeToClose({
+    enabled: isMobile,
+    onSwipeRight: handleSwipeRight,
+  })
 
   useEffect(() => {
     scrollLock?.lockScroll()
@@ -98,13 +116,19 @@ export default function AppModal({
     <ModalTopBarSlotContext.Provider value={{ centerSlot: topBarSlotEl, rightSlot: topBarRightSlotEl }}>
       <div
         ref={overlayRef}
-        className={styles.overlay}
+        className={`${styles.overlay}${transparentTopBar ? ` ${styles.overlayFlushTop}` : ''}`}
         onClick={handleBackdropClick}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
       >
-        <div className={styles.pane}>
+        <div
+          className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}${transparentTopBar ? ` ${styles.paneNoRightBorder}` : ''}`}
+          style={swipe.style}
+          onTouchStart={swipe.onTouchStart}
+          onTouchMove={swipe.onTouchMove}
+          onTouchEnd={swipe.onTouchEnd}
+        >
           <div className={`${styles.modalTopBar} ${transparentTopBar ? styles.modalTopBarTransparent : ''}`}>
             <div className={styles.modalTopBarLeft}>
               <button
@@ -130,7 +154,7 @@ export default function AppModal({
             <div ref={setTopBarSlotEl} className={styles.modalTopBarSlot} />
             <div ref={setTopBarRightSlotEl} className={styles.modalTopBarRight} />
           </div>
-          <div ref={scrollRef} className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
+          <div ref={scrollRef} data-modal-scroll className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
         </div>
       </div>
     </ModalTopBarSlotContext.Provider>

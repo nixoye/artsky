@@ -18,13 +18,37 @@ import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
-import { useHiddenPosts } from '../context/HiddenPostsContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useFeedMix } from '../context/FeedMixContext'
 import { blockAccount } from '../lib/bsky'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
+import { useSeenPosts } from '../context/SeenPostsContext'
 import styles from './FeedPage.module.css'
+
+const SEEN_POSTS_KEY = 'artsky-seen-posts'
+const SEEN_POSTS_MAX = 2000
+
+function loadSeenUris(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_POSTS_KEY)
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw) as string[]
+    return Array.isArray(arr) ? new Set(arr) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function saveSeenUris(uris: Set<string>) {
+  try {
+    const arr = [...uris]
+    const toSave = arr.length > SEEN_POSTS_MAX ? arr.slice(-SEEN_POSTS_MAX) : arr
+    localStorage.setItem(SEEN_POSTS_KEY, JSON.stringify(toSave))
+  } catch {
+    // ignore
+  }
+}
 
 const PRESET_SOURCES: FeedSource[] = [
   { kind: 'timeline', label: 'Following' },
@@ -48,11 +72,12 @@ function estimateItemHeight(item: TimelineItem): number {
   return CARD_CHROME + 220
 }
 
-/** Distribute items across columns so each column's estimated total height is roughly equal. */
+/** Distribute items so no column is much longer than others: cap count difference at 1, then pick by smallest estimated height. */
 function distributeByHeight(
   items: TimelineItem[],
   numCols: number
 ): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  if (numCols < 1) return []
   const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
     { length: numCols },
     () => []
@@ -61,12 +86,17 @@ function distributeByHeight(
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const h = estimateItemHeight(item)
-    let shortest = 0
-    for (let c = 1; c < numCols; c++) {
-      if (columnHeights[c] < columnHeights[shortest]) shortest = c
+    const lengths = columns.map((col) => col.length)
+    const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
+    let best = -1
+    for (let c = 0; c < numCols; c++) {
+      if (columns[c].length > minCount + 1) continue
+      if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
+      else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
     }
-    columns[shortest].push({ item, originalIndex: i })
-    columnHeights[shortest] += h
+    if (best === -1) best = 0
+    columns[best].push({ item, originalIndex: i })
+    columnHeights[best] += h
   }
   return columns
 }
@@ -221,12 +251,52 @@ export default function FeedPage() {
   const scrollIntoViewFromKeyboardRef = useRef(false)
   /** Only update focus on mouse enter when the user has actually moved the mouse (not when scroll moved content under cursor) */
   const mouseMovedRef = useRef(false)
+  /** True after W/S/A/D nav so we suppress hover outline on non-selected cards (focus is not moved to the card) */
+  const [keyboardNavActive, setKeyboardNavActive] = useState(false)
   const [blockConfirm, setBlockConfirm] = useState<{ did: string; handle: string; avatar?: string } | null>(null)
   const blockCancelRef = useRef<HTMLButtonElement>(null)
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
-  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
+  const [seenUris, setSeenUris] = useState<Set<string>>(loadSeenUris)
+  /** Snapshot of seen URIs at last “reset” (refresh or navigate to feed); only these are hidden from the list. Newly seen posts while scrolling stay visible (darkened). */
+  const [seenUrisAtReset, setSeenUrisAtReset] = useState<Set<string>>(() => new Set(loadSeenUris()))
   const prevPathnameRef = useRef(location.pathname)
+  const seenUrisRef = useRef(seenUris)
+  seenUrisRef.current = seenUris
+  const seenPostsContext = useSeenPosts()
+
+  // Register clear-seen handler so that long-press on Home can bring back all hidden (seen) items.
+  useEffect(() => {
+    if (!seenPostsContext) return
+    seenPostsContext.setClearSeenHandler(() => {
+      try {
+        localStorage.removeItem(SEEN_POSTS_KEY)
+      } catch {
+        // ignore
+      }
+      seenUrisRef.current = new Set()
+      setSeenUris(new Set())
+      setSeenUrisAtReset(new Set())
+    })
+    return () => {
+      seenPostsContext.setClearSeenHandler(null)
+    }
+  }, [seenPostsContext])
+
+  // When Home/logo is clicked while already on feed: hide seen posts (take snapshot) and scroll to top.
+  // Defer to next frame so any IntersectionObserver callbacks from the same tick run first and seenUrisRef is up to date (fixes "two clicks" on logo/Home).
+  useEffect(() => {
+    if (!seenPostsContext) return
+    seenPostsContext.setHomeClickHandler(() => {
+      requestAnimationFrame(() => {
+        setSeenUrisAtReset(new Set(seenUrisRef.current))
+        window.scrollTo(0, 0)
+      })
+    })
+    return () => {
+      seenPostsContext.setHomeClickHandler(null)
+    }
+  }, [seenPostsContext])
 
   const presetUris = new Set((PRESET_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
   const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
@@ -257,12 +327,14 @@ export default function FeedPage() {
     loadSavedFeeds()
   }, [loadSavedFeeds])
 
-  // Scroll to top when landing on the feed from another page (e.g. clicking logo), not when only search params change (e.g. opening post modal adds ?post=)
+  // When landing on the feed (refresh or logo/feed button): scroll to top and take snapshot of seen URIs so only those are hidden; newly seen posts while scrolling stay visible.
   useEffect(() => {
     const pathnameChanged = prevPathnameRef.current !== location.pathname
+    const isFeed = location.pathname === '/' || location.pathname.startsWith('/feed')
+    if (isFeed && pathnameChanged) setSeenUrisAtReset(new Set(seenUris))
     prevPathnameRef.current = location.pathname
     if (navigationType !== 'POP' && pathnameChanged) window.scrollTo(0, 0)
-  }, [navigationType, location.pathname])
+  }, [location.pathname, navigationType, seenUris])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
@@ -291,15 +363,6 @@ export default function FeedPage() {
     },
     [mixEntries.length, source, addEntry, toggleSource]
   )
-  const feedLabel =
-    mixEntries.length >= 2
-      ? 'Feed mix'
-      : mixEntries.length === 1
-        ? mixEntries[0].source.label
-        : source.kind === 'timeline'
-          ? 'Following'
-          : source.label ?? undefined
-
   const load = useCallback(async (nextCursor?: string) => {
     const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
     const limit = cols >= 2 ? cols * 10 : 30
@@ -379,13 +442,16 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, load])
 
-  const { isHidden, addHidden } = useHiddenPosts()
   const { mediaOnly } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const displayItems = items
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
-    .filter((item) => !isHidden(item.post.uri))
+    .filter((item) => !seenUrisAtReset.has(item.post.uri))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
+  const itemsAfterOtherFilters = items
+    .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
+    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
+  const emptyBecauseAllSeen = displayItems.length === 0 && itemsAfterOtherFilters.length > 0
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -395,15 +461,38 @@ export default function FeedPage() {
   }, [displayItems.length])
 
   useEffect(() => {
+    saveSeenUris(seenUris)
+  }, [seenUris])
+
+  // Mark posts as seen when scrolled past (card top above viewport)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
+            const uri = (entry.target as HTMLElement).getAttribute('data-post-uri')
+            if (uri) {
+              const next = new Set(seenUrisRef.current).add(uri)
+              seenUrisRef.current = next
+              setSeenUris(next)
+            }
+          }
+        }
+      },
+      { threshold: 0, rootMargin: '0px' }
+    )
+    for (let i = 0; i < displayItems.length; i++) {
+      const el = cardRefsRef.current[i]
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [displayItems.length])
+
+  useEffect(() => {
     const onMouseMove = () => { mouseMovedRef.current = true }
     window.addEventListener('mousemove', onMouseMove)
     return () => window.removeEventListener('mousemove', onMouseMove)
   }, [])
-
-  // When focus moves to another post and a menu is open, close the menu (don't open the new post's menu)
-  useEffect(() => {
-    if (openMenuIndex !== null && openMenuIndex !== keyboardFocusIndex) setOpenMenuIndex(null)
-  }, [keyboardFocusIndex, openMenuIndex])
 
   // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
@@ -423,7 +512,9 @@ export default function FeedPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isModalOpen) return
+      /* Never affect feed when a popup is open: check both context and URL (URL covers first render after open). */
+      const hasModalInUrl = /[?&](post|profile|tag)=/.test(location.search)
+      if (isModalOpen || hasModalInUrl) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
         if (e.key === 'Escape') {
@@ -450,19 +541,8 @@ export default function FeedPage() {
         }
         return // let Tab/Enter reach the dialog buttons
       }
-      // When ... menu is open, let the menu handle W/S/E/Q (navigate and activate)
-      if (openMenuIndex !== null && (key === 'w' || key === 's' || key === 'e' || key === 'q' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm' || key === '`' || key === '4' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === '4' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
 
-      if (key === 'h') {
-        const item = items[i]
-        if (item?.post?.uri) {
-          addHidden(item.post.uri)
-          mouseMovedRef.current = false
-          setKeyboardFocusIndex((idx) => Math.max(0, Math.min(idx, items.length - 2)))
-        }
-        return
-      }
       if (key === 'b') {
         const item = items[i]
         if (item?.post?.author && session?.did !== item.post.author.did) {
@@ -479,6 +559,7 @@ export default function FeedPage() {
       /* Use ref + concrete value (not functional updater) so Strict Mode double-invoke doesn't move two steps */
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
+        setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
         const next = cols >= 2
           ? indexAbove(distributeByHeight(items, cols), i)
@@ -488,6 +569,7 @@ export default function FeedPage() {
       }
       if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
+        setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
         const next = cols >= 2
           ? indexBelow(distributeByHeight(items, cols), i)
@@ -497,6 +579,7 @@ export default function FeedPage() {
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         mouseMovedRef.current = false
+        setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
         const columns = cols >= 2 ? distributeByHeight(items, cols) : null
         const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
@@ -509,6 +592,7 @@ export default function FeedPage() {
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         mouseMovedRef.current = false
+        setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
         const columns = cols >= 2 ? distributeByHeight(items, cols) : null
         const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
@@ -547,14 +631,6 @@ export default function FeedPage() {
       }
       if (key === 'c') {
         setKeyboardAddOpen(true)
-        return
-      }
-      if (key === 'm' || key === '`') {
-        if (openMenuIndex === i) {
-          setOpenMenuIndex(null)
-        } else {
-          setOpenMenuIndex(i)
-        }
         return
       }
       if (key === '4') {
@@ -609,7 +685,7 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session, openMenuIndex, likeOverrides])
+  }, [location.pathname, location.search, cols, isModalOpen, openPostModal, blockConfirm, session, likeOverrides])
 
   useEffect(() => {
     if (blockConfirm) blockCancelRef.current?.focus()
@@ -645,12 +721,16 @@ export default function FeedPage() {
           <div className={styles.loading}>Loading…</div>
         ) : displayItems.length === 0 ? (
           <div className={styles.empty}>
-            {mediaOnly ? 'No posts with images or videos in this feed.' : 'No posts in this feed.'}
+            {emptyBecauseAllSeen
+              ? <>You've seen all the posts in this feed.<br />New posts will appear as they're posted.</>
+              : mediaOnly
+                ? 'No posts with images or videos in this feed.'
+                : 'No posts in this feed.'}
           </div>
         ) : (
           <>
             {cols >= 2 ? (
-              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
+              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-keyboard-nav={keyboardNavActive || undefined}>
                 {distributeByHeight(displayItems, cols).map((column, colIndex) => (
                   <div key={colIndex} className={styles.gridColumn}>
                     {column.map(({ item, originalIndex }) => (
@@ -660,6 +740,7 @@ export default function FeedPage() {
                         onMouseEnter={() => {
                           if (mouseMovedRef.current) {
                             mouseMovedRef.current = false
+                            setKeyboardNavActive(false)
                             setKeyboardFocusIndex(originalIndex)
                           }
                         }}
@@ -671,15 +752,12 @@ export default function FeedPage() {
                           openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
                           onAddClose={() => setKeyboardAddOpen(false)}
                           onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                          feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-                          openActionsMenu={openMenuIndex === originalIndex}
-                          onActionsMenuOpen={() => setOpenMenuIndex(originalIndex)}
-                          onActionsMenuClose={() => setOpenMenuIndex(null)}
                           onAspectRatio={undefined}
                           fillCell={false}
                           nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                           onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                           likedUriOverride={likeOverrides[item.post.uri]}
+                          seen={seenUris.has(item.post.uri)}
                         />
                       </div>
                     ))}
@@ -687,13 +765,14 @@ export default function FeedPage() {
                 ))}
               </div>
             ) : (
-              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
+              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-keyboard-nav={keyboardNavActive || undefined}>
                 {displayItems.map((item, index) => (
                   <div
                     key={item.post.uri}
                     onMouseEnter={() => {
                       if (mouseMovedRef.current) {
                         mouseMovedRef.current = false
+                        setKeyboardNavActive(false)
                         setKeyboardFocusIndex(index)
                       }
                     }}
@@ -705,15 +784,12 @@ export default function FeedPage() {
                       openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                       onAddClose={() => setKeyboardAddOpen(false)}
                       onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                      feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-                      openActionsMenu={openMenuIndex === index}
-                      onActionsMenuOpen={() => setOpenMenuIndex(index)}
-                      onActionsMenuClose={() => setOpenMenuIndex(null)}
                       onAspectRatio={undefined}
                       fillCell={false}
                       nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                       likedUriOverride={likeOverrides[item.post.uri]}
+                      seen={seenUris.has(item.post.uri)}
                     />
                   </div>
                 ))}
