@@ -643,11 +643,6 @@ export default function Layout({ title, children, showNav }: Props) {
     </>
   )
 
-  const closeAccountPanel = () => {
-    setAccountMenuOpen(false)
-    setAccountSheetOpen(false)
-  }
-
   const notificationsPanelContent = (
     <>
       <h2 className={styles.menuTitle}>Notifications</h2>
