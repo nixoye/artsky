@@ -57,6 +57,21 @@
   gap: 0.1rem;
 }
 
+/* Portaled dropdown: position set inline (fixed above trigger) so it stays in view in scrollable columns */
+.dropdownFixed {
+  /* position, bottom, right set via inline style */
+}
+
+.dropdownCompact {
+  min-width: 140px;
+  padding: 0.25rem;
+  font-size: 0.85rem;
+}
+.dropdownCompact .item {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+
 .feedLabel {
   padding: 0.35rem 0.6rem 0.25rem;
   font-size: 0.8rem;

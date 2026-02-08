@@ -135,7 +135,7 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
         const item = items[i]
         if (!item?.post?.uri || !item?.post?.cid) return
         const uri = item.post.uri
-        const currentLikeUri = likeOverrides[uri] ?? (item.post as { viewer?: { like?: string } }).viewer?.like
+        const currentLikeUri = uri in likeOverrides ? (likeOverrides[uri] ?? undefined) : (item.post as { viewer?: { like?: string } }).viewer?.like
         if (currentLikeUri) {
           agent.deleteLike(currentLikeUri).then(() => {
             setLikeOverrides((prev) => ({ ...prev, [uri]: null }))

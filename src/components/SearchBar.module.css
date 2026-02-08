@@ -5,6 +5,7 @@
 
 .compact .searchRow {
   min-height: 0;
+  border-width: 0;
 }
 
 .compact .filterIconBtn {

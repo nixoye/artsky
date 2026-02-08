@@ -164,6 +164,9 @@
   margin-top: 0.45rem;
   justify-content: center;
 }
+.rootPostDescription .postHead .authorRow {
+  justify-content: center;
+}
 .rootPostDescription .postHead .avatar {
   width: 28px;
   height: 28px;

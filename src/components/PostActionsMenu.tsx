@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { blockAccount, unblockAccount, reportPost, muteThread, deletePost, agent } from '../lib/bsky'
 import { getSession } from '../lib/bsky'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
@@ -58,6 +59,8 @@ export default function PostActionsMenu({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const lastOpenTriggerRef = useRef<number>(0)
+  /** Fixed position for portaled dropdown so it appears above the trigger and isn't clipped by overflow */
+  const [dropdownPosition, setDropdownPosition] = useState<{ bottom: number; right: number } | null>(null)
 
   const isControlled = openControlled !== undefined && onOpenChange !== undefined
   const open = isControlled ? openControlled : openUncontrolled
@@ -100,14 +103,35 @@ export default function PostActionsMenu({
   useEffect(() => {
     if (!isControlled && openTrigger != null && openTrigger !== lastOpenTriggerRef.current) {
       lastOpenTriggerRef.current = openTrigger
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect()
+        setDropdownPosition({
+          bottom: window.innerHeight - rect.top,
+          right: window.innerWidth - rect.right,
+        })
+      }
       setOpenUncontrolled(true)
     }
   }, [openTrigger, isControlled])
 
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      setDropdownPosition(null)
+      return
+    }
+    const rect = triggerRef.current.getBoundingClientRect()
+    setDropdownPosition({
+      bottom: window.innerHeight - rect.top,
+      right: window.innerWidth - rect.right,
+    })
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onDocClick = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return
+      const target = e.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (dropdownRef.current?.contains(target)) return
       setOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
@@ -288,6 +312,13 @@ export default function PostActionsMenu({
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
+          if (!open && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect()
+            setDropdownPosition({
+              bottom: window.innerHeight - rect.top,
+              right: window.innerWidth - rect.right,
+            })
+          }
           setOpen(!open)
         }}
         aria-expanded={open}
@@ -297,9 +328,19 @@ export default function PostActionsMenu({
       >
         ⋯
       </button>
-      {open && (
-        <div ref={dropdownRef} className={styles.dropdown} role="menu">
-          {feedLabel ? (
+      {open && dropdownPosition &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className={`${styles.dropdown} ${styles.dropdownFixed} ${compact ? styles.dropdownCompact : ''}`}
+            style={{
+              position: 'fixed',
+              bottom: dropdownPosition.bottom,
+              right: dropdownPosition.right,
+            }}
+            role="menu"
+          >
+            {feedLabel ? (
             <div className={styles.feedLabel} role="presentation">From: {feedLabel}</div>
           ) : null}
           {feedback ? (
@@ -442,8 +483,10 @@ export default function PostActionsMenu({
               </button>
             </>
           )}
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
     </div>
   )
 }
