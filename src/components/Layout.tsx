@@ -279,7 +279,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow' | 'like'>('all')
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -716,17 +716,6 @@ export default function Layout({ title, children, showNav }: Props) {
             )
           })}
           <div className={styles.menuActions}>
-            <button
-              type="button"
-              className={styles.menuActionBtn}
-              onClick={() => {
-                setAccountMenuOpen(false)
-                setAccountSheetOpen(false)
-                openEditProfile()
-              }}
-            >
-              Edit profile
-            </button>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
             </button>
@@ -767,10 +756,6 @@ export default function Layout({ title, children, showNav }: Props) {
       </Link>
       {session && (
         <>
-          <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
-            <PencilIcon />
-            <span>Edit profile</span>
-          </button>
           <div className={styles.menuCompactAccounts}>
             {sessionsList.map((s) => {
               const profile = accountProfiles[s.did]
@@ -983,14 +968,11 @@ export default function Layout({ title, children, showNav }: Props) {
                         <button type="button" className={notificationFilter === 'all' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('all')}>All</button>
                         <button type="button" className={notificationFilter === 'reply' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('reply')}>Replies</button>
                         <button type="button" className={notificationFilter === 'follow' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('follow')}>Follows</button>
-                        <button type="button" className={notificationFilter === 'like' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('like')}>Likes & reposts</button>
                       </div>
                       {notificationsLoading ? (
                         <p className={styles.notificationsLoading}>Loading…</p>
                       ) : (() => {
-                        const filtered = notificationFilter === 'all' ? notifications : notificationFilter === 'like'
-                          ? notifications.filter((n) => n.reason === 'like' || n.reason === 'repost')
-                          : notifications.filter((n) => n.reason === notificationFilter)
+                        const filtered = notificationFilter === 'all' ? notifications : notifications.filter((n) => n.reason === notificationFilter)
                         return filtered.length === 0 ? (
                           <p className={styles.notificationsEmpty}>
                             {notificationFilter === 'all' ? 'No notifications yet.' : 'No matching notifications.'}

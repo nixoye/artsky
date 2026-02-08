@@ -4,9 +4,10 @@
 
 .feedRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .remixHeader {
@@ -16,20 +17,22 @@
 }
 
 .helpBtn {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--muted);
   background: var(--glass-highlight);
   border: 1px solid var(--glass-border);
-  border-radius: 50%;
+  border-radius: var(--glass-radius-sm);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 .helpBtn:hover {
@@ -59,6 +62,7 @@
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .feedPillWrap {
@@ -66,27 +70,40 @@
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
+  /* Reserve space for ratio row so activating multiple feeds doesn’t shift content below */
+  min-height: calc(2.75rem + 0.35rem + 1.5rem);
 }
 
-/* Feed pill with − and + on the sides when in mix */
-.feedPillRow {
+/* Feed pill with − and + below when in mix */
+.feedPillColumn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
-.ratioBtnSide {
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
+.ratioBtnRow {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  gap: 0.35rem;
+}
+
+.ratioBtnSide {
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
   line-height: 1;
   font-weight: 600;
   color: var(--muted);
-  background: var(--glass-highlight);
+  background: var(--surface);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   cursor: pointer;
@@ -101,8 +118,10 @@
 
 .feedPillWithFill {
   padding: 0.5rem 0.75rem;
-  min-height: var(--touch-min);
+  height: 2.75rem;
+  min-height: 2.75rem;
   min-width: 4rem;
+  box-sizing: border-box;
   border: 1px solid var(--accent);
   border-radius: var(--glass-radius-sm);
   color: var(--text-on-accent);
@@ -115,6 +134,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.15rem;
   transition: filter 0.15s ease;
 }
@@ -135,14 +155,17 @@
   opacity: 0.95;
 }
 
-.tabs button {
+.tabs button:not(.ratioBtnSide) {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.15rem;
   padding: 0.5rem 0.75rem;
-  min-height: var(--touch-min);
+  height: 2.75rem;
+  min-height: 2.75rem;
+  min-width: 4.5rem;
+  box-sizing: border-box;
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   background: var(--glass-highlight);
@@ -153,18 +176,17 @@
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.tabs button:hover {
-  background: var(--accent-subtle);
+.tabs button:not(.ratioBtnSide):hover {
   border-color: var(--accent);
 }
 
-.tabs button.active {
+.tabs button:not(.ratioBtnSide).active {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--text-on-accent);
 }
 
-.tabs button.active:hover {
+.tabs button:not(.ratioBtnSide).active:hover {
   filter: brightness(1.08);
 }
 

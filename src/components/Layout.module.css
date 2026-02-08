@@ -479,6 +479,7 @@
     z-index: 30;
   }
   .accountMenu {
+    background: var(--surface);
     min-width: 200px;
     max-width: 280px;
     max-height: 70vh;
@@ -494,7 +495,7 @@
     max-height: 70vh;
     overflow-y: auto;
     padding: 0.5rem;
-    background: var(--glass-bg-strong);
+    background: var(--surface);
     -webkit-backdrop-filter: blur(var(--glass-blur-strong));
     backdrop-filter: blur(var(--glass-blur-strong));
     border: 1px solid var(--glass-border);
@@ -505,6 +506,7 @@
   .notificationFilters {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.25rem;
     margin-bottom: 0.5rem;
   }
@@ -522,11 +524,15 @@
   }
   .notificationFilter:hover {
     color: var(--text);
+    background: var(--glass-highlight);
   }
   .notificationFilterActive {
-    background: var(--accent-strong);
-    color: var(--accent);
+    background: var(--accent);
+    color: var(--text-on-accent);
     border-color: var(--accent);
+  }
+  .notificationFilterActive:hover {
+    filter: brightness(1.15);
   }
   .notificationsList {
     list-style: none;
@@ -544,6 +550,7 @@
   }
   .notificationItem:hover {
     background: var(--glass-highlight);
+    text-decoration: none;
   }
   .notificationAvatar {
     width: 36px;
@@ -713,6 +720,11 @@
   .menuItemActive {
     color: var(--accent);
     font-weight: 600;
+    background: var(--accent-muted);
+  }
+  .menuItemActive:hover,
+  .accountMenu a.menuItemActive:hover {
+    background: var(--glass-highlight);
   }
   .accountMenu a.menuItem,
   .accountMenu a.menuItem:hover {
@@ -741,7 +753,7 @@
     cursor: pointer;
   }
   .menuActionBtn:hover {
-    opacity: 0.95;
+    filter: brightness(1.15);
   }
   .menuActionSecondary {
     padding: 0.4rem 0.75rem;
@@ -770,6 +782,9 @@
   gap: 0.25rem;
   width: 100%;
 }
+.menuNsfwRow + .menuNsfwRow {
+  margin-top: 0.75rem;
+}
 .menuNsfwRow .menuNsfwBtn,
 .menuNsfwRow .menuNsfwBtnActive {
   flex: 1;
@@ -778,25 +793,28 @@
   font-size: 0.8rem;
   font-family: inherit;
   border-radius: var(--glass-radius-sm);
-  border: 1px solid var(--border);
-  background: var(--glass-bg);
-  color: var(--text);
+  border: 1px solid var(--glass-border);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
 }
-.menuNsfwRow .menuNsfwBtn:hover {
+.menuNsfwRow .menuNsfwBtn {
   background: var(--glass-highlight);
+  color: var(--text);
+}
+.menuNsfwRow .menuNsfwBtn:hover {
   border-color: var(--accent);
-  color: var(--accent);
 }
 .menuNsfwRow .menuNsfwBtnActive {
-  background: var(--accent-subtle);
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-weight: 500;
+}
+.menuNsfwRow .menuNsfwBtnActive:hover {
+  filter: brightness(1.15);
 }
 
 /* iOS-style tab bar with icons; hides on scroll down; hidden on desktop; compact height */
@@ -1259,7 +1277,7 @@
   width: calc(100% - 2rem);
   max-width: 320px;
   max-height: 85vh;
-  background: var(--glass-bg-strong);
+  background: var(--surface);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong));
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
@@ -1321,7 +1339,7 @@
 }
 
 .menuCompactAuthBtnPrimary:hover {
-  background: color-mix(in srgb, var(--accent) 90%, black);
+  filter: brightness(1.15);
   color: var(--text-on-accent);
 }
 
@@ -1376,6 +1394,9 @@
   background: var(--accent-strong);
   color: var(--accent);
 }
+.menuCompactBtnActive:hover {
+  filter: brightness(1.2);
+}
 
 .menuCompactColWrap {
   display: flex;
@@ -1418,6 +1439,10 @@
   color: var(--accent);
   font-weight: 600;
   background: var(--accent-muted);
+  border: 1px solid var(--accent);
+}
+.menuCompactItemActive:hover {
+  background: var(--glass-highlight);
 }
 
 .accountPopupContentCompact a.menuCompactItem,
@@ -1442,6 +1467,10 @@
   padding-top: 0.5rem;
   border-top: 1px solid var(--glass-border);
 }
+.menuCompactNsfwRow + .menuCompactNsfwRow {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
 
 .menuCompactNsfwRow .menuNsfwBtn,
 .menuCompactNsfwRow .menuNsfwBtnActive {
@@ -1451,9 +1480,7 @@
   font-size: 0.75rem;
   font-family: inherit;
   border-radius: var(--glass-radius-sm);
-  border: 1px solid var(--border);
-  background: var(--glass-bg);
-  color: var(--text);
+  border: 1px solid var(--glass-border);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1461,17 +1488,22 @@
   text-align: center;
 }
 
-.menuCompactNsfwRow .menuNsfwBtn:hover {
+.menuCompactNsfwRow .menuNsfwBtn {
   background: var(--glass-highlight);
+  color: var(--text);
+}
+.menuCompactNsfwRow .menuNsfwBtn:hover {
   border-color: var(--accent);
-  color: var(--accent);
 }
 
 .menuCompactNsfwRow .menuNsfwBtnActive {
-  background: var(--accent-subtle);
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-weight: 500;
+}
+.menuCompactNsfwRow .menuNsfwBtnActive:hover {
+  filter: brightness(1.15);
 }
 
 .menuCompactActions {
@@ -1512,6 +1544,9 @@
 .menuCompactActionBtn {
   background: var(--accent);
   color: var(--text-on-accent);
+}
+.menuCompactActionBtn:hover {
+  filter: brightness(1.15);
 }
 
 a.menuCompactActionBtn {
@@ -1657,6 +1692,10 @@ a.menuCompactActionBtn {
 .accountPopupContent .menuItemActive {
   color: var(--accent);
   font-weight: 600;
+  background: var(--accent-muted);
+}
+.accountPopupContent .menuItemActive:hover {
+  background: var(--glass-highlight);
 }
 
 .accountPopupContent .menuActions {

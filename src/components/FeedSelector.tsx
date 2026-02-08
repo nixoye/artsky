@@ -84,19 +84,7 @@ export default function FeedSelector({
           return (
             <div key={s.uri ?? s.label} className={styles.feedPillWrap}>
               {showRatio ? (
-                <div className={styles.feedPillRow}>
-                  <button
-                    type="button"
-                    className={styles.ratioBtnSide}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const next = Math.max(1, in10 - 1)
-                      setEntryPercent(entryIndex, next * 10)
-                    }}
-                    aria-label="Fewer posts from this feed"
-                  >
-                    −
-                  </button>
+                <div className={styles.feedPillColumn}>
                   <button
                     type="button"
                     className={styles.feedPillWithFill}
@@ -106,20 +94,34 @@ export default function FeedSelector({
                     onClick={() => onToggle(s)}
                   >
                     <span className={styles.feedPillLabel}>{s.label}</span>
-                    <span className={styles.feedPillRatio}>{in10} in 10 posts</span>
+                    <span className={styles.feedPillRatio}>{in10} out of 10 posts</span>
                   </button>
-                  <button
-                    type="button"
-                    className={styles.ratioBtnSide}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const next = Math.min(10, in10 + 1)
-                      setEntryPercent(entryIndex, next * 10)
-                    }}
-                    aria-label="More posts from this feed"
-                  >
-                    +
-                  </button>
+                  <div className={styles.ratioBtnRow}>
+                    <button
+                      type="button"
+                      className={styles.ratioBtnSide}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const next = Math.max(1, in10 - 1)
+                        setEntryPercent(entryIndex, next * 10)
+                      }}
+                      aria-label="Fewer posts from this feed"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.ratioBtnSide}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const next = Math.min(10, in10 + 1)
+                        setEntryPercent(entryIndex, next * 10)
+                      }}
+                      aria-label="More posts from this feed"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -130,7 +132,7 @@ export default function FeedSelector({
                   {isInMix ? (
                     <>
                       <span className={styles.feedPillLabel}>{s.label}</span>
-                      <span className={styles.feedPillRatio}>10 in 10 posts</span>
+                      <span className={styles.feedPillRatio}>10 out of 10 posts</span>
                     </>
                   ) : (
                     s.label
