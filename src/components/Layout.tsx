@@ -891,6 +891,9 @@ export default function Layout({ title, children, showNav }: Props) {
               >
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
+                {import.meta.env.VITE_APP_ENV === 'dev' && (
+                  <span className={styles.logoDev}> dev</span>
+                )}
               </Link>
             </div>
             <div className={styles.headerCenter}>

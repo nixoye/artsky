@@ -79,6 +79,7 @@ jobs:
           CI: true
           NODE_OPTIONS: '--max-old-space-size=4096'
           VITE_BASE_PATH: '/artsky-dev/'
+          VITE_APP_ENV: 'dev'
 
       - name: Verify build output
         run: |
