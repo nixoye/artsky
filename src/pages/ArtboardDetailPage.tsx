@@ -65,11 +65,11 @@ export default function ArtboardDetailPage() {
                     {(p.thumbs && p.thumbs.length > 0) ? (
                       <div className={styles.thumbsGrid}>
                         {p.thumbs.map((url, i) => (
-                          <img key={i} src={url} alt="" className={p.thumbs!.length === 1 ? `${styles.thumb} ${styles.thumbSpan}` : styles.thumb} />
+                          <img key={i} src={url} alt="" className={p.thumbs!.length === 1 ? `${styles.thumb} ${styles.thumbSpan}` : styles.thumb} loading="lazy" />
                         ))}
                       </div>
                     ) : p.thumb ? (
-                      <img src={p.thumb} alt="" className={styles.thumb} />
+                      <img src={p.thumb} alt="" className={styles.thumb} loading="lazy" />
                     ) : (
                       <div className={styles.placeholder}>📌</div>
                     )}

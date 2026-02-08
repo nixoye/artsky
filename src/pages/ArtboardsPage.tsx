@@ -130,7 +130,7 @@ export default function ArtboardsPage() {
                       {board.posts.slice(0, 4).map((p) => (
                         <div key={p.uri} className={styles.bentoThumb}>
                           {p.thumb ? (
-                            <img src={p.thumb} alt="" />
+                            <img src={p.thumb} alt="" loading="lazy" />
                           ) : (
                             <span className={styles.thumbPlaceholder}>📌</span>
                           )}

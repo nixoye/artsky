@@ -345,6 +345,8 @@ export type PostMediaInfo = {
   type: 'image' | 'video'
   imageCount?: number
   videoPlaylist?: string
+  /** When present, use for initial container aspect to avoid layout shift. */
+  aspectRatio?: number
 }
 
 /** Returns media info for a post: thumbnail/first image URL, type, and for video the playlist URL. */
@@ -352,7 +354,7 @@ export function getPostMediaInfo(post: PostView): PostMediaInfo | null {
   const embed = post.embed as
     | {
         $type?: string
-        images?: { thumb: string; fullsize: string }[]
+        images?: { thumb: string; fullsize: string; aspectRatio?: { width: number; height: number } }[]
         thumbnail?: string
         playlist?: string
       }
@@ -360,10 +362,14 @@ export function getPostMediaInfo(post: PostView): PostMediaInfo | null {
   if (!embed) return null
   if (embed.$type === 'app.bsky.embed.images#view' && embed.images?.length) {
     const img = embed.images[0]
+    const ar = img.aspectRatio && img.aspectRatio.width > 0 && img.aspectRatio.height > 0
+      ? img.aspectRatio.width / img.aspectRatio.height
+      : undefined
     return {
       url: img.fullsize ?? img.thumb ?? '',
       type: 'image',
       imageCount: embed.images.length,
+      aspectRatio: ar,
     }
   }
   if (embed.$type === 'app.bsky.embed.video#view') {
@@ -375,17 +381,21 @@ export function getPostMediaInfo(post: PostView): PostMediaInfo | null {
   const media = (embed as {
     media?: {
       $type?: string
-      images?: { fullsize?: string; thumb?: string }[]
+      images?: { fullsize?: string; thumb?: string; aspectRatio?: { width: number; height: number } }[]
       thumbnail?: string
       playlist?: string
     }
   }).media
   if (media?.$type === 'app.bsky.embed.images#view' && media.images?.length) {
     const img = media.images[0]
+    const ar = img.aspectRatio && img.aspectRatio.width > 0 && img.aspectRatio.height > 0
+      ? img.aspectRatio.width / img.aspectRatio.height
+      : undefined
     return {
       url: img.fullsize ?? img.thumb ?? '',
       type: 'image',
       imageCount: media.images.length,
+      aspectRatio: ar,
     }
   }
   if (media?.$type === 'app.bsky.embed.video#view') {
@@ -400,20 +410,23 @@ export function getPostMediaInfo(post: PostView): PostMediaInfo | null {
 }
 
 /** Returns all media items in a post (all images + video if any) for gallery view. */
-export function getPostAllMedia(post: PostView): Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string }> {
-  const out: Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string }> = []
+export function getPostAllMedia(post: PostView): Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string; aspectRatio?: number }> {
+  const out: Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string; aspectRatio?: number }> = []
   const embed = post.embed as Record<string, unknown> | undefined
   if (!embed) return out
   const e = embed as {
     $type?: string
-    images?: { thumb: string; fullsize: string }[]
+    images?: { thumb: string; fullsize: string; aspectRatio?: { width: number; height: number } }[]
     thumbnail?: string
     playlist?: string
-    media?: { $type?: string; images?: { fullsize?: string; thumb?: string }[]; thumbnail?: string; playlist?: string }
+    media?: { $type?: string; images?: { fullsize?: string; thumb?: string; aspectRatio?: { width: number; height: number } }[]; thumbnail?: string; playlist?: string }
   }
   if (e.$type === 'app.bsky.embed.images#view' && e.images?.length) {
     for (const img of e.images) {
-      out.push({ url: img.fullsize ?? img.thumb ?? '', type: 'image' })
+      const ar = img.aspectRatio && img.aspectRatio.width > 0 && img.aspectRatio.height > 0
+        ? img.aspectRatio.width / img.aspectRatio.height
+        : undefined
+      out.push({ url: img.fullsize ?? img.thumb ?? '', type: 'image', aspectRatio: ar })
     }
     return out
   }
@@ -428,7 +441,10 @@ export function getPostAllMedia(post: PostView): Array<{ url: string; type: 'ima
   const media = e.media
   if (media?.$type === 'app.bsky.embed.images#view' && media.images?.length) {
     for (const img of media.images) {
-      out.push({ url: img.fullsize ?? img.thumb ?? '', type: 'image' })
+      const ar = img.aspectRatio && img.aspectRatio.width > 0 && img.aspectRatio.height > 0
+        ? img.aspectRatio.width / img.aspectRatio.height
+        : undefined
+      out.push({ url: img.fullsize ?? img.thumb ?? '', type: 'image', aspectRatio: ar })
     }
     return out
   }

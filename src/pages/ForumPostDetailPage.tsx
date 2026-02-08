@@ -423,7 +423,7 @@ export default function ForumPostDetailPage() {
               <div ref={docSectionRef} tabIndex={-1} className={postBlockStyles.postBlockContent} onFocus={() => setKeyboardFocusIndex(0)}>
                 <div className={postBlockStyles.postHead}>
                   {doc.authorAvatar ? (
-                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} />
+                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} loading="lazy" />
                   ) : (
                     <span className={styles.avatarPlaceholder} aria-hidden>{(doc.authorHandle ?? doc.did).slice(0, 1).toUpperCase()}</span>
                   )}
@@ -449,7 +449,7 @@ export default function ForumPostDetailPage() {
                     {doc.media && doc.media.length > 0 && (
                       <div className={styles.docMedia}>
                         {doc.media.map((m, i) => (
-                          <img key={i} src={m.url} alt="" className={styles.docMediaImg} />
+                          <img key={i} src={m.url} alt="" className={styles.docMediaImg} loading="lazy" />
                         ))}
                       </div>
                     )}
@@ -537,13 +537,13 @@ export default function ForumPostDetailPage() {
                           <div className={styles.mediaPreviews}>
                             {doc.media?.slice(0, editMediaRefs.length).map((m, i) => (
                               <div key={`existing-${i}`} className={styles.mediaPreviewWrap}>
-                                <img src={m.url} alt="" className={styles.mediaPreviewImg} />
+                                <img src={m.url} alt="" className={styles.mediaPreviewImg} loading="lazy" />
                                 <button type="button" className={styles.mediaPreviewRemove} onClick={() => removeEditMediaRef(i)} aria-label="Remove">×</button>
                               </div>
                             ))}
                             {editMediaNewFiles.map((_, i) => (
                               <div key={`new-${i}`} className={styles.mediaPreviewWrap}>
-                                <img src={editNewPreviewUrls[i]} alt="" className={styles.mediaPreviewImg} />
+                                <img src={editNewPreviewUrls[i]} alt="" className={styles.mediaPreviewImg} loading="lazy" />
                                 <button type="button" className={styles.mediaPreviewRemove} onClick={() => removeEditMediaNewFile(i)} aria-label="Remove">×</button>
                               </div>
                             ))}
@@ -620,7 +620,7 @@ export default function ForumPostDetailPage() {
                       >
                         <div className={postBlockStyles.postHead}>
                           {p.author.avatar ? (
-                            <img src={p.author.avatar} alt="" className={postBlockStyles.avatar} />
+                            <img src={p.author.avatar} alt="" className={postBlockStyles.avatar} loading="lazy" />
                           ) : (
                             <span className={styles.avatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
                           )}
@@ -692,7 +692,7 @@ export default function ForumPostDetailPage() {
                                     <span className={postBlockStyles.replyAsLabel}>Replying as</span>
                                     <span className={postBlockStyles.replyAsUserChip}>
                                       {replyAs.avatar ? (
-                                        <img src={replyAs.avatar} alt="" className={postBlockStyles.replyAsAvatar} />
+                                        <img src={replyAs.avatar} alt="" className={postBlockStyles.replyAsAvatar} loading="lazy" />
                                       ) : (
                                         <span className={postBlockStyles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
                                       )}

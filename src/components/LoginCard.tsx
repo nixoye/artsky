@@ -235,7 +235,7 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
                       }}
                     >
                       {actor.avatar && (
-                        <img src={actor.avatar} alt="" className={styles.suggestionAvatar} />
+                        <img src={actor.avatar} alt="" className={styles.suggestionAvatar} loading="lazy" />
                       )}
                       <span className={styles.suggestionHandle}>@{actor.handle}</span>
                       {actor.displayName && (

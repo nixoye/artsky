@@ -106,7 +106,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
 
   const [imageIndex, setImageIndex] = useState(0)
   const [multiImageExpanded, setMultiImageExpanded] = useState(false)
-  const [mediaAspect, setMediaAspect] = useState<number | null>(null)
+  const [mediaAspect, setMediaAspect] = useState<number | null>(() =>
+    hasMedia && media?.aspectRatio != null ? media.aspectRatio : null
+  )
   const [addOpen, setAddOpen] = useState(false)
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [newBoardName, setNewBoardName] = useState('')
@@ -274,10 +276,20 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     setMediaAspect(img.naturalWidth / img.naturalHeight)
   }, [isMultipleImages])
 
-  /* Keep previous aspect when switching images so the container doesn't flash to 3/4 and back */
   useEffect(() => {
     if (isVideo) setMediaAspect(null)
-  }, [isVideo, media?.videoPlaylist])
+    else if (hasMedia && media?.aspectRatio != null) setMediaAspect((prev) => prev ?? media.aspectRatio!)
+  }, [hasMedia, media?.aspectRatio, media?.videoPlaylist, isVideo])
+
+  /* When post changes (e.g. virtualized list), reset aspect to new post's so reserved size is correct */
+  useEffect(() => {
+    if (!hasMedia) setMediaAspect(null)
+    else if (isVideo) setMediaAspect(null)
+    else if (media?.aspectRatio != null) setMediaAspect(media.aspectRatio)
+    else setMediaAspect(null)
+  }, [post.uri])
+
+  /* Keep previous aspect when switching images so the container doesn't flash to 3/4 and back */
 
   useEffect(() => {
     if (mediaAspect != null && onAspectRatio) onAspectRatio(mediaAspect)
@@ -467,7 +479,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               muted
               playsInline
               loop
-              preload="metadata"
+              preload="none"
               onLoadedMetadata={(e) => {
                 const v = e.currentTarget
                 if (v.videoWidth && v.videoHeight) {

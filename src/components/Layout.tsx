@@ -612,7 +612,7 @@ export default function Layout({ title, children, showNav }: Props) {
       >
         <span className={styles.navIcon}>
           {currentAccountAvatar ? (
-            <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} />
+            <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
           ) : (
             <AccountIcon />
           )}
@@ -702,7 +702,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 title={isCurrent ? 'View my profile' : `Switch to @${handle}`}
               >
                 {profile?.avatar ? (
-                  <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
+                  <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} loading="lazy" />
                 ) : (
                   <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
                 )}
@@ -773,7 +773,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   title={isCurrent ? 'View my profile' : `@${handle}`}
                 >
                   {profile?.avatar ? (
-                    <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
+                    <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} loading="lazy" />
                   ) : (
                     <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
                   )}
@@ -1014,7 +1014,7 @@ export default function Layout({ title, children, showNav }: Props) {
                                   }}
                                 >
                                   {n.author.avatar ? (
-                                    <img src={n.author.avatar} alt="" className={styles.notificationAvatar} />
+                                    <img src={n.author.avatar} alt="" className={styles.notificationAvatar} loading="lazy" />
                                   ) : (
                                     <span className={styles.notificationAvatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
                                   )}
@@ -1049,7 +1049,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   >
                     <span className={styles.navIcon}>
                       {currentAccountAvatar ? (
-                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} />
+                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
                       ) : (
                         <AccountIcon />
                       )}

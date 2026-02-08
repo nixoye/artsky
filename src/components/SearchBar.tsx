@@ -232,7 +232,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
                   className={`${styles.item} ${i === activeIndex ? styles.itemActive : ''}`}
                   onClick={() => handleSelect(i)}
                 >
-                  {opt.avatar && <img src={opt.avatar} alt="" className={styles.itemAvatar} />}
+                  {opt.avatar && <img src={opt.avatar} alt="" className={styles.itemAvatar} loading="lazy" />}
                   <span className={styles.itemLabel}>
                     {opt.displayName ? `${opt.displayName} ` : ''}@{opt.handle}
                   </span>
@@ -249,7 +249,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
                   className={`${styles.item} ${i === activeIndex ? styles.itemActive : ''}`}
                   onClick={() => handleSelect(i)}
                 >
-                  {v.avatar && <img src={v.avatar} alt="" className={styles.itemAvatar} />}
+                  {v.avatar && <img src={v.avatar} alt="" className={styles.itemAvatar} loading="lazy" />}
                   <span className={styles.itemLabel}>{v.displayName ?? v.uri}</span>
                 </button>
               )

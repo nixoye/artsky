@@ -397,7 +397,7 @@ export function ProfileContent({
         <header className={styles.profileHeader}>
           <div className={styles.profileHeaderMain}>
             {profile?.avatar && (
-              <img src={profile.avatar} alt="" className={styles.avatar} />
+              <img src={profile.avatar} alt="" className={styles.avatar} loading="lazy" />
             )}
             <div className={styles.profileMeta}>
               {profile?.displayName && (
@@ -634,7 +634,7 @@ export function ProfileContent({
                         <article className={postBlockStyles.postBlock}>
                           <div className={postBlockStyles.postBlockContent}>
                             <div className={postBlockStyles.postHead}>
-                              {avatar && <img src={avatar} alt="" className={postBlockStyles.avatar} />}
+                              {avatar && <img src={avatar} alt="" className={postBlockStyles.avatar} loading="lazy" />}
                               <div className={postBlockStyles.authorRow}>
                                 <Link
                                   to={`/profile/${encodeURIComponent(handle)}`}

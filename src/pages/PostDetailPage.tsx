@@ -60,7 +60,7 @@ export function ReplyAsRow({
       <span className={styles.replyAsLabel}>Replying as</span>
       <span className={styles.replyAsUserChip}>
         {replyAs.avatar ? (
-          <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+          <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} loading="lazy" />
         ) : (
           <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
         )}
@@ -94,7 +94,7 @@ export function ReplyAsRow({
                         }}
                       >
                         {profile?.avatar ? (
-                          <img src={profile.avatar} alt="" className={styles.replyAsDropdownAvatar} />
+                          <img src={profile.avatar} alt="" className={styles.replyAsDropdownAvatar} loading="lazy" />
                         ) : (
                           <span className={styles.replyAsDropdownAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
                         )}
@@ -213,21 +213,24 @@ function MediaGallery({
                   poster={m.url || undefined}
                   className={styles.galleryVideo}
                   autoPlay={i === firstVideoIndex}
+                  preload={i === firstVideoIndex ? 'metadata' : 'none'}
                 />
               </div>
             )
           }
+          const aspect = m.type === 'image' && 'aspectRatio' in m && m.aspectRatio != null ? m.aspectRatio : 1
           return (
             <button
               key={i}
               type="button"
               className={styles.galleryImageBtn}
+              style={{ aspectRatio: aspect }}
               onClick={() => setFullscreenIndex(i)}
               onFocus={() => onFocusItem?.(i)}
               aria-label="View full screen"
               data-media-item={i}
             >
-              <img src={m.url} alt="" className={styles.galleryMedia} />
+              <img src={m.url} alt="" className={styles.galleryMedia} loading="lazy" />
             </button>
           )
         })}
@@ -403,7 +406,7 @@ function PostBlock({
       )}
       <div className={styles.postBlockContent}>
       <div className={styles.postHead}>
-        {avatar && <img src={avatar} alt="" className={styles.avatar} />}
+        {avatar && <img src={avatar} alt="" className={styles.avatar} loading="lazy" />}
         <div className={styles.authorRow}>
           <ProfileLink handle={handle} className={styles.handleLink}>
             @{handle}
@@ -486,7 +489,7 @@ function PostBlock({
                   <span className={styles.replyAsLabel}>Replying as</span>
                   <span className={styles.replyAsUserChip}>
                     {replyAs.avatar ? (
-                      <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+                      <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} loading="lazy" />
                     ) : (
                       <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
                     )}
@@ -541,7 +544,7 @@ function PostBlock({
                       <button type="button" className={styles.collapsedCommentBtn} onClick={() => onToggleCollapse?.(r.post.uri)}>
                         <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                         {r.post.author?.avatar ? (
-                          <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} />
+                          <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} loading="lazy" />
                         ) : (
                           <span className={styles.collapsedCommentAvatarPlaceholder} aria-hidden>{replyHandle.slice(0, 1).toUpperCase()}</span>
                         )}
@@ -1241,7 +1244,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
               >
                 <div className={styles.postHead}>
                   {thread.post.author.avatar && (
-                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} />
+                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} loading="lazy" />
                   )}
                   <div className={styles.authorRow}>
                     <ProfileLink
@@ -1438,7 +1441,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                         <button type="button" className={styles.collapsedCommentBtn} onClick={() => toggleCollapse(r.post.uri)}>
                           <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
                           {r.post.author?.avatar ? (
-                            <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} />
+                            <img src={r.post.author.avatar} alt="" className={styles.collapsedCommentAvatar} loading="lazy" />
                           ) : (
                             <span className={styles.collapsedCommentAvatarPlaceholder} aria-hidden>{replyHandle.slice(0, 1).toUpperCase()}</span>
                           )}
@@ -1513,7 +1516,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                           <span className={styles.replyAsLabel}>Replying as</span>
                           <span className={styles.replyAsUserChip}>
                             {replyAs.avatar ? (
-                              <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />
+                              <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} loading="lazy" />
                             ) : (
                               <span className={styles.replyAsAvatarPlaceholder} aria-hidden>{replyAs.handle.slice(0, 1).toUpperCase()}</span>
                             )}

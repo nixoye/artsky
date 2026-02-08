@@ -526,7 +526,7 @@ export default function FeedPage() {
                         className={styles.guestPreviewCard}
                       >
                         {profile?.avatar ? (
-                          <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
+                          <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} loading="lazy" />
                         ) : (
                           <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
                         )}
@@ -559,7 +559,7 @@ export default function FeedPage() {
                       className={styles.guestPreviewCard}
                     >
                       {profile?.avatar ? (
-                        <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
+                        <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} loading="lazy" />
                       ) : (
                         <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
                       )}
@@ -680,7 +680,7 @@ export default function FeedPage() {
             <h2 id="block-dialog-title" className={styles.blockTitle}>Block user?</h2>
             <div className={styles.blockUser}>
               {blockConfirm.avatar ? (
-                <img src={blockConfirm.avatar} alt="" className={styles.blockAvatar} />
+                <img src={blockConfirm.avatar} alt="" className={styles.blockAvatar} loading="lazy" />
               ) : (
                 <div className={styles.blockAvatarPlaceholder} />
               )}

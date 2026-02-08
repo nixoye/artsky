@@ -202,7 +202,7 @@ export default function ForumPage() {
               const head = (
                 <div className={postBlockStyles.postHead}>
                   {doc.authorAvatar ? (
-                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} />
+                    <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} loading="lazy" />
                   ) : (
                     <span className={styles.avatarPlaceholder} aria-hidden>{(handle || doc.did).slice(0, 1).toUpperCase()}</span>
                   )}

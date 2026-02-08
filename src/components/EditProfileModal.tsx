@@ -167,7 +167,7 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
               <div className={styles.avatarSection}>
                 <div className={styles.avatarWrap}>
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className={styles.avatarImg} />
+                    <img src={avatarUrl} alt="" className={styles.avatarImg} loading="lazy" />
                   ) : (
                     <div className={styles.avatarPlaceholder} aria-hidden />
                   )}
