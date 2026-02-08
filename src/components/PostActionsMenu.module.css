@@ -37,7 +37,7 @@
 }
 
 .trigger[aria-expanded="true"] {
-  color: var(--accent);
+  background: var(--glass-highlight);
 }
 
 .dropdown {

@@ -29,11 +29,12 @@
   position: relative;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  outline: none;
 }
 
 .searchRow:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  outline: none;
 }
 
 .filterIconBtn {
@@ -74,6 +75,11 @@
   border-radius: 0 var(--glass-radius-sm) var(--glass-radius-sm) 0;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
 }
 
 .filterDropdown {

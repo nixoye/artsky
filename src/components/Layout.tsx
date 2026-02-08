@@ -7,6 +7,7 @@ import { useArtOnly } from '../context/ArtOnlyContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModeration } from '../context/ModerationContext'
+import { useMediaOnly } from '../context/MediaOnlyContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
@@ -272,6 +273,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
   const { nsfwPreference, setNsfwPreference } = useModeration()
+  const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
@@ -663,6 +665,22 @@ export default function Layout({ title, children, showNav }: Props) {
             </button>
           ))}
         </div>
+        <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
+          <button
+            type="button"
+            className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+            onClick={() => toggleMediaOnly()}
+          >
+            Media only
+          </button>
+          <button
+            type="button"
+            className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+            onClick={() => toggleMediaOnly()}
+          >
+            Include text posts
+          </button>
+        </div>
       </section>
       {session && (
         <section className={styles.menuSection}>
@@ -749,6 +767,10 @@ export default function Layout({ title, children, showNav }: Props) {
       </Link>
       {session && (
         <>
+          <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
+            <PencilIcon />
+            <span>Edit profile</span>
+          </button>
           <div className={styles.menuCompactAccounts}>
             {sessionsList.map((s) => {
               const profile = accountProfiles[s.did]
@@ -780,15 +802,16 @@ export default function Layout({ title, children, showNav }: Props) {
             })}
           </div>
           <div className={styles.menuCompactActions}>
-            <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
-              <PencilIcon />
-            </button>
-            <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
-              <PlusIcon />
-            </button>
-            <button type="button" className={styles.menuCompactActionSec} onClick={handleLogout} title="Log out" aria-label="Log out">
-              <LogOutIcon />
-            </button>
+            <div className={styles.menuCompactActionsRow}>
+              <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
+                <PlusIcon />
+                <span>Add account</span>
+              </button>
+              <button type="button" className={styles.menuCompactActionSec} onClick={handleLogout} title="Log out" aria-label="Log out">
+                <LogOutIcon />
+                <span>Log out</span>
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -841,6 +864,22 @@ export default function Layout({ title, children, showNav }: Props) {
             {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
           </button>
         ))}
+      </div>
+      <div className={styles.menuCompactNsfwRow} role="group" aria-label="Feed content">
+        <button
+          type="button"
+          className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+          onClick={() => toggleMediaOnly()}
+        >
+          Media only
+        </button>
+        <button
+          type="button"
+          className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+          onClick={() => toggleMediaOnly()}
+        >
+          Include text posts
+        </button>
       </div>
     </>
   )

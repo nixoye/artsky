@@ -262,7 +262,7 @@ export default function FeedPage() {
   }, [cursor, load])
 
   const { isHidden, addHidden } = useHiddenPosts()
-  const { mediaOnly, toggleMediaOnly } = useMediaOnly()
+  const { mediaOnly } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const displayItems = items
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
@@ -487,17 +487,6 @@ export default function FeedPage() {
             }}
           />
         )}
-        <div className={styles.filterRow}>
-          <button
-            type="button"
-            className={mediaOnly ? styles.filterBtn : styles.filterBtnActive}
-            onClick={toggleMediaOnly}
-            title={mediaOnly ? 'Include text-only posts' : 'Currently showing all posts. Click to show only posts with images or video.'}
-            aria-pressed={!mediaOnly}
-          >
-            {mediaOnly ? 'Include text-only posts' : 'Showing all posts'}
-          </button>
-        </div>
         {showGuestSection && (
           <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
             {session ? (
@@ -607,6 +596,7 @@ export default function FeedPage() {
                             fillCell={false}
                             nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                             onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                            hideLikeCount
                           />
                         </div>
                       ))}
@@ -640,6 +630,7 @@ export default function FeedPage() {
                       fillCell={false}
                       nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                      hideLikeCount
                     />
                   </div>
                 ))}

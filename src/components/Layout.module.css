@@ -1332,10 +1332,20 @@
   align-items: center;
 }
 .menuCompactRow .themeButtonGroup {
-  flex: 1;
+  flex: 3;
   display: flex;
   gap: 0.2rem;
+  min-width: 0;
 }
+.menuCompactRow .themeButtonGroup button,
+.menuCompactRow > button.menuCompactBtn,
+.menuCompactRow > button.menuCompactBtnActive {
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.4rem;
+  box-sizing: border-box;
+}
+
 .menuCompactRow .themeButtonGroup button {
   flex: 1;
   min-width: 0;
@@ -1344,18 +1354,16 @@
 .menuCompactRow > button.menuCompactBtnActive {
   flex: 1;
   min-width: 0;
-  width: auto;
 }
 
 .menuCompactBtn,
 .menuCompactBtnActive {
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
+  padding: 0.2rem 0.3rem;
+  min-height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 0.3rem;
   border: 1px solid var(--glass-border);
   background: var(--glass-highlight);
   color: var(--text);
@@ -1468,22 +1476,35 @@
 
 .menuCompactActions {
   display: flex;
+  flex-direction: column;
   gap: 0.35rem;
-  justify-content: center;
   padding-top: 0.25rem;
   border-top: 1px solid var(--glass-border);
 }
 
+.menuCompactActionsRow {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+}
+.menuCompactActionsRow .menuCompactActionBtn,
+.menuCompactActionsRow .menuCompactActionSec {
+  flex: 1;
+  min-width: 0;
+}
+
 .menuCompactActionBtn,
 .menuCompactActionSec {
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  display: flex;
+  padding: 0.4rem 0.6rem;
+  min-height: 2.25rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  gap: 0.35rem;
+  border-radius: 0.3rem;
   border: none;
+  font-size: 0.85rem;
+  font-family: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }

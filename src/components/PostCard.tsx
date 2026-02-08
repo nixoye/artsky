@@ -50,6 +50,8 @@ interface Props {
   onNsfwUnblur?: () => void
   /** When true, media wrap uses fixed height from --feed-card-media-max-height (no aspect-ratio resize on load) */
   constrainMediaHeight?: boolean
+  /** When true, do not show like count next to the like button (e.g. on preview cards in feed) */
+  hideLikeCount?: boolean
 }
 
 function RepostIcon() {
@@ -80,7 +82,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, hideLikeCount }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -223,8 +225,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
   }, [showLongPressMenu])
-
-  if (!media) return null
 
   const boards = getArtboards()
 
@@ -476,7 +476,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     facets={(post.record as { facets?: unknown[] })?.facets}
                     maxLength={160}
                     stopPropagation
-                    linkDisplay="domain"
                   />
                 </div>
               ) : (
@@ -732,102 +731,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             </span>
             </div>
           </div>
-          {text ? (
+          {hasMedia && text ? (
             <p className={styles.text}>
               <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation />
             </p>
           ) : null}
-          <div className={styles.mobileActions}>
-            {session && (
-              <button
-                type="button"
-                className={likedUri ? styles.mobileLikeBtnLiked : styles.mobileLikeBtn}
-                onClick={handleLikeClick}
-                disabled={likeLoading}
-                aria-label={likedUri ? 'Remove like' : 'Like'}
-                title={likedUri ? 'Remove like' : 'Like'}
-              >
-                <HeartIcon filled={!!likedUri} />
-                {likeCount > 0 && <span className={styles.mobileLikeCount}>{likeCount}</span>}
-              </button>
-            )}
-            <div onClick={(e) => e.stopPropagation()}>
-              <PostActionsMenu
-                postUri={post.uri}
-                postCid={post.cid}
-                authorDid={post.author.did}
-                rootUri={post.uri}
-                isOwnPost={isOwnPost}
-                feedLabel={feedLabel}
-                compact
-              />
-            </div>
-            <div
-              ref={addRefMobile}
-              className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                className={styles.addToBoardBtn}
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setAddOpen((o) => !o)
-                }}
-                aria-label="Add to artboard"
-                aria-expanded={addOpen}
-              >
-                +
-              </button>
-              {addOpen && (
-                <div className={styles.addDropdown}>
-                  {boards.length === 0 ? null : (
-                    <>
-                      {boards.map((b) => {
-                        const alreadyIn = isPostInArtboard(b.id, post.uri)
-                        const selected = addToBoardIds.has(b.id)
-                        return (
-                          <label key={b.id} className={styles.addBoardLabel}>
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
-                              disabled={alreadyIn}
-                              className={styles.addBoardCheckbox}
-                            />
-                            <span className={styles.addBoardText}>
-                              {alreadyIn ? <>✓ {b.name}</> : b.name}
-                            </span>
-                          </label>
-                        )
-                      })}
-                    </>
-                  )}
-                  <div className={styles.addDropdownNew}>
-                    <input
-                      type="text"
-                      placeholder="New collection name"
-                      value={newBoardName}
-                      onChange={(e) => setNewBoardName(e.target.value)}
-                      className={styles.addBoardInput}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
-                    />
-                  </div>
-                  <div className={styles.addDropdownActions}>
-                    <button
-                      type="button"
-                      className={styles.addBoardSubmit}
-                      onClick={handleAddToArtboard}
-                      disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
-                    >
-                      Add to selected
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
         )}
       </div>
