@@ -266,19 +266,21 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       setMediaAspect((prev) => (prev != null ? prev : img.naturalWidth! / img.naturalHeight!))
       return
     }
-    setMediaAspect(img.naturalWidth / img.naturalHeight)
+    /* Don't overwrite when we already have API aspect – avoids layout shift when image loads */
+    setMediaAspect((prev) => (prev != null ? prev : img.naturalWidth / img.naturalHeight))
   }, [isMultipleImages])
 
   useEffect(() => {
-    if (isVideo) setMediaAspect(null)
-    else if (hasMedia && media?.aspectRatio != null) setMediaAspect((prev) => prev ?? media.aspectRatio!)
+    if (!hasMedia) return
+    if (media?.aspectRatio != null) setMediaAspect((prev) => prev ?? media.aspectRatio!)
+    else if (!isVideo) setMediaAspect((prev) => prev ?? null)
   }, [hasMedia, media?.aspectRatio, media?.videoPlaylist, isVideo])
 
   /* When post changes (e.g. virtualized list), reset aspect to new post's so reserved size is correct */
   useEffect(() => {
     if (!hasMedia) setMediaAspect(null)
-    else if (isVideo) setMediaAspect(null)
     else if (media?.aspectRatio != null) setMediaAspect(media.aspectRatio)
+    else if (!isVideo) setMediaAspect(null)
     else setMediaAspect(null)
   }, [post.uri])
 
@@ -423,7 +425,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               ? undefined
               : {
                   aspectRatio:
-                    !hasMedia ? '1' : mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
+                    !hasMedia ? '1' : mediaAspect != null ? String(mediaAspect) : isVideo ? '1' : undefined,
                 }
           }
           onMouseEnter={onMediaEnter}
@@ -453,12 +455,12 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 muted
                 playsInline
                 loop
-                preload="none"
+                preload="metadata"
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget
-                  if (v.videoWidth && v.videoHeight) {
-                    setMediaAspect(v.videoWidth / v.videoHeight)
-                  }
+                  if (!v.videoWidth || !v.videoHeight) return
+                  /* Set aspect once from video dimensions so vertical/landscape scale correctly; don't overwrite if already set (e.g. from API). */
+                  setMediaAspect((prev) => (prev != null ? prev : v.videoWidth / v.videoHeight))
                 }}
               />
             </div>

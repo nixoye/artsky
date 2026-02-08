@@ -154,7 +154,7 @@ export default function AppModal({
             <div ref={setTopBarSlotEl} className={styles.modalTopBarSlot} />
             <div ref={setTopBarRightSlotEl} className={styles.modalTopBarRight} />
           </div>
-          <div ref={scrollRef} className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
+          <div ref={scrollRef} data-modal-scroll className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
         </div>
       </div>
     </ModalTopBarSlotContext.Provider>

@@ -294,13 +294,14 @@ export function ProfileContent({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Infinite scroll: load more when sentinel enters view (posts, reposts tabs)
+  // Infinite scroll: load more when sentinel enters view (posts, reposts tabs). Match homepage: 600px rootMargin; when in modal use modal scroll container as root.
   loadingMoreRef.current = loadingMore
   useEffect(() => {
     if (tab !== 'posts' && tab !== 'reposts') return
     const sentinel = loadMoreSentinelRef.current
     if (!sentinel) return
     if (!cursor) return
+    const root = inModal ? sentinel.closest('[data-modal-scroll]') : null
     const observer = new IntersectionObserver(
       (entries) => {
         const [e] = entries
@@ -308,11 +309,11 @@ export function ProfileContent({
         loadingMoreRef.current = true
         load(cursor)
       },
-      { rootMargin: '200px', threshold: 0 }
+      { root: root ?? undefined, rootMargin: '600px', threshold: 0 }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [tab, cursor, load])
+  }, [tab, cursor, load, inModal])
 
   const followingUri = profile?.viewer?.following ?? followUriOverride
   const isFollowing = !!followingUri
