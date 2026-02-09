@@ -53,10 +53,6 @@ const PRESET_SOURCES: FeedSource[] = [
   { kind: 'custom', label: "What's Hot", uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' },
 ]
 
-function sameSource(a: FeedSource, b: FeedSource): boolean {
-  return (a.uri ?? a.label) === (b.uri ?? b.label)
-}
-
 /** Nominal column width for height estimation (px). */
 const ESTIMATE_COL_WIDTH = 280
 const CARD_CHROME = 100
@@ -232,7 +228,7 @@ export default function FeedPage() {
   const { session } = useSession()
   const { viewMode } = useViewMode()
   const [source, setSource] = useState<FeedSource>(PRESET_SOURCES[0])
-  const [savedFeedSources, setSavedFeedSources] = useState<FeedSource[]>([])
+  const [, setSavedFeedSources] = useState<FeedSource[]>([])
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
@@ -343,8 +339,6 @@ export default function FeedPage() {
 
   const {
     entries: mixEntries,
-    toggleSource,
-    addEntry,
     totalPercent: mixTotalPercent,
   } = useFeedMix()
 

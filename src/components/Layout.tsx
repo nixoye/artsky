@@ -309,13 +309,13 @@ export default function Layout({ title, children, showNav }: Props) {
       </button>
     </div>
   )
-  const { viewMode, setViewMode, cycleViewMode, viewOptions } = useViewMode()
+  const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const scrollLock = useScrollLock()
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false)
+  const [, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
@@ -567,10 +567,6 @@ export default function Layout({ title, children, showNav }: Props) {
   function closeMobileSearch() {
     setMobileSearchOpen(false)
     searchInputRef.current?.blur()
-  }
-
-  function openAccountPanel() {
-    setAccountMenuOpen(true)
   }
 
   async function handleSelectAccount(did: string) {
