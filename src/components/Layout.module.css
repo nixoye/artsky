@@ -55,6 +55,12 @@
   padding-top: 3.25rem;
 }
 
+@media (max-width: 767px) {
+  .wrapWithHeader {
+    padding-top: calc(3.25rem + env(safe-area-inset-top));
+  }
+}
+
 @media (min-width: 768px) {
   .wrapWithHeader {
     padding-top: 3.5rem;
@@ -87,17 +93,18 @@
 }
 
 @media (max-width: 767px) {
-  /* iOS 26–style liquid glass header on mobile: translucent, strong blur, rounded bottom */
+  /* iOS 26–style liquid glass header on mobile: below top safe area so notch/dynamic island strip stays transparent */
   .header {
+    top: env(safe-area-inset-top);
     background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
     backdrop-filter: blur(28px) saturate(180%);
     border-radius: 0 0 20px 20px;
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-    padding-top: max(0.35rem, env(safe-area-inset-top));
+    padding-top: 0.35rem;
   }
   .headerHidden {
-    transform: translateY(-100%);
+    transform: translateY(calc(-100% - env(safe-area-inset-top)));
   }
   .headerRight {
     display: flex;
