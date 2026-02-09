@@ -490,7 +490,7 @@ export default function Layout({ title, children, showNav }: Props) {
   }, [notificationsOpen, session])
 
   /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
-  const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || (accountSheetOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
+  const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
   useEffect(() => {
     if (!scrollLock || !anyPopupOpen) return
     scrollLock.lockScroll()
@@ -570,8 +570,7 @@ export default function Layout({ title, children, showNav }: Props) {
   }
 
   function openAccountPanel() {
-    if (isDesktop) setAccountMenuOpen(true)
-    else setAccountSheetOpen(true)
+    setAccountMenuOpen(true)
   }
 
   async function handleSelectAccount(did: string) {
@@ -849,24 +848,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountPanelContent = (
     <>
       <section className={styles.menuSection}>
-        <div className={styles.menuThemeColumnRow}>
+        <div className={styles.menuThemeRow}>
           {themeButtons}
-          <div className={styles.menuRow}>
-            {viewOptions.map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={viewMode === m ? styles.menuOptionActive : styles.menuOption}
-                onClick={() => setViewMode(m)}
-                title={VIEW_LABELS[m]}
-                aria-label={VIEW_LABELS[m]}
-              >
-                {m === '1' && <Column1Icon />}
-                {m === '2' && <Column2Icon />}
-                {m === '3' && <Column3Icon />}
-              </button>
-            ))}
-          </div>
         </div>
         <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />
         <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
@@ -969,20 +952,38 @@ export default function Layout({ title, children, showNav }: Props) {
       {!session && (
         <section className={styles.menuSection}>
           <div className={styles.menuProfileAndAccounts}>
-            <button
-              type="button"
-              className={styles.menuProfileBtn}
-              onClick={() => {
-                setAccountMenuOpen(false)
-                setAccountSheetOpen(false)
-                openLoginModal('create')
-              }}
-            >
-              <span className={styles.menuProfileIconWrap} aria-hidden>
-                <AccountIcon />
-              </span>
-              <span>Create account</span>
-            </button>
+            {isDesktop ? (
+              <button
+                type="button"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  openLoginModal('create')
+                }}
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <AccountIcon />
+                </span>
+                <span>Create account</span>
+              </button>
+            ) : (
+              <a
+                href="https://bsky.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                }}
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <AccountIcon />
+                </span>
+                <span>Create account</span>
+              </a>
+            )}
             <div className={styles.menuAccountsBlock}>
               <button
                 type="button"
@@ -994,7 +995,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 }}
               >
                 <LogInIcon />
-                <span>Log in</span>
+                <span>Log in with Bluesky</span>
               </button>
             </div>
           </div>
@@ -1218,23 +1219,31 @@ export default function Layout({ title, children, showNav }: Props) {
                   </div>
                 </>
               )}
-              {/* Mobile: account button in header */}
+              {/* Mobile: account button in header – same dropdown as desktop */}
               {!isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerAccountNavBtn}
-                  onClick={() => openAccountPanel()}
-                  aria-label="Accounts and settings"
-                  aria-expanded={accountSheetOpen || accountMenuOpen}
-                >
-                  <span className={styles.navIcon}>
-                    {currentAccountAvatar ? (
-                      <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
-                    ) : (
-                      <AccountIcon />
-                    )}
-                  </span>
-                </button>
+                <div className={styles.headerAccountMenuWrap}>
+                  <button
+                    ref={accountBtnRef}
+                    type="button"
+                    className={styles.headerAccountNavBtn}
+                    onClick={() => setAccountMenuOpen((o) => !o)}
+                    aria-label="Accounts and settings"
+                    aria-expanded={accountMenuOpen}
+                  >
+                    <span className={styles.navIcon}>
+                      {currentAccountAvatar ? (
+                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
+                      ) : (
+                        <AccountIcon />
+                      )}
+                    </span>
+                  </button>
+                  {accountMenuOpen && (
+                    <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
+                      {accountPanelContent}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </>
@@ -1266,20 +1275,6 @@ export default function Layout({ title, children, showNav }: Props) {
               >
                 <div className={styles.searchOverlayCard}>
                   <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove={isDesktop} />
-                </div>
-              </div>
-            </>
-          )}
-          {accountSheetOpen && !isDesktop && (
-            <>
-              <div
-                className={styles.sheetBackdrop}
-                onClick={() => setAccountSheetOpen(false)}
-                aria-hidden
-              />
-              <div className={styles.accountPopup} role="dialog" aria-label="Accounts and settings">
-                <div className={styles.accountPopupContent}>
-                  {accountPanelContent}
                 </div>
               </div>
             </>

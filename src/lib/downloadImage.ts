@@ -27,7 +27,7 @@ export function downloadImageWithHandle(
       ? filenameFromPostUri(postUri, 'png', imageIndex)
       : `artsky-${handle.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}${imageIndex != null ? `-${imageIndex}` : ''}.png`
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
 

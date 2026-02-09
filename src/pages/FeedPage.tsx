@@ -11,7 +11,6 @@ import {
   type TimelineItem,
 } from '../lib/bsky'
 import type { FeedSource } from '../types'
-import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -300,10 +299,6 @@ export default function FeedPage() {
     }
   }, [seenPostsContext])
 
-  const presetUris = new Set((PRESET_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
-  const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
-  const allSources = [...PRESET_SOURCES, ...savedDeduped]
-
   const loadSavedFeeds = useCallback(async () => {
     if (!session) {
       setSavedFeedSources([])
@@ -348,23 +343,11 @@ export default function FeedPage() {
 
   const {
     entries: mixEntries,
-    setEntryPercent,
     toggleSource,
     addEntry,
     totalPercent: mixTotalPercent,
   } = useFeedMix()
 
-  const handleToggleSource = useCallback(
-    (clicked: FeedSource) => {
-      if (mixEntries.length === 0 && !sameSource(clicked, source)) {
-        addEntry(source)
-        addEntry(clicked)
-      } else {
-        toggleSource(clicked)
-      }
-    },
-    [mixEntries.length, source, addEntry, toggleSource]
-  )
   const load = useCallback(async (nextCursor?: string) => {
     const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
     const limit = cols >= 2 ? cols * 10 : 30

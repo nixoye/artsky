@@ -663,13 +663,13 @@ html[data-theme="dark"] .cardSeen {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   line-height: 1;
   color: var(--text);
   background: var(--media-control-bg);
