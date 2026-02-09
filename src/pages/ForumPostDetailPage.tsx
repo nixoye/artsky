@@ -15,7 +15,7 @@ import {
   type ForumReplyView,
 } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
-import { formatRelativeTime, formatRelativeTimeTitle, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostText from '../components/PostText'
 import ProfileLink from '../components/ProfileLink'
 import { ReplyAsRow } from './PostDetailPage'

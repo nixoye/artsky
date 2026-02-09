@@ -6,7 +6,7 @@ import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuo
 import { downloadImageWithHandle, downloadVideoWithPostUri } from '../lib/downloadImage'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
-import { formatRelativeTime, formatRelativeTimeTitle, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
 import VideoWithHls from '../components/VideoWithHls'
