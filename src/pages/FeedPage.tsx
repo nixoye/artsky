@@ -6,15 +6,12 @@ import {
   getGuestFeed,
   getSavedFeedsFromPreferences,
   getFeedDisplayName,
-  resolveFeedUri,
-  addSavedFeed,
   getMixedFeed,
   isPostNsfw,
   type TimelineItem,
 } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
-import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -707,27 +704,6 @@ export default function FeedPage() {
     <Layout title="Feed" showNav>
       <>
       <div className={styles.wrap}>
-        <FeedSelector
-          sources={session ? allSources : GUEST_FEED_SOURCES}
-          fallbackSource={session ? source : GUEST_FEED_SOURCES[0]}
-          mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
-          onToggle={handleToggleSource}
-          setEntryPercent={setEntryPercent}
-          onAddCustom={async (input) => {
-            if (!session) return
-            setError(null)
-            try {
-              const uri = await resolveFeedUri(input)
-              await addSavedFeed(uri)
-              await loadSavedFeeds()
-              const label = await getFeedDisplayName(uri)
-              handleToggleSource({ kind: 'custom', label, uri })
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Could not add feed')
-            }
-          }}
-          onToggleWhenGuest={session ? undefined : openLoginModal}
-        />
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
           <div className={styles.loading}>Loading…</div>
@@ -802,16 +778,20 @@ export default function FeedPage() {
           </>
         )}
         {!session && (
-          <p className={styles.feedLoginHint}>
-            <button type="button" className={styles.feedLoginHintLink} onClick={() => openLoginModal()}>
-              Log in
-            </button>
-            {' or '}
-            <button type="button" className={styles.feedLoginHintLink} onClick={() => openLoginModal('create')}>
-              create an account
-            </button>
-            {' to see your own feeds.'}
-          </p>
+          <div className={styles.feedLoginHint}>
+            <div className={styles.feedLoginHintBtnRow}>
+              <button type="button" className={styles.feedLoginHintBtn} onClick={() => openLoginModal()}>
+                Log in
+              </button>
+            </div>
+            <p className={styles.feedLoginHintText}>
+              Or{' '}
+              <button type="button" className={styles.feedLoginHintLink} onClick={() => openLoginModal('create')}>
+                create an account
+              </button>
+              {' to see your own feeds.'}
+            </p>
+          </div>
         )}
       </div>
       {blockConfirm && (

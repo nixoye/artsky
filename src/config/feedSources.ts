@@ -6,7 +6,6 @@ export const GUEST_FEED_SOURCES: FeedSource[] = [
   { kind: 'custom', label: 'For You', uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' },
   { kind: 'custom', label: 'Popular With Friends', uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/with-friends' },
   { kind: 'custom', label: 'Art', uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/art' },
-  { kind: 'custom', label: 'Chemical X', uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/chemical-x' },
 ]
 
 /** When logged out, show Following and For You as active (50% each). */

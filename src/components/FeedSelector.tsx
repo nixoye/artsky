@@ -129,70 +129,84 @@ export default function FeedSelector({
           const entry = isInMix ? mixEntries[entryIndex] : null
           const showRatio = isInMix && mixEntries.length >= 2 && entry
           const in10 = entry ? Math.max(1, Math.min(10, Math.round(entry.percent / 10))) : 1
+          const canDecrease = showRatio && in10 > 1
+          const canIncrease = showRatio && in10 < 10
+          const plusAddsFeed = !isInMix
+          const percent = entry?.percent ?? 0
+          const pillButton = (
+            <button
+              type="button"
+              className={`${styles.feedPillWithFill} ${!isInMix ? styles.feedPillInactive : ''}`}
+              style={
+                isInMix && entry
+                  ? {
+                      /* Use opaque surface for right half so no accent/glass tint shows at the end */
+                      background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${Math.max(0, percent - 1)}%, var(--surface) ${percent}%, var(--surface) 100%)`,
+                    }
+                  : undefined
+              }
+              onClick={() => (onToggleWhenGuest ? onToggleWhenGuest() : onToggle(s))}
+            >
+              <span className={styles.feedPillLabel}>{s.label}</span>
+              <span className={styles.feedPillRatio}>
+                {isInMix && entry ? `${percent}% of posts` : '0% of posts'}
+              </span>
+            </button>
+          )
+          const minusBtn = (
+            <button
+              type="button"
+              className={styles.ratioBtnSide}
+              disabled={!canDecrease}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onToggleWhenGuest) onToggleWhenGuest()
+                else if (canDecrease) {
+                  const next = Math.max(1, in10 - 1)
+                  setEntryPercent(entryIndex, next * 10)
+                }
+              }}
+              aria-label="Fewer posts from this feed"
+            >
+              −
+            </button>
+          )
+          const plusBtn = (
+            <button
+              type="button"
+              className={styles.ratioBtnSide}
+              disabled={!canIncrease && !plusAddsFeed}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onToggleWhenGuest) onToggleWhenGuest()
+                else if (plusAddsFeed) {
+                  onToggle(s)
+                } else if (canIncrease) {
+                  const next = Math.min(10, in10 + 1)
+                  setEntryPercent(entryIndex, next * 10)
+                }
+              }}
+              aria-label={plusAddsFeed ? 'Add feed to mix' : 'More posts from this feed'}
+            >
+              +
+            </button>
+          )
           return (
             <div key={s.uri ?? s.label} className={styles.feedPillWrap}>
-              {showRatio ? (
-                <div className={styles.feedPillColumn}>
-                  <button
-                    type="button"
-                    className={styles.feedPillWithFill}
-                    style={{
-                      /* Use opaque surface for right half so no accent/glass tint shows at the end */
-                      background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${Math.max(0, entry.percent - 1)}%, var(--surface) ${entry.percent}%, var(--surface) 100%)`,
-                    }}
-                    onClick={() => onToggleWhenGuest ? onToggleWhenGuest() : onToggle(s)}
-                  >
-                    <span className={styles.feedPillLabel}>{s.label}</span>
-                    <span className={styles.feedPillRatio}>{entry.percent}% of posts</span>
-                  </button>
-                  <div className={styles.ratioBtnRow}>
-                    <button
-                      type="button"
-                      className={styles.ratioBtnSide}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (onToggleWhenGuest) onToggleWhenGuest()
-                        else {
-                          const next = Math.max(1, in10 - 1)
-                          setEntryPercent(entryIndex, next * 10)
-                        }
-                      }}
-                      aria-label="Fewer posts from this feed"
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.ratioBtnSide}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (onToggleWhenGuest) onToggleWhenGuest()
-                        else {
-                          const next = Math.min(10, in10 + 1)
-                          setEntryPercent(entryIndex, next * 10)
-                        }
-                      }}
-                      aria-label="More posts from this feed"
-                    >
-                      +
-                    </button>
-                  </div>
+              {isDropdown ? (
+                <div className={styles.feedPillRow}>
+                  {minusBtn}
+                  {pillButton}
+                  {plusBtn}
                 </div>
               ) : (
-                <button
-                  type="button"
-                  className={isInMix ? styles.active : ''}
-                  onClick={() => onToggleWhenGuest ? onToggleWhenGuest() : onToggle(s)}
-                >
-                  {isInMix ? (
-                    <>
-                      <span className={styles.feedPillLabel}>{s.label}</span>
-                      <span className={styles.feedPillRatio}>100% of posts</span>
-                    </>
-                  ) : (
-                    s.label
-                  )}
-                </button>
+                <div className={styles.feedPillColumn}>
+                  {pillButton}
+                  <div className={styles.ratioBtnRow}>
+                    {minusBtn}
+                    {plusBtn}
+                  </div>
+                </div>
               )}
             </div>
           )
@@ -249,7 +263,7 @@ export default function FeedSelector({
       className={isDropdown ? styles.addFeed : styles.addFeedPage}
       onClick={() => (onToggleWhenGuest ? onToggleWhenGuest() : setShowCustom(true))}
     >
-      + Add custom feed
+      + Add Custom Feed
     </button>
   )
 
@@ -264,7 +278,7 @@ export default function FeedSelector({
           <p className={styles.sectionHint}>Tap a feed to add or remove it from your mix.</p>
           <div className={styles.tabs}>{pills}</div>
           {hasMix && (
-            <p className={styles.ratioHint}>Use − and + under each feed to set how many posts you see from it.</p>
+            <p className={styles.ratioHint}>Use − and + on each side of a feed to set how many posts you see from it.</p>
           )}
         </section>
         <section className={styles.sectionAdd}>
@@ -277,8 +291,12 @@ export default function FeedSelector({
   return (
     <div className={styles.wrap}>
       <div className={styles.feedRow}>
-        {helpButton}
-        <div className={styles.tabs}>{pills}</div>
+        <div className={styles.tabs}>
+          {pills}
+          {helpButton}
+        </div>
+      </div>
+      <div className={styles.feedRowAdd}>
         {addCustomBlock}
       </div>
     </div>

@@ -191,32 +191,12 @@ function PlusIcon() {
     </svg>
   )
 }
-function LogOutIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  )
-}
 function LogInIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-  )
-}
-
-function UserPlusIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="19" y1="8" x2="19" y2="14" />
-      <line x1="22" y1="11" x2="16" y2="11" />
     </svg>
   )
 }
@@ -1013,141 +993,13 @@ export default function Layout({ title, children, showNav }: Props) {
                   openLoginModal()
                 }}
               >
-                Log in
+                <LogInIcon />
+                <span>Log in</span>
               </button>
             </div>
           </div>
         </section>
       )}
-    </>
-  )
-
-  const accountPanelContentCompact = (
-    <>
-      {session && (
-        <>
-          <div className={styles.menuCompactProfileAndAccounts}>
-            <button
-              type="button"
-              className={styles.menuCompactProfileBtn}
-              onClick={() => {
-                setAccountSheetOpen(false)
-                const currentProfile = accountProfiles[session.did]
-                const currentHandle = currentProfile?.handle ?? (session as { handle?: string }).handle ?? session.did
-                openProfileModal(currentHandle)
-              }}
-              title="View my profile"
-            >
-              <span className={styles.menuProfileIconWrapCompact} aria-hidden>
-                <AccountIcon />
-              </span>
-              <span>Profile</span>
-            </button>
-            <div className={styles.menuCompactAccounts}>
-            {sessionsList.map((s) => {
-              const profile = accountProfiles[s.did]
-              const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
-              const isCurrent = s.did === session?.did
-              return (
-                <button
-                  key={s.did}
-                  type="button"
-                  className={isCurrent ? styles.menuCompactItemActive : styles.menuCompactItem}
-                  onClick={() => {
-                    if (isCurrent) {
-                      setAccountSheetOpen(false)
-                      openProfileModal(handle)
-                    } else {
-                      handleSelectAccount(s.did)
-                    }
-                  }}
-                  title={isCurrent ? 'View my profile' : `@${handle}`}
-                >
-                  {profile?.avatar ? (
-                    <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} loading="lazy" />
-                  ) : (
-                    <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
-                  )}
-                  <span className={styles.menuCompactHandle}>@{handle}</span>
-                </button>
-              )
-            })}
-            </div>
-          </div>
-          <div className={styles.menuCompactActions}>
-            <div className={styles.menuCompactActionsRow}>
-              <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
-                <PlusIcon />
-                <span>Add account</span>
-              </button>
-              <button type="button" className={styles.menuCompactActionSec} onClick={handleLogout} title="Log out" aria-label="Log out">
-                <LogOutIcon />
-                <span>Log out</span>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-      {!session && (
-        <div className={styles.menuCompactAuthRow}>
-          <button
-            type="button"
-            className={styles.menuCompactAuthBtn}
-            onClick={() => {
-              setAccountSheetOpen(false)
-              openLoginModal()
-            }}
-          >
-            <LogInIcon />
-            <span>Log in</span>
-          </button>
-          <button
-            type="button"
-            className={styles.menuCreateAccountBtn}
-            onClick={() => {
-              setAccountSheetOpen(false)
-              openLoginModal('create')
-            }}
-          >
-            <UserPlusIcon />
-            <span>Create account</span>
-          </button>
-        </div>
-      )}
-      <div className={styles.menuCompactRow}>
-        {themeButtons}
-        {viewOptions.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={viewMode === m ? styles.menuCompactBtnActive : styles.menuCompactBtn}
-            onClick={() => setViewMode(m)}
-            title={VIEW_LABELS[m]}
-            aria-label={VIEW_LABELS[m]}
-          >
-            {m === '1' && <Column1Icon />}
-            {m === '2' && <Column2Icon />}
-            {m === '3' && <Column3Icon />}
-          </button>
-        ))}
-      </div>
-      <NsfwPreferenceRow rowClassName={styles.menuCompactNsfwRow} />
-      <div className={styles.menuCompactNsfwRow} role="group" aria-label="Feed content">
-        <button
-          type="button"
-          className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-          onClick={() => toggleMediaOnly()}
-        >
-          Media only
-        </button>
-        <button
-          type="button"
-          className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-          onClick={() => toggleMediaOnly()}
-        >
-          Media & Text
-        </button>
-      </div>
     </>
   )
 
@@ -1366,18 +1218,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   </div>
                 </>
               )}
-              {/* Mobile: Log in (when logged out) next to account button */}
-              {!session && !isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerAuthLink}
-                  onClick={() => openLoginModal()}
-                  aria-label="Log in"
-                >
-                  Log in
-                </button>
-              )}
-              {/* Mobile: account button in header (right of Log in when logged out, same spot when logged in) */}
+              {/* Mobile: account button in header */}
               {!isDesktop && (
                 <button
                   type="button"
@@ -1437,8 +1278,8 @@ export default function Layout({ title, children, showNav }: Props) {
                 aria-hidden
               />
               <div className={styles.accountPopup} role="dialog" aria-label="Accounts and settings">
-                <div className={styles.accountPopupContentCompact}>
-                  {accountPanelContentCompact}
+                <div className={styles.accountPopupContent}>
+                  {accountPanelContent}
                 </div>
               </div>
             </>
