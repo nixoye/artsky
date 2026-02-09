@@ -373,7 +373,7 @@ export default function Layout({ title, children, showNav }: Props) {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
   }, [title])
 
-  /* Global keyboard: Q = back (works on all pages when not typing). Do not handle when a popup is open so the popup gets shortcuts and scroll. */
+  /* Global keyboard: Q = back; 1/2/3 = column view. Do not handle when a popup is open so the popup gets shortcuts and scroll. */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isModalOpen) return
@@ -387,13 +387,18 @@ export default function Layout({ title, children, showNav }: Props) {
       }
       if (e.ctrlKey || e.metaKey) return
       const key = e.key.toLowerCase()
+      if (key === '1' || key === '2' || key === '3') {
+        e.preventDefault()
+        setViewMode(key as '1' | '2' | '3')
+        return
+      }
       if (key !== 'q' && e.key !== 'Backspace') return
       e.preventDefault()
       navigate(-1)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navigate, isModalOpen])
+  }, [navigate, isModalOpen, setViewMode])
 
   useEffect(() => {
     if (!accountMenuOpen) return

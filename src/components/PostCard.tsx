@@ -421,9 +421,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       >
         <div
           ref={mediaWrapRef}
-          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''}`}
+          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 && !multiImageExpanded ? styles.mediaWrapMultiStack : ''}`}
           style={
-            fillCell || constrainMediaHeight
+            fillCell || constrainMediaHeight ||
+            (isMultipleImages && imageItems.length > 1 && !multiImageExpanded)
               ? undefined
               : {
                   aspectRatio:
@@ -505,12 +506,22 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               </>
             ) : (
               <>
-                {/* In-flow spacer so mediaWrap gets height when grid is absolute (fixes 1-col scaling) */}
-                <div className={styles.mediaWrapGridSpacer} aria-hidden />
+                {/* Spacer height = sum of each image's height at full width so all images fit without cropping */}
+                {(() => {
+                  const totalInverseAspect = imageItems.reduce((s, m) => s + 1 / (m.aspectRatio || 1), 0)
+                  const combinedAspect = 1 / totalInverseAspect
+                  return (
+                    <div className={styles.mediaWrapGridSpacer} style={{ aspectRatio: String(combinedAspect) }} aria-hidden />
+                  )
+                })()}
                 <div className={styles.mediaWrapGrid}>
                   <div className={styles.mediaGrid} style={{ minHeight: 0 }}>
                     {imageItems.map((imgItem, idx) => (
-                      <div key={idx} className={styles.mediaGridCell}>
+                      <div
+                        key={idx}
+                        className={styles.mediaGridCell}
+                        style={{ flex: `${1 / (imgItem.aspectRatio || 1)} 1 0` }}
+                      >
                         <img
                           src={imgItem.url}
                           alt=""
@@ -521,34 +532,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                       </div>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    className={styles.mediaArrow}
-                    style={{ left: 0 }}
-                    aria-label="Previous image"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setMultiImageExpanded(true)
-                      setImageIndex(0)
-                    }}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.mediaArrow}
-                    style={{ right: 0 }}
-                    aria-label="Next image"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setMultiImageExpanded(true)
-                      setImageIndex(0)
-                    }}
-                  >
-                    ›
-                  </button>
                 </div>
               </>
             )

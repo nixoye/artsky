@@ -767,9 +767,19 @@ export default function FeedPage() {
             {cursor && (
               <>
                 <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />
-                {loadingMore && (
-                  <p className={styles.loadingMore} role="status">Loading more…</p>
-                )}
+                <div className={styles.loadMoreRow}>
+                  {loadingMore && (
+                    <p className={styles.loadingMore} role="status">Loading more…</p>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.loadMoreBtn}
+                    onClick={() => cursor && !loadingMore && load(cursor)}
+                    disabled={loadingMore}
+                  >
+                    Load more
+                  </button>
+                </div>
               </>
             )}
           </>
