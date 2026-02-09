@@ -1118,9 +1118,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding: 1.5rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-bottom: 1.75rem;
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
   pointer-events: auto;
 }
 
@@ -1128,8 +1130,8 @@
   .composeOverlayMobile {
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: 1.75rem;
+    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -1158,9 +1160,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding: 1.5rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-bottom: 1.75rem;
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
   pointer-events: auto;
 }
 
@@ -1168,8 +1172,8 @@
   .notificationsOverlayMobile {
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: 1.75rem;
+    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom));
   }
 }
 
