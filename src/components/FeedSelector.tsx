@@ -17,7 +17,7 @@ interface Props {
   mixEntries: FeedMixEntry[]
   onToggle: (source: FeedSource) => void
   setEntryPercent: (index: number, percent: number) => void
-  onAddCustom: (input: string) => void | Promise<void>
+  onAddCustom: (input: string | FeedSource) => void | Promise<void>
   /** When set, feed pill and add-custom clicks call this instead of onToggle/onAddCustom (e.g. open login). */
   onToggleWhenGuest?: () => void
   /** 'page' = homepage (compact row, no header). 'dropdown' = Feeds dropdown (title, sections, hints). */
@@ -187,7 +187,7 @@ export default function FeedSelector({
     if (networkFeeds.length === 1) {
       setAdding(true)
       try {
-        await onAddCustom(networkFeeds[0].uri!)
+        await onAddCustom(networkFeeds[0])
         setShowCustom(false)
         setCustomInput('')
       } finally {
@@ -219,7 +219,7 @@ export default function FeedSelector({
     }
     setAdding(true)
     try {
-      await onAddCustom(source.uri)
+      await onAddCustom(source)
       setShowCustom(false)
       setCustomInput('')
     } finally {

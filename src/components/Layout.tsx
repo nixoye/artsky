@@ -1282,12 +1282,15 @@ export default function Layout({ title, children, showNav }: Props) {
                               if (!session) return
                               setFeedAddError(null)
                               try {
-                                const uri = await resolveFeedUri(input)
+                                const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
+                                const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
                                 await addSavedFeed(uri)
-                                const label = await getFeedDisplayName(uri)
-                                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
-                                handleFeedsToggleSource({ kind: 'custom', label, uri })
+                                const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
+                                const source: FeedSource = { kind: 'custom', label, uri }
+                                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                                handleFeedsToggleSource(source)
                                 await loadSavedFeeds()
+                                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
                               } catch (err) {
                                 setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                               }
@@ -1348,12 +1351,15 @@ export default function Layout({ title, children, showNav }: Props) {
                             if (!session) return
                             setFeedAddError(null)
                             try {
-                              const uri = await resolveFeedUri(input)
+                              const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
+                              const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
                               await addSavedFeed(uri)
-                              const label = await getFeedDisplayName(uri)
-                              setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
-                              handleFeedsToggleSource({ kind: 'custom', label, uri })
+                              const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
+                              const source: FeedSource = { kind: 'custom', label, uri }
+                              setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                              handleFeedsToggleSource(source)
                               await loadSavedFeeds()
+                              setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
                             } catch (err) {
                               setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                             }
@@ -1518,12 +1524,15 @@ export default function Layout({ title, children, showNav }: Props) {
               if (!session) return
               setFeedAddError(null)
               try {
-                const uri = await resolveFeedUri(input)
+                const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
+                const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
                 await addSavedFeed(uri)
-                const label = await getFeedDisplayName(uri)
-                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
-                handleFeedsToggleSource({ kind: 'custom', label, uri })
+                const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
+                const source: FeedSource = { kind: 'custom', label, uri }
+                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                handleFeedsToggleSource(source)
                 await loadSavedFeeds()
+                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
               } catch (err) {
                 setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
               }

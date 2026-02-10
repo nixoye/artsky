@@ -14,9 +14,10 @@ const MediaOnlyContext = createContext<MediaOnlyContextValue | null>(null)
 function getStored(): boolean {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
+    if (v === null) return false
     return v !== '0' && v !== 'false'
   } catch {
-    return true
+    return false
   }
 }
 
@@ -49,7 +50,7 @@ export function MediaOnlyProvider({ children }: { children: ReactNode }) {
 export function useMediaOnly() {
   const ctx = useContext(MediaOnlyContext)
   if (!ctx) {
-    return { mediaOnly: true, setMediaOnly: () => {}, toggleMediaOnly: () => {} }
+    return { mediaOnly: false, setMediaOnly: () => {}, toggleMediaOnly: () => {} }
   }
   return ctx
 }

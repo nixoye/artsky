@@ -636,6 +636,27 @@
   }
 }
 
+/* Wide desktop: center (Feeds, Search, Forums) is truly centered; right buttons don't affect it until viewport is narrow */
+@media (min-width: 1100px) {
+  .headerLeft {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .headerCenter {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    flex: none;
+    width: auto;
+    max-width: 720px;
+  }
+  .headerRight {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+}
+
 .logoLink {
   position: relative;
   display: flex;
