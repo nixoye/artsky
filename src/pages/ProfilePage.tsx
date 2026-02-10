@@ -199,7 +199,7 @@ export function ProfileContent({
   /** One sentinel per column so we load more when the user nears the bottom of any column (avoids blank space in short columns). */
   const loadMoreSentinelRefs = useRef<(HTMLDivElement | null)[]>([])
   const loadingMoreRef = useRef(false)
-  const [tabsBarVisible, setTabsBarVisible] = useState(true)
+  const [tabsBarVisible] = useState(true)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const [actionsMenuOpenForIndex, setActionsMenuOpenForIndex] = useState<number | null>(null)
@@ -208,10 +208,7 @@ export function ProfileContent({
   const { openPostModal, isModalOpen } = useProfileModal()
   const editProfileCtx = useEditProfile()
   const topBarSlots = useModalTopBarSlot()
-  const centerSlot = topBarSlots?.centerSlot ?? null
-  const rightSlot = topBarSlots?.rightSlot ?? null
   const mobileBottomBarSlot = topBarSlots?.mobileBottomBarSlot ?? null
-  const isMobileModal = topBarSlots?.isMobile ?? false
   const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
   const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
