@@ -1418,8 +1418,9 @@ button.logoLink {
   }
 }
 
+/* Fully off-screen below viewport so it doesn’t sit under Safari’s URL/toolbar on iPhone */
 .navHidden {
-  transform: translateY(calc(100% + max(0.75rem, env(safe-area-inset-bottom))));
+  transform: translateY(calc(100% + 100vh));
 }
 
 .nav a,
