@@ -36,6 +36,8 @@ type FeedMixContextValue = {
   removeEntry: (index: number) => void
   /** Toggle source in mix: add with equal split if absent, remove and rebalance if present */
   toggleSource: (source: FeedSource) => void
+  /** Set mix to a single feed (e.g. when user picks a feed from search to experience it) */
+  setSingleFeed: (source: FeedSource) => void
   totalPercent: number
 }
 
@@ -110,6 +112,11 @@ export function FeedMixProvider({ children }: { children: ReactNode }) {
     setEnabledState(true)
   }, [])
 
+  const setSingleFeed = useCallback((source: FeedSource) => {
+    setEntries([{ source, percent: 100 }])
+    setEnabledState(true)
+  }, [])
+
   const totalPercent = useMemo(() => entries.reduce((s, e) => s + e.percent, 0), [entries])
 
   const value = useMemo(
@@ -121,9 +128,10 @@ export function FeedMixProvider({ children }: { children: ReactNode }) {
       addEntry,
       removeEntry,
       toggleSource,
+      setSingleFeed,
       totalPercent,
     }),
-    [entries, enabled, setEnabled, setEntryPercent, addEntry, removeEntry, toggleSource, totalPercent]
+    [entries, enabled, setEnabled, setEntryPercent, addEntry, removeEntry, toggleSource, setSingleFeed, totalPercent]
   )
 
   return <FeedMixContext.Provider value={value}>{children}</FeedMixContext.Provider>
@@ -140,6 +148,7 @@ export function useFeedMix() {
       addEntry: () => {},
       removeEntry: () => {},
       toggleSource: () => {},
+      setSingleFeed: () => {},
       totalPercent: 0,
     }
   }
