@@ -1402,7 +1402,6 @@ button.logoLink {
   background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid var(--glass-border);
   border-radius: 9999px;
   z-index: 20;
   transition: transform 0.25s ease;
