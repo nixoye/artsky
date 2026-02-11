@@ -25,6 +25,15 @@
   transform: none;
 }
 
+/* In modal on mobile: let the image receive touch so long-press shows native Save/Share menu (not text selection) */
+@media (hover: none) {
+  .wrapInModal .galleryImageBtn .galleryMedia {
+    pointer-events: auto;
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
 /* In modal on mobile: media takes full width of popup */
 @media (max-width: 767px) {
   .wrapInModal.wrap {
@@ -65,15 +74,14 @@
   flex-direction: row;
   align-items: stretch;
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 0.75rem;
   padding: 1rem;
   margin-bottom: 0.75rem;
 }
 
-/* Nested comments: border around each comment to mark where it starts/ends */
+/* Comments: darkened area under each comment (no border) */
 .postBlock:not(.rootPostBlock) {
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg));
 }
 
 /* Root post on detail page: media on top, username and text below; no gap above media */
@@ -88,6 +96,11 @@
   transform: scale(1.03);
   transition: transform 0.2s ease;
   border-radius: 0.75rem;
+}
+
+/* Parent post (when viewing a reply – "Replying to" above the opened post) */
+.parentPostWrap {
+  margin-bottom: 1rem;
 }
 
 /* Quoted post (quote post) block */
@@ -500,6 +513,12 @@
   border-color: var(--muted);
 }
 
+.commentVoteTotal {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
+
 .avatar {
   width: 32px;
   height: 32px;
@@ -664,6 +683,41 @@
   margin-top: 4px;
   padding-left: 0;
   padding-right: 1rem;
+}
+
+.commentSortRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.commentSortLabel {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.commentSortSelect {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.commentSortSelect:hover {
+  border-color: var(--accent);
+}
+
+.commentSortSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 /* Top-level comments only */

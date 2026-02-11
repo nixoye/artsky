@@ -904,6 +904,16 @@ button.logoLink {
   .headerBtnWrap {
     position: relative;
   }
+  .notificationUnreadDot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    pointer-events: none;
+  }
   .headerBtn {
     display: flex;
     align-items: center;
@@ -1455,10 +1465,6 @@ button.logoLink {
 
 /* iOS 26–style liquid glass tab bar: floating pill, transparent gap below; hidden on desktop */
 .nav {
-  position: fixed;
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
-  left: max(1rem, env(safe-area-inset-left));
-  right: max(1rem, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -1468,11 +1474,54 @@ button.logoLink {
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
   border-radius: 9999px;
-  z-index: 20;
   transition: transform 0.25s ease;
   /* Contain blur and paint so nothing bleeds into the safe area below */
   isolation: isolate;
   contain: layout style paint;
+}
+
+/* Wrapper so the floating seen-posts button can sit above the nav on mobile */
+.navOuter {
+  position: fixed;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 20;
+  pointer-events: none;
+}
+
+.navOuter > .nav {
+  pointer-events: auto;
+}
+
+/* Floating above the Home button (first nav item); ~10% = center of first of 5 items */
+.seenPostsFloatBtn {
+  position: absolute;
+  bottom: 100%;
+  left: 10%;
+  transform: translate(-50%, 0);
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.seenPostsFloatBtn:hover {
+  color: var(--text);
 }
 
 @media (min-width: 768px) {
@@ -1482,8 +1531,66 @@ button.logoLink {
 }
 
 /* Fully off-screen below viewport so it doesn’t sit under Safari’s URL/toolbar on iPhone */
-.navHidden {
+.navOuter.navHidden {
   transform: translateY(calc(100% + 100vh));
+}
+
+.navHomeWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.navHomeWrap > button:last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.25rem 0.3rem;
+  min-height: 22px;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.95rem;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.navHomeWrap > button:last-child:hover {
+  color: var(--text);
+}
+
+.navHomeWrap > button:last-child.navActive {
+  color: var(--accent);
+}
+
+.seenPostsNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  min-height: 0;
+  color: var(--muted);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.seenPostsNavBtn:hover {
+  color: var(--text);
 }
 
 .nav a,

@@ -18,6 +18,7 @@ import { useSession } from '../context/SessionContext'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostText from '../components/PostText'
 import ProfileLink from '../components/ProfileLink'
+import ComposerSuggestions from '../components/ComposerSuggestions'
 import { ReplyAsRow } from './PostDetailPage'
 import styles from './ForumPostDetailPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
@@ -679,11 +680,11 @@ export function ForumPostContent({ documentUri, onClose }: ForumPostContentProps
                                   </p>
                                 )}
                               </div>
-                              <textarea
-                                ref={inlineReplyTextareaRef}
+                              <ComposerSuggestions
+                                inputRef={inlineReplyTextareaRef}
                                 placeholder={`Reply to @${handle}…`}
                                 value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
+                                onChange={setReplyText}
                                 onKeyDown={(e) => {
                                   if ((e.key === 'Enter' || e.key === 'E') && (e.metaKey || e.ctrlKey)) {
                                     e.preventDefault()

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
-import { searchActorsTypeahead, getSuggestedFeeds } from '../lib/bsky'
+import { searchActorsTypeahead, getSuggestedFeeds, publicAgent } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import type { AppBskyActorDefs, AppBskyFeedDefs } from '@atproto/api'
 import styles from './SearchBar.module.css'
@@ -25,6 +25,45 @@ function extractProfileHandleFromSearchQuery(text: string): string | null {
   } catch {
     return paramMatch[1].trim()
   }
+}
+
+/** If pasted text contains a post link, extract post (full at-uri or handle+rkey). Handles ?post= (ArtSky), /post/ path, and /profile/.../post/ (bsky.app). */
+function extractPostFromSearchQuery(
+  text: string
+): { type: 'uri'; uri: string } | { type: 'handleRkey'; handle: string; rkey: string } | null {
+  /* ArtSky / any URL with post= query param (e.g. #/feed?post=at%3A%2F%2F...) */
+  const fullUriParam = text.match(/[?&]post=(at%3A%2F%2F[^&\s]+)/i)
+  if (fullUriParam) {
+    try {
+      const uri = decodeURIComponent(fullUriParam[1].trim())
+      if (uri.startsWith('at://')) return { type: 'uri', uri }
+    } catch {
+      /* ignore */
+    }
+  }
+  /* Path-based: /post/at%3A%2F%2F... or /profile/handle/post/rkey */
+  if (/\/profile\//i.test(text) || /\/post\//i.test(text)) {
+    const fullUriPath = text.match(/\/post\/(at%3A%2F%2F[^/?\s#]+)/i)
+    if (fullUriPath) {
+      try {
+        const uri = decodeURIComponent(fullUriPath[1].trim())
+        if (uri.startsWith('at://')) return { type: 'uri', uri }
+      } catch {
+        /* ignore */
+      }
+    }
+    const profilePostMatch = text.match(/\/profile\/([^/]+)\/post\/([^/?\s#]+)/i)
+    if (profilePostMatch) {
+      try {
+        const handle = decodeURIComponent(profilePostMatch[1].trim())
+        const rkey = profilePostMatch[2].trim()
+        if (handle && rkey) return { type: 'handleRkey', handle, rkey }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return null
 }
 
 export type SearchFilter = 'all' | 'users' | 'feeds'
@@ -60,7 +99,7 @@ interface Props {
 
 export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, compact, onClose, suggestionsAbove }: Props) {
   const navigate = useNavigate()
-  const { openProfileModal, openTagModal, openSearchModal } = useProfileModal()
+  const { openProfileModal, openPostModal, openTagModal, openSearchModal } = useProfileModal()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
   const [open, setOpen] = useState(false)
@@ -69,6 +108,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   const [suggestedFeeds, setSuggestedFeeds] = useState<AppBskyFeedDefs.GeneratorView[]>([])
   const [activeIndex, setActiveIndex] = useState(-1)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [resolvingPost, setResolvingPost] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const internalInputRef = useRef<HTMLInputElement>(null)
   const inputRef = externalInputRef ?? internalInputRef
@@ -77,6 +117,8 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   const isHashtag = trimmed.startsWith('#')
   const tagSlug = isHashtag ? trimmed.slice(1).replace(/\s.*$/, '').toLowerCase() : ''
   const hashtagOption = isHashtag && tagSlug && filter !== 'feeds' ? { type: 'tag' as const, tag: tagSlug } : null
+
+  const postFromUrl = trimmed ? extractPostFromSearchQuery(trimmed) : null
 
   const fetchActors = useCallback(async (q: string) => {
     if (!q || q.startsWith('#') || filter === 'feeds') {
@@ -125,26 +167,55 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   const profileFromUrl = trimmed ? extractProfileHandleFromSearchQuery(trimmed) : null
 
   const options: Array<
+    | { type: 'postFromUrl'; post: { type: 'uri'; uri: string } | { type: 'handleRkey'; handle: string; rkey: string } }
     | { type: 'profileFromUrl'; handle: string }
     | { type: 'actor'; handle: string; did: string; avatar?: string; displayName?: string }
     | { type: 'tag'; tag: string }
     | { type: 'feed'; view: AppBskyFeedDefs.GeneratorView }
   > = []
-  if (profileFromUrl && filter !== 'feeds') options.push({ type: 'profileFromUrl', handle: profileFromUrl })
+  if (postFromUrl && filter !== 'feeds') options.push({ type: 'postFromUrl', post: postFromUrl })
+  else if (profileFromUrl && filter !== 'feeds') options.push({ type: 'profileFromUrl', handle: profileFromUrl })
   if (hashtagOption) options.push(hashtagOption)
   if (filter !== 'feeds') actors.forEach((a) => options.push({ type: 'actor', handle: a.handle, did: a.did, avatar: a.avatar, displayName: a.displayName }))
   if ((filter === 'feeds' || filter === 'all') && (!trimmed && suggestedFeeds.length)) suggestedFeeds.forEach((f) => options.push({ type: 'feed', view: f }))
 
   useEffect(() => {
     setActiveIndex(-1)
-  }, [query, actors.length, suggestedFeeds.length, hashtagOption, profileFromUrl])
+  }, [query, actors.length, suggestedFeeds.length, hashtagOption, profileFromUrl, postFromUrl])
+
+  async function openPostFromExtracted(
+    post: { type: 'uri'; uri: string } | { type: 'handleRkey'; handle: string; rkey: string }
+  ) {
+    let uri: string
+    if (post.type === 'uri') {
+      uri = post.uri
+    } else {
+      setResolvingPost(true)
+      try {
+        const res = await publicAgent.getProfile({ actor: post.handle })
+        uri = `at://${res.data.did}/app.bsky.feed.post/${post.rkey}`
+      } catch {
+        openProfileModal(post.handle)
+        return
+      } finally {
+        setResolvingPost(false)
+      }
+    }
+    openPostModal(uri)
+    setQuery('')
+    setOpen(false)
+    inputRef.current?.blur()
+    onClose?.()
+  }
 
   function handleSelect(index: number) {
     const opt = options[index]
     if (!opt) return
     setOpen(false)
     setQuery('')
-    if (opt.type === 'profileFromUrl') {
+    if (opt.type === 'postFromUrl') {
+      openPostFromExtracted(opt.post)
+    } else if (opt.type === 'profileFromUrl') {
       openProfileModal(opt.handle)
       inputRef.current?.blur()
       onClose?.()
@@ -179,6 +250,11 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
     (trimmed.startsWith('@') || trimmed.includes('.'))
 
   function handleSubmit() {
+    const post = extractPostFromSearchQuery(trimmed)
+    if (post) {
+      openPostFromExtracted(post)
+      return
+    }
     const profileHandle = extractProfileHandleFromSearchQuery(trimmed)
     if (profileHandle) {
       openProfileModal(profileHandle)
@@ -265,6 +341,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
           type="button"
           className={styles.searchSubmitBtn}
           onClick={handleSubmit}
+          disabled={resolvingPost}
           aria-label="Search"
         >
           <SearchIcon />
@@ -293,6 +370,20 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
             <div className={styles.item}>Searching…</div>
           )}
           {options.map((opt, i) => {
+            if (opt.type === 'postFromUrl') {
+              return (
+                <button
+                  key="post-from-url"
+                  type="button"
+                  role="option"
+                  className={`${styles.item} ${i === activeIndex ? styles.itemActive : ''}`}
+                  onClick={() => handleSelect(i)}
+                  disabled={resolvingPost}
+                >
+                  <span className={styles.itemLabel}>{resolvingPost ? 'Opening post…' : 'Open post'}</span>
+                </button>
+              )
+            }
             if (opt.type === 'profileFromUrl') {
               return (
                 <button

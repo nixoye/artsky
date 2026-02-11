@@ -25,6 +25,7 @@ import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import SuggestedFollows from '../components/SuggestedFollows'
 import styles from './FeedPage.module.css'
 
 const SEEN_POSTS_KEY = 'artsky-seen-posts'
@@ -240,6 +241,7 @@ export default function FeedPage() {
   const seenUrisRef = useRef(seenUris)
   seenUrisRef.current = seenUris
   const seenPostsContext = useSeenPosts()
+  const [suggestedFollowsOpen, setSuggestedFollowsOpen] = useState(false)
 
   // Register clear-seen handler so that long-press on Home can bring back all hidden (seen) items.
   useEffect(() => {
@@ -271,6 +273,19 @@ export default function FeedPage() {
     })
     return () => {
       seenPostsContext.setHomeClickHandler(null)
+    }
+  }, [seenPostsContext])
+
+  // When the eye (hide seen) button is clicked: hide seen posts only, no scroll.
+  useEffect(() => {
+    if (!seenPostsContext) return
+    seenPostsContext.setHideSeenOnlyHandler(() => {
+      requestAnimationFrame(() => {
+        setSeenUrisAtReset(new Set(seenUrisRef.current))
+      })
+    })
+    return () => {
+      seenPostsContext.setHideSeenOnlyHandler(null)
     }
   }, [seenPostsContext])
 
@@ -424,7 +439,9 @@ export default function FeedPage() {
   const itemsAfterOtherFilters = items
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
-  const emptyBecauseAllSeen = displayItems.length === 0 && itemsAfterOtherFilters.length > 0
+  /** Only "seen all" when there's nothing more to load (no cursor). With mixed feeds, one feed can be exhausted while others still have posts. */
+  const emptyBecauseAllSeen = displayItems.length === 0 && itemsAfterOtherFilters.length > 0 && !cursor
+  const canLoadMoreWhenEmpty = displayItems.length === 0 && cursor != null
   const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
   /** Flat list of focus targets: one per media item per post (multi-image posts get multiple entries). */
   const focusTargets = useMemo(() => {
@@ -864,6 +881,20 @@ export default function FeedPage() {
             transform: `translateY(${pullRefresh.pullDistance}px)`,
           }}
         >
+        {session && (
+          <div className={styles.suggestedFollowsSection}>
+            <button
+              type="button"
+              className={styles.suggestedFollowsToggle}
+              onClick={() => setSuggestedFollowsOpen((open) => !open)}
+              aria-expanded={suggestedFollowsOpen}
+              aria-label={suggestedFollowsOpen ? 'Hide discover accounts' : 'Discover accounts to follow'}
+            >
+              {suggestedFollowsOpen ? 'Hide suggestions' : 'Discover accounts'}
+            </button>
+            {suggestedFollowsOpen && <SuggestedFollows />}
+          </div>
+        )}
         <div
           key={mixEntries.length === 1 ? (mixEntries[0].source.uri ?? mixEntries[0].source.label) : 'mixed'}
           className={styles.feedContentTransition}
@@ -873,11 +904,29 @@ export default function FeedPage() {
           <div className={styles.loading}>Loading…</div>
         ) : displayItems.length === 0 ? (
           <div className={styles.empty}>
-            {emptyBecauseAllSeen
-              ? <>You've seen all the posts in this feed.<br />New posts will appear as they're posted.</>
-              : mediaOnly
-                ? 'No posts with images or videos in this feed.'
-                : 'No posts in this feed.'}
+            {canLoadMoreWhenEmpty ? (
+              <>
+                <p className={styles.emptyLoadMoreText}>
+                  {itemsAfterOtherFilters.length > 0
+                    ? "You've seen everything visible from this batch. There may be more from your other feeds."
+                    : 'No posts in this batch.'}
+                </p>
+                <button
+                  type="button"
+                  className={styles.loadMoreBtn}
+                  onClick={() => cursor && !loadingMore && load(cursor)}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              </>
+            ) : emptyBecauseAllSeen ? (
+              <>You've seen all the posts in this feed.<br />New posts will appear as they're posted.</>
+            ) : mediaOnly ? (
+              'No posts with images or videos in this feed.'
+            ) : (
+              'No posts in this feed.'
+            )}
           </div>
         ) : (
           <>

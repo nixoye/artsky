@@ -9,6 +9,10 @@ type SeenPostsContextValue = {
   setHomeClickHandler: (fn: (() => void) | null) => void
   /** Invoke the registered Home-click handler. No-op if none registered. */
   onHomeClick: () => void
+  /** Register (or unregister with null) the handler for "hide seen posts" only (no scroll). Used by the eye button. */
+  setHideSeenOnlyHandler: (fn: (() => void) | null) => void
+  /** Invoke the hide-seen-only handler. No-op if none registered. */
+  onHideSeenOnly: () => void
 }
 
 const SeenPostsContext = createContext<SeenPostsContextValue | null>(null)
@@ -16,6 +20,7 @@ const SeenPostsContext = createContext<SeenPostsContextValue | null>(null)
 export function SeenPostsProvider({ children }: { children: ReactNode }) {
   const handlerRef = useRef<(() => void) | null>(null)
   const homeClickRef = useRef<(() => void) | null>(null)
+  const hideSeenOnlyRef = useRef<(() => void) | null>(null)
 
   const setClearSeenHandler = useCallback((fn: (() => void) | null) => {
     handlerRef.current = fn
@@ -33,11 +38,21 @@ export function SeenPostsProvider({ children }: { children: ReactNode }) {
     homeClickRef.current?.()
   }, [])
 
+  const setHideSeenOnlyHandler = useCallback((fn: (() => void) | null) => {
+    hideSeenOnlyRef.current = fn
+  }, [])
+
+  const onHideSeenOnly = useCallback(() => {
+    hideSeenOnlyRef.current?.()
+  }, [])
+
   const value: SeenPostsContextValue = {
     setClearSeenHandler,
     clearSeenAndShowAll,
     setHomeClickHandler,
     onHomeClick,
+    setHideSeenOnlyHandler,
+    onHideSeenOnly,
   }
 
   return (
