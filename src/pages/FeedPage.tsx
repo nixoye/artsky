@@ -30,6 +30,19 @@ import styles from './FeedPage.module.css'
 
 const SEEN_POSTS_KEY = 'artsky-seen-posts'
 const SEEN_POSTS_MAX = 2000
+const FEED_SORT_KEY = 'artsky-feed-sort'
+
+type FeedSortMode = 'newest' | 'oldest' | 'most-likes' | 'most-replies'
+
+function loadFeedSort(): FeedSortMode {
+  try {
+    const v = localStorage.getItem(FEED_SORT_KEY)
+    if (v === 'oldest' || v === 'most-likes' || v === 'most-replies') return v
+    return 'newest'
+  } catch {
+    return 'newest'
+  }
+}
 
 function loadSeenUris(): Set<string> {
   try {
@@ -242,6 +255,7 @@ export default function FeedPage() {
   seenUrisRef.current = seenUris
   const seenPostsContext = useSeenPosts()
   const [suggestedFollowsOpen, setSuggestedFollowsOpen] = useState(false)
+  const [feedSortMode, setFeedSortMode] = useState<FeedSortMode>(loadFeedSort)
 
   // Register clear-seen handler so that long-press on Home can bring back all hidden (seen) items.
   useEffect(() => {
@@ -432,11 +446,34 @@ export default function FeedPage() {
 
   const { mediaOnly } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
-  const displayItems = items
+  /** When viewing only the Following timeline, we can sort client-side. */
+  const isFollowingFeed =
+    (mixEntries.length === 1 && mixEntries[0].source.kind === 'timeline') ||
+    (mixEntries.length === 0 && source.kind === 'timeline')
+  const sortedItems = useMemo(() => {
+    if (!isFollowingFeed) return items
+    const postMeta = (p: TimelineItem['post']) => ({
+      indexedAt: (p as { indexedAt?: string }).indexedAt ?? '',
+      likeCount: (p as { likeCount?: number }).likeCount ?? 0,
+      replyCount: (p as { replyCount?: number }).replyCount ?? 0,
+    })
+    const sorted = [...items]
+    if (feedSortMode === 'newest') {
+      sorted.sort((a, b) => (postMeta(b.post).indexedAt).localeCompare(postMeta(a.post).indexedAt))
+    } else if (feedSortMode === 'oldest') {
+      sorted.sort((a, b) => (postMeta(a.post).indexedAt).localeCompare(postMeta(b.post).indexedAt))
+    } else if (feedSortMode === 'most-likes') {
+      sorted.sort((a, b) => postMeta(b.post).likeCount - postMeta(a.post).likeCount)
+    } else {
+      sorted.sort((a, b) => postMeta(b.post).replyCount - postMeta(a.post).replyCount)
+    }
+    return sorted
+  }, [items, isFollowingFeed, feedSortMode])
+  const displayItems = sortedItems
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => !seenUrisAtReset.has(item.post.uri))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
-  const itemsAfterOtherFilters = items
+  const itemsAfterOtherFilters = sortedItems
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   /** Only "seen all" when there's nothing more to load (no cursor). With mixed feeds, one feed can be exhausted while others still have posts. */
@@ -489,6 +526,14 @@ export default function FeedPage() {
   useEffect(() => {
     saveSeenUris(seenUris)
   }, [seenUris])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FEED_SORT_KEY, feedSortMode)
+    } catch {
+      // ignore
+    }
+  }, [feedSortMode])
 
   // Mark posts as seen when scrolled past (card top above viewport).
   // Use both IntersectionObserver and a scroll listener: the observer can miss callbacks during fast scroll (especially Safari iOS).
@@ -893,6 +938,23 @@ export default function FeedPage() {
               {suggestedFollowsOpen ? 'Hide suggestions' : 'Discover accounts'}
             </button>
             {suggestedFollowsOpen && <SuggestedFollows />}
+          </div>
+        )}
+        {session && isFollowingFeed && (
+          <div className={styles.feedSortRow}>
+            <label htmlFor="feed-sort" className={styles.feedSortLabel}>Sort:</label>
+            <select
+              id="feed-sort"
+              className={styles.feedSortSelect}
+              value={feedSortMode}
+              onChange={(e) => setFeedSortMode(e.target.value as FeedSortMode)}
+              aria-label="Following feed sort order"
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="most-likes">Most liked</option>
+              <option value="most-replies">Most replies</option>
+            </select>
           </div>
         )}
         <div

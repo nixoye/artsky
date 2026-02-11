@@ -389,8 +389,8 @@ function PostBlock({
             </button>
           )}
           {onLike && onDownvote && showCommentCounts && (
-            <span className={styles.commentVoteTotal} aria-label={`${likeCount + downvoteCount} total votes`}>
-              {likeCount + downvoteCount}
+            <span className={styles.commentVoteTotal} aria-label={`Score: ${likeCount - downvoteCount} (upvotes minus downvotes)`}>
+              {likeCount - downvoteCount}
             </span>
           )}
           {onDownvote && (
