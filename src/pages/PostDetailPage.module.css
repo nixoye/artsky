@@ -101,6 +101,17 @@
 /* Parent post (when viewing a reply – "Replying to" above the opened post) */
 .parentPostWrap {
   margin-bottom: 1rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.parentPostWrap .quotedPostLabel {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.02em;
 }
 
 /* Quoted post (quote post) block */
