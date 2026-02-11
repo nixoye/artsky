@@ -563,6 +563,46 @@ export function getPostMediaUrlForDisplay(post: PostView): { url: string; type: 
   return info ? { url: info.url, type: info.type } : null
 }
 
+/** External link from a post (link card). Handles app.bsky.embed.external#view and recordWithMedia with external media. */
+export function getPostExternalLink(post: PostView): { uri: string; title: string; description: string; thumb?: string } | null {
+  const embed = post.embed as {
+    $type?: string
+    uri?: string
+    title?: string
+    description?: string
+    thumb?: string
+    media?: { $type?: string; uri?: string; title?: string; description?: string; thumb?: string }
+  } | undefined
+  if (!embed) return null
+  let ext: { uri: string; title: string; description: string; thumb?: string } | null = null
+  if (embed.$type === 'app.bsky.embed.external#view' && embed.uri) {
+    ext = {
+      uri: embed.uri,
+      title: embed.title?.trim() ?? '',
+      description: embed.description ?? '',
+      thumb: embed.thumb,
+    }
+  } else if (embed.$type === 'app.bsky.embed.recordWithMedia#view' && embed.media?.$type === 'app.bsky.embed.external#view' && embed.media.uri) {
+    const m = embed.media
+    ext = {
+      uri: m.uri,
+      title: m.title?.trim() ?? '',
+      description: m.description ?? '',
+      thumb: m.thumb,
+    }
+  }
+  if (!ext) return null
+  let title = ext.title
+  if (!title) {
+    try {
+      title = new URL(ext.uri).hostname.replace(/^www\./, '')
+    } catch {
+      title = ext.uri
+    }
+  }
+  return { ...ext, title }
+}
+
 /** Quoted post view when the embed is app.bsky.embed.record#view or recordWithMedia#view; compatible with PostView for rendering. */
 export type QuotedPostView = PostView
 
@@ -1367,6 +1407,81 @@ export async function getFollows(
   return { dids, handles, cursor: res.data.cursor }
 }
 
+/** Suggested accounts to follow: "followed by people you follow", sorted by how many of your followees follow them. */
+export type SuggestedFollow = {
+  did: string
+  handle: string
+  displayName?: string
+  avatar?: string
+  count: number
+}
+
+const SUGGESTED_FOLLOWS_MY_FOLLOWS_LIMIT = 80
+const SUGGESTED_FOLLOWS_SAMPLE = 20
+const SUGGESTED_FOLLOWS_THEIR_LIMIT = 50
+const SUGGESTED_FOLLOWS_TOP = 15
+
+export async function getSuggestedFollows(
+  client: AtpAgent,
+  currentUserDid: string,
+  opts?: { maxSuggestions?: number }
+): Promise<SuggestedFollow[]> {
+  const maxSuggestions = opts?.maxSuggestions ?? SUGGESTED_FOLLOWS_TOP
+  const { dids: myFollowDids, handles: myHandles } = await getFollows(client, currentUserDid, {
+    limit: SUGGESTED_FOLLOWS_MY_FOLLOWS_LIMIT,
+  })
+  const myFollowSet = new Set(myFollowDids)
+  myFollowSet.add(currentUserDid)
+
+  const sample =
+    myFollowDids.length <= SUGGESTED_FOLLOWS_SAMPLE
+      ? myFollowDids
+      : myFollowDids
+          .slice()
+          .sort(() => Math.random() - 0.5)
+          .slice(0, SUGGESTED_FOLLOWS_SAMPLE)
+
+  const countByDid = new Map<string, number>()
+  const handleByDid = new Map<string, string>()
+  for (const did of sample) {
+    try {
+      const { dids: theirDids, handles: theirHandles } = await getFollows(client, did, {
+        limit: SUGGESTED_FOLLOWS_THEIR_LIMIT,
+      })
+      theirHandles.forEach((h, d) => handleByDid.set(d, h))
+      for (const d of theirDids) {
+        if (myFollowSet.has(d)) continue
+        countByDid.set(d, (countByDid.get(d) ?? 0) + 1)
+      }
+    } catch {
+      // skip this followee on error
+    }
+  }
+
+  const sorted = [...countByDid.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxSuggestions)
+  if (sorted.length === 0) return []
+
+  const results: SuggestedFollow[] = []
+  for (const [did, count] of sorted) {
+    const handle = handleByDid.get(did) ?? did
+    results.push({ did, handle, count })
+  }
+  const profiles = await Promise.all(
+    results.map((r) =>
+      client.getProfile({ actor: r.did }).then((res) => res.data as { displayName?: string; avatar?: string }).catch(() => null)
+    )
+  )
+  profiles.forEach((p, i) => {
+    if (p && results[i]) {
+      results[i].displayName = p.displayName
+      results[i].avatar = p.avatar
+    }
+  })
+  return results
+}
+
 /** Resolve DID from a publication base URL via .well-known/site.standard.publication. Returns null on CORS/network error. */
 export async function resolvePublicationDidFromWellKnown(baseUrl: string): Promise<string | null> {
   try {
@@ -1513,6 +1628,29 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
     // ignore
   }
   return allViews
+}
+
+/** Search forum (standard.site) documents by title/body/path/author. Uses list from people you follow; filters client-side. For % typeahead in composer. */
+export async function searchForumDocuments(q: string, limit = 10): Promise<StandardSiteDocumentView[]> {
+  const term = q.trim().toLowerCase()
+  if (!term) return []
+  const list = await listStandardSiteDocumentsForForum()
+  const matches = list.filter((doc) => {
+    const title = (doc.title ?? '').toLowerCase()
+    const body = (doc.body ?? '').toLowerCase()
+    const path = (doc.path ?? '').toLowerCase()
+    const author = (doc.authorHandle ?? '').toLowerCase()
+    return title.includes(term) || body.includes(term) || path.includes(term) || author.includes(term)
+  })
+  return matches.slice(0, limit)
+}
+
+/** Build human-readable URL for a standard.site document (for pasting into post). */
+export function getStandardSiteDocumentUrl(doc: StandardSiteDocumentView): string {
+  if (!doc.baseUrl) return doc.uri
+  const base = doc.baseUrl.replace(/\/$/, '')
+  const path = (doc.path ?? '').replace(/^\//, '')
+  return path ? `${base}/${path}` : base
 }
 
 /** Extract site.standard.document AT-URIs from text (e.g. post content). */
@@ -1850,6 +1988,30 @@ export async function getNotifications(limit = 30, cursor?: string): Promise<{
 export async function getUnreadNotificationCount(): Promise<number> {
   const res = await agent.countUnreadNotifications()
   return res.data.count ?? 0
+}
+
+/** Mark notifications as seen (read) up to the given time. Server uses this to clear unread count. Requires session. */
+export async function updateSeenNotifications(seenAt?: string): Promise<void> {
+  const ts = seenAt ?? new Date().toISOString()
+  await agent.app.bsky.notification.updateSeen({ seenAt: ts })
+}
+
+/** List accounts the user receives activity notifications from (posts/replies). Requires session. */
+export async function listActivitySubscriptions(): Promise<{ did: string }[]> {
+  const res = await agent.app.bsky.notification.listActivitySubscriptions({ limit: 200 })
+  const subs = (res.data as { subscriptions?: { did: string }[] }).subscriptions ?? []
+  return subs.map((s) => ({ did: s.did }))
+}
+
+/** Subscribe or unsubscribe to activity notifications (posts, replies) for an account. Requires session. */
+export async function putActivitySubscription(
+  subjectDid: string,
+  subscribe: boolean
+): Promise<void> {
+  await agent.app.bsky.notification.putActivitySubscription({
+    subject: subjectDid,
+    activitySubscription: { post: subscribe, reply: subscribe },
+  })
 }
 
 /** Post a reply to a post. For top-level reply use same uri/cid for root and parent. Detects links/mentions/hashtags and stores facets so they render as clickable. */

@@ -21,11 +21,9 @@ export default function PostDetailModal({ uri, openReply, focusUri, onClose, onB
     setAuthorHandle(null)
   }, [uri])
 
+  /* Push profile on top of post (same as clicking author) so swipe-right/back returns to post */
   const handleSwipeLeft = () => {
-    if (authorHandle) {
-      onBack()
-      openProfileModal(authorHandle)
-    }
+    if (authorHandle) openProfileModal(authorHandle)
   }
 
   return (

@@ -11,13 +11,14 @@ import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
-import { publicAgent, createPost, getNotifications, getSavedFeedsFromPreferences, getFeedDisplayName, resolveFeedUri, addSavedFeed, removeSavedFeedByUri, getFeedShareUrl } from '../lib/bsky'
+import { publicAgent, createPost, getNotifications, getUnreadNotificationCount, updateSeenNotifications, getSavedFeedsFromPreferences, getFeedDisplayName, resolveFeedUri, addSavedFeed, removeSavedFeedByUri, getFeedShareUrl } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
 import { useFeedMix } from '../context/FeedMixContext'
 import { FeedSwipeProvider } from '../context/FeedSwipeContext'
 import SearchBar from './SearchBar'
 import FeedSelector from './FeedSelector'
+import ComposerSuggestions from './ComposerSuggestions'
 import { CardDefaultIcon, CardMinimalistIcon, CardArtOnlyIcon, EyeOpenIcon, EyeHalfIcon, EyeClosedIcon } from './Icons'
 import styles from './Layout.module.css'
 
@@ -94,6 +95,16 @@ function HomeIcon({ active }: { active?: boolean }) {
   return (
     <svg width="24" height="24" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={houseOutline} />
+    </svg>
+  )
+}
+
+/** Small eye icon for seen-posts button (tap = hide seen, hold = show seen) */
+function SeenPostsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   )
 }
@@ -342,6 +353,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const feedsBtnRef = useRef<HTMLButtonElement>(null)
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   const [composeOverlayBottom, setComposeOverlayBottom] = useState(0)
@@ -362,6 +374,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const notificationsBtnRef = useRef<HTMLButtonElement>(null)
   const homeLongPressTriggeredRef = useRef(false)
   const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const seenLongPressTriggeredRef = useRef(false)
+  const seenHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenPosts = useSeenPosts()
   const HOME_HOLD_MS = 500
   const { entries: mixEntries, setEntryPercent, toggleSource, addEntry, setSingleFeed } = useFeedMix()
@@ -420,6 +434,30 @@ export default function Layout({ title, children, showNav }: Props) {
       homeHoldTimerRef.current = null
     }
   }, [])
+
+  const startSeenHold = useCallback(() => {
+    seenHoldTimerRef.current = setTimeout(() => {
+      seenLongPressTriggeredRef.current = true
+      seenPosts?.clearSeenAndShowAll()
+      seenHoldTimerRef.current = null
+    }, HOME_HOLD_MS)
+  }, [seenPosts])
+
+  const endSeenHold = useCallback(() => {
+    if (seenHoldTimerRef.current) {
+      clearTimeout(seenHoldTimerRef.current)
+      seenHoldTimerRef.current = null
+    }
+  }, [])
+
+  const seenBtnClick = useCallback(() => {
+    if (seenLongPressTriggeredRef.current) {
+      seenLongPressTriggeredRef.current = false
+      return
+    }
+    seenPosts?.onHideSeenOnly()
+    if (path !== '/feed') navigate('/feed')
+  }, [seenPosts, path, navigate])
 
   const homeBtnClick = useCallback(() => {
     if (homeLongPressTriggeredRef.current) {
@@ -629,9 +667,36 @@ export default function Layout({ title, children, showNav }: Props) {
     if (!notificationsOpen || !session) return
     setNotificationsLoading(true)
     getNotifications(30)
-      .then(({ notifications: list }) => setNotifications(list))
+      .then(({ notifications: list }) => {
+        setNotifications(list)
+        setUnreadNotificationCount(list.filter((n) => !n.isRead).length)
+        /* Mark all as seen so the unread dot goes away; use latest notification time so server marks them read */
+        const latestIndexedAt = list.length > 0
+          ? list.reduce((max, n) => (n.indexedAt > max ? n.indexedAt : max), list[0].indexedAt)
+          : new Date().toISOString()
+        updateSeenNotifications(latestIndexedAt)
+          .then(() => setUnreadNotificationCount(0))
+          .catch(() => {})
+      })
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false))
+  }, [notificationsOpen, session])
+
+  /* Fetch unread count when session exists (so bell dot shows) and when notifications panel closes */
+  useEffect(() => {
+    if (!session) return
+    getUnreadNotificationCount()
+      .then(setUnreadNotificationCount)
+      .catch(() => setUnreadNotificationCount(0))
+  }, [session])
+  const prevNotificationsOpenRef = useRef(false)
+  useEffect(() => {
+    if (prevNotificationsOpenRef.current && !notificationsOpen && session) {
+      getUnreadNotificationCount()
+        .then(setUnreadNotificationCount)
+        .catch(() => {})
+    }
+    prevNotificationsOpenRef.current = notificationsOpen
   }, [notificationsOpen, session])
 
   /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
@@ -855,22 +920,24 @@ export default function Layout({ title, children, showNav }: Props) {
         /* Desktop: Feed, Artboards, New, Search, Forum */
         navTrayItems
       ) : (
-        /* Mobile: Feed, Forum, New, Search, Artboards (Accounts is in header) */
+        /* Mobile: Feed, Forum, New, Search, Artboards. Seen-posts button floats above Home (in navOuter). */
         <>
-          <button
-            type="button"
-            className={path === '/feed' ? styles.navActive : ''}
-            aria-current={path === '/feed' ? 'page' : undefined}
-            onPointerDown={startHomeHold}
-            onPointerUp={endHomeHold}
-            onPointerLeave={endHomeHold}
-            onPointerCancel={endHomeHold}
-            onClick={homeBtnClick}
-            title="Home (hold to show all seen posts)"
-          >
-            <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
-            <span className={styles.navLabel}>Home</span>
-          </button>
+          <div className={styles.navHomeWrap}>
+            <button
+              type="button"
+              className={path === '/feed' ? styles.navActive : ''}
+              aria-current={path === '/feed' ? 'page' : undefined}
+              onPointerDown={startHomeHold}
+              onPointerUp={endHomeHold}
+              onPointerLeave={endHomeHold}
+              onPointerCancel={endHomeHold}
+              onClick={homeBtnClick}
+              title="Home (hold to show all seen posts)"
+            >
+              <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+              <span className={styles.navLabel}>Home</span>
+            </button>
+          </div>
           <button
             type="button"
             className={isForumModalOpen ? styles.navActive : ''}
@@ -1407,6 +1474,9 @@ export default function Layout({ title, children, showNav }: Props) {
                   >
                     <BellIcon />
                   </button>
+                  {unreadNotificationCount > 0 && (
+                    <span className={styles.notificationUnreadDot} aria-hidden />
+                  )}
                   {notificationsOpen && isDesktop && (
                     <div ref={notificationsMenuRef} className={styles.notificationsMenu} role="dialog" aria-label="Notifications">
                       {notificationsPanelContent}
@@ -1516,12 +1586,29 @@ export default function Layout({ title, children, showNav }: Props) {
       </main>
       {showNav && (
         <>
-          <nav
-            className={`${styles.nav} ${navVisible ? '' : styles.navHidden}`}
-            aria-label="Main navigation"
-          >
-            {navItems}
-          </nav>
+          <div className={`${styles.navOuter} ${navVisible ? '' : styles.navHidden}`}>
+            {!isDesktop && (
+              <button
+                type="button"
+                className={styles.seenPostsFloatBtn}
+                onPointerDown={startSeenHold}
+                onPointerUp={endSeenHold}
+                onPointerLeave={endSeenHold}
+                onPointerCancel={endSeenHold}
+                onClick={seenBtnClick}
+                title="Tap to hide seen posts, hold to show them again"
+                aria-label="Seen posts: tap to hide, hold to show again"
+              >
+                <SeenPostsIcon />
+              </button>
+            )}
+            <nav
+              className={styles.nav}
+              aria-label="Main navigation"
+            >
+              {navItems}
+            </nav>
+          </div>
           {mobileSearchOpen && !isDesktop && (
             <>
               <div
@@ -1584,12 +1671,12 @@ export default function Layout({ title, children, showNav }: Props) {
                     </p>
                   ) : (
                     <form ref={composeFormRef} onSubmit={handleComposeSubmit}>
-                      <textarea
+                      <ComposerSuggestions
                         className={styles.composeTextarea}
                         value={composeText}
-                        onChange={(e) => setComposeText(e.target.value.slice(0, POST_MAX_LENGTH))}
+                        onChange={setComposeText}
                         onKeyDown={(e) => handleComposeKeyDown(e, composeFormRef.current)}
-                        placeholder="What's on your mind?"
+                        placeholder="What's on your mind? Type @ for users, # for hashtags, % for forum posts"
                         rows={4}
                         maxLength={POST_MAX_LENGTH}
                         disabled={composePosting}

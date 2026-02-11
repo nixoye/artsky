@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } fr
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
-import { getPostMediaInfoForDisplay, getPostAllMediaForDisplay, getPostMediaUrlForDisplay, agent, type TimelineItem } from '../lib/bsky'
+import { getPostMediaInfoForDisplay, getPostAllMediaForDisplay, getPostMediaUrlForDisplay, getPostExternalLink, agent, type TimelineItem } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, isPostInAnyArtboard, getArtboard } from '../lib/artboards'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
@@ -59,6 +59,9 @@ interface Props {
 }
 
 const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
+/** Used to clamp collect dropdown so it stays in view (min-width 200px + padding in CSS). */
+const ADD_DROPDOWN_CLAMP_WIDTH = 280
+const ADD_DROPDOWN_VIEWPORT_PAD = 8
 
 function RepostIcon() {
   return (
@@ -111,15 +114,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const media = getPostMediaInfoForDisplay(post)
   const hasMedia = !!media
   const text = (post.record as { text?: string })?.text ?? ''
-  const embed = post.embed as { $type?: string; uri?: string; title?: string; description?: string; thumb?: string } | undefined
-  const externalLink = (() => {
-    if (embed?.$type !== 'app.bsky.embed.external#view' || !embed.uri) return null
-    let displayTitle = embed.title?.trim() ?? ''
-    if (!displayTitle) {
-      try { displayTitle = new URL(embed.uri).hostname } catch { displayTitle = embed.uri }
-    }
-    return { uri: embed.uri, title: displayTitle, description: embed.description ?? '', thumb: embed.thumb }
-  })()
+  const externalLink = getPostExternalLink(post)
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
   const isPinned = reason?.$type === REASON_PIN
@@ -312,9 +307,14 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const updateAddDropdownPosition = useCallback(() => {
     if (!addRef.current) return null
     const rect = addRef.current.getBoundingClientRect()
+    const half = ADD_DROPDOWN_CLAMP_WIDTH / 2
+    const minLeft = ADD_DROPDOWN_VIEWPORT_PAD + half
+    const maxLeft = window.innerWidth - ADD_DROPDOWN_VIEWPORT_PAD - half
+    const centerLeft = rect.left + rect.width / 2
+    const left = Math.max(minLeft, Math.min(maxLeft, centerLeft))
     return {
       bottom: window.innerHeight - rect.top,
-      left: rect.left + rect.width / 2,
+      left,
     }
   }, [])
 
@@ -664,7 +664,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   <PostText
                     text={text}
                     facets={(post.record as { facets?: unknown[] })?.facets}
-                    maxLength={160}
+                    maxLength={320}
                     stopPropagation
                     interactive={false}
                   />
@@ -803,6 +803,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   ref={addBtnRef}
                   type="button"
                   className={`${styles.addToBoardBtn} ${inAnyArtboard ? styles.addToBoardBtnInCollection : ''}`}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -890,6 +892,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   <button
                     type="button"
                     className={`${styles.cardActionRowAvatar} ${styles.cardActionRowAvatarFollow}`}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
                     onClick={handleFollowClick}
                     disabled={followLoading}
                     aria-label={`Follow @${handle}`}
@@ -907,6 +911,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               <button
                 type="button"
                 className={`${styles.cardLikeRepostBtn} ${isLiked ? styles.cardLikeRepostBtnActive : ''}`}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 onClick={handleLikeClick}
                 disabled={likeLoading}
                 title={isLiked ? 'Remove like' : 'Like'}

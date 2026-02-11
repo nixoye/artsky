@@ -410,8 +410,7 @@
 
 .replyItem {
   padding: 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg));
   border-radius: 0.5rem;
 }
 
@@ -422,7 +421,7 @@
 }
 
 .replyItemNested {
-  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--surface) 82%, var(--bg));
 }
 
 .replyText {

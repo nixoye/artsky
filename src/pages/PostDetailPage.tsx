@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
-import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
+import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getPostExternalLink, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
+import { getDownvoteCounts } from '../lib/constellation'
 import { downloadImageWithHandle, downloadVideoWithPostUri } from '../lib/downloadImage'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
@@ -12,6 +13,7 @@ import ProfileLink from '../components/ProfileLink'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
 import PostActionsMenu from '../components/PostActionsMenu'
+import ComposerSuggestions from '../components/ComposerSuggestions'
 import { useProfileModal } from '../context/ProfileModalContext'
 import styles from './PostDetailPage.module.css'
 
@@ -154,6 +156,19 @@ function findReplyByUri(
   return null
 }
 
+/** Collect all post URIs from a thread (root + nested replies) for Constellation downvote count fetch. */
+function collectThreadPostUris(
+  node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
+): string[] {
+  if (!isThreadViewPost(node)) return []
+  const uris: string[] = [node.post.uri]
+  const replies = 'replies' in node && Array.isArray(node.replies)
+    ? (node.replies as unknown[]).filter((x): x is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(x as Parameters<typeof isThreadViewPost>[0]))
+    : []
+  for (const r of replies) uris.push(...collectThreadPostUris(r))
+  return uris
+}
+
 function MediaGallery({
   items,
   autoPlayFirstVideo = false,
@@ -235,6 +250,8 @@ function PostBlock({
   onDownvote,
   likeOverrides,
   myDownvotes,
+  downvoteCounts,
+  downvoteCountOptimisticDelta,
   likeLoadingUri,
   downvoteLoadingUri,
   openActionsMenuCommentUri,
@@ -264,6 +281,10 @@ function PostBlock({
   onDownvote?: (uri: string, cid: string, currentDownvoteUri: string | null) => Promise<void>
   likeOverrides?: Record<string, string | null>
   myDownvotes?: Record<string, string>
+  /** Downvote counts from Constellation; when present, used instead of post.downvoteCount. */
+  downvoteCounts?: Record<string, number>
+  /** Optimistic +1/-1 when user adds/removes downvote before Constellation indexes. */
+  downvoteCountOptimisticDelta?: Record<string, number>
   likeLoadingUri?: string | null
   downvoteLoadingUri?: string | null
   /** When set, which comment's actions menu is open (used to show like/downvote counts on that comment) */
@@ -280,7 +301,9 @@ function PostBlock({
   const isLikedNow = !!likedUri
   const likeCountDelta = (isLikedNow ? 1 : 0) - (wasLikedByApi ? 1 : 0)
   const likeCount = Math.max(0, baseLikeCount + likeCountDelta)
-  const downvoteCount = postViewer.downvoteCount ?? 0
+  const baseDown = downvoteCounts?.[post.uri] ?? postViewer.downvoteCount ?? 0
+  const downDelta = downvoteCountOptimisticDelta?.[post.uri] ?? 0
+  const downvoteCount = Math.max(0, baseDown + downDelta)
   const allMedia = getPostAllMedia(post)
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
@@ -295,7 +318,7 @@ function PostBlock({
   const isFocused = focusedCommentUri === post.uri
   const likeLoading = likeLoadingUri === post.uri
   const downvoteLoading = downvoteLoadingUri === post.uri
-  const showCommentCounts = openActionsMenuCommentUri === post.uri
+  const showCommentCounts = true
 
   return (
     <article className={`${styles.postBlock} ${isFocused ? styles.commentFocused : ''}`} style={{ marginLeft: depth * 2 }} data-comment-uri={post.uri} tabIndex={-1}>
@@ -415,10 +438,10 @@ function PostBlock({
                 </p>
               ))}
             </div>
-            <textarea
+            <ComposerSuggestions
               placeholder={`Reply to @${replyingTo.handle}…`}
               value={replyComment ?? ''}
-              onChange={(e) => setReplyComment(e.target.value)}
+              onChange={(v) => setReplyComment?.(v)}
               onKeyDown={(e) => {
                 if ((e.key === 'Enter' || e.key === 'E') && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
@@ -498,6 +521,8 @@ function PostBlock({
                     onDownvote={onDownvote}
                     likeOverrides={likeOverrides}
                     myDownvotes={myDownvotes}
+                    downvoteCounts={downvoteCounts}
+                    downvoteCountOptimisticDelta={downvoteCountOptimisticDelta}
                     likeLoadingUri={likeLoadingUri}
                     downvoteLoadingUri={downvoteLoadingUri}
                     openActionsMenuCommentUri={openActionsMenuCommentUri}
@@ -531,7 +556,7 @@ export interface PostDetailContentProps {
 
 export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose, onAuthorHandle, onRegisterRefresh }: PostDetailContentProps) {
   const navigate = useNavigate()
-  const { openProfileModal } = useProfileModal()
+  const { openProfileModal, openPostModal } = useProfileModal()
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -553,6 +578,10 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   const [replyingTo, setReplyingTo] = useState<{ uri: string; cid: string; handle: string } | null>(null)
   const [commentLikeOverrides, setCommentLikeOverrides] = useState<Record<string, string | null>>({})
   const [myDownvotes, setMyDownvotes] = useState<Record<string, string>>({})
+  /** Downvote counts from Microcosm Constellation (app.artsky.feed.downvote backlinks). */
+  const [downvoteCounts, setDownvoteCounts] = useState<Record<string, number>>({})
+  /** Optimistic delta when user adds/removes a downvote before Constellation has indexed it. */
+  const [downvoteCountOptimisticDelta, setDownvoteCountOptimisticDelta] = useState<Record<string, number>>({})
   const [commentLikeLoadingUri, setCommentLikeLoadingUri] = useState<string | null>(null)
   const [commentDownvoteLoadingUri, setCommentDownvoteLoadingUri] = useState<string | null>(null)
   const [openActionsMenuUri, setOpenActionsMenuUri] = useState<string | null>(null)
@@ -576,6 +605,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   const commentsSectionRef = useRef<HTMLDivElement>(null)
   const [focusedCommentIndex, setFocusedCommentIndex] = useState(0)
   const [commentFormFocused, setCommentFormFocused] = useState(false)
+  type CommentSortMode = 'newest' | 'oldest' | 'likes' | 'score' | 'controversial' | 'best'
+  const [commentSortOrder, setCommentSortOrder] = useState<CommentSortMode>('newest')
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const keyboardFocusIndexRef = useRef(0)
   const scrollIntoViewFromKeyboardRef = useRef(false)
@@ -773,8 +804,16 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
         api.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 }),
         getSession() ? listMyDownvotes().catch(() => ({})) : Promise.resolve({}),
       ])
-      setThread(threadRes.data.thread)
+      const threadData = threadRes.data.thread
+      setThread(threadData)
       setMyDownvotes(downvotes)
+      setDownvoteCountOptimisticDelta({})
+      const uris = isThreadViewPost(threadData) ? collectThreadPostUris(threadData) : []
+      if (uris.length > 0) {
+        getDownvoteCounts(uris).then(setDownvoteCounts).catch(() => {})
+      } else {
+        setDownvoteCounts({})
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load post')
     } finally {
@@ -865,9 +904,11 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
           delete next[uri]
           return next
         })
+        setDownvoteCountOptimisticDelta((d) => ({ ...d, [uri]: (d[uri] ?? 0) - 1 }))
       } else {
         const recordUri = await createDownvote(uri, cid)
         setMyDownvotes((m) => ({ ...m, [uri]: recordUri }))
+        setDownvoteCountOptimisticDelta((d) => ({ ...d, [uri]: (d[uri] ?? 0) + 1 }))
       }
     } catch {
       // leave state unchanged
@@ -947,7 +988,76 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   const threadReplies = thread && isThreadViewPost(thread) && 'replies' in thread && Array.isArray(thread.replies)
     ? (thread.replies as (typeof thread)[]).filter((r): r is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(r))
     : []
-  const threadRepliesVisible = threadReplies
+
+  const getReplyLikeCount = useCallback((r: AppBskyFeedDefs.ThreadViewPost) => {
+    const postViewer = r.post as { viewer?: { like?: string }; likeCount?: number }
+    const base = postViewer.likeCount ?? 0
+    const wasLiked = !!postViewer.viewer?.like
+    const likedUri = commentLikeOverrides[r.post.uri] !== undefined ? commentLikeOverrides[r.post.uri] : postViewer.viewer?.like
+    const isLikedNow = !!likedUri
+    const delta = (isLikedNow ? 1 : 0) - (wasLiked ? 1 : 0)
+    return Math.max(0, base + delta)
+  }, [commentLikeOverrides])
+
+  const getReplyDownvoteCount = useCallback((r: AppBskyFeedDefs.ThreadViewPost) => {
+    const base = downvoteCounts[r.post.uri] ?? 0
+    const delta = downvoteCountOptimisticDelta[r.post.uri] ?? 0
+    return base + delta
+  }, [downvoteCounts, downvoteCountOptimisticDelta])
+
+  /** Wilson score lower bound (z=1.96) for "best" sort – confidence that true ratio is high. */
+  const wilsonLower = useCallback((up: number, down: number) => {
+    const n = up + down
+    if (n === 0) return 0
+    const z = 1.96
+    const p = up / n
+    const denom = 1 + (z * z) / n
+    const centre = p + (z * z) / (2 * n)
+    const spread = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n)
+    return Math.max(0, (centre - spread) / denom)
+  }, [])
+
+  const threadRepliesVisible = useMemo(() => {
+    const createdAt = (r: AppBskyFeedDefs.ThreadViewPost) => (r.post.record as { createdAt?: string })?.createdAt ?? ''
+    const tieBreak = (a: AppBskyFeedDefs.ThreadViewPost, b: AppBskyFeedDefs.ThreadViewPost) => createdAt(b).localeCompare(createdAt(a))
+
+    if (commentSortOrder === 'newest') {
+      return [...threadReplies].sort((a, b) => createdAt(b).localeCompare(createdAt(a)))
+    }
+    if (commentSortOrder === 'oldest') {
+      return [...threadReplies].sort((a, b) => createdAt(a).localeCompare(createdAt(b)))
+    }
+    return [...threadReplies].sort((a, b) => {
+      const upA = getReplyLikeCount(a)
+      const upB = getReplyLikeCount(b)
+      const downA = getReplyDownvoteCount(a)
+      const downB = getReplyDownvoteCount(b)
+      if (commentSortOrder === 'likes') {
+        if (upB !== upA) return upB - upA
+        return tieBreak(a, b)
+      }
+      if (commentSortOrder === 'score') {
+        const scoreA = upA - downA
+        const scoreB = upB - downB
+        if (scoreB !== scoreA) return scoreB - scoreA
+        return tieBreak(a, b)
+      }
+      if (commentSortOrder === 'controversial') {
+        const nA = upA + downA
+        const nB = upB + downB
+        const contA = nA > 0 ? (upA * downA) / nA : 0
+        const contB = nB > 0 ? (upB * downB) / nB : 0
+        if (contB !== contA) return contB - contA
+        return tieBreak(a, b)
+      }
+      /* best: Wilson score lower bound */
+      const wA = wilsonLower(upA, downA)
+      const wB = wilsonLower(upB, downB)
+      if (wB !== wA) return wB - wA
+      return tieBreak(a, b)
+    })
+  }, [threadReplies, commentSortOrder, getReplyLikeCount, getReplyDownvoteCount, wilsonLower])
+
   const threadRepliesFlat = useMemo(
     () => flattenVisibleReplies(threadRepliesVisible, collapsedThreads),
     [threadRepliesVisible, collapsedThreads]
@@ -1271,6 +1381,60 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
         {error && <p className={styles.error}>{error}</p>}
         {thread && isThreadViewPost(thread) && (
           <>
+            {'parent' in thread && thread.parent && isThreadViewPost(thread.parent) && (() => {
+              const parentNode = thread.parent
+              const parentPost = parentNode.post
+              const parentHandle = parentPost.author?.handle ?? parentPost.author?.did ?? ''
+              const parentText = (parentPost.record as { text?: string })?.text ?? ''
+              const parentMedia = getPostAllMedia(parentPost)
+              const parentFirstMedia = parentMedia[0]
+              return (
+                <div className={styles.parentPostWrap}>
+                  <p className={styles.quotedPostLabel}>Replying to</p>
+                  <button
+                    type="button"
+                    className={styles.quotedPostCard}
+                    onClick={() => {
+                      if (onClose) {
+                        openPostModal(parentPost.uri)
+                      } else {
+                        navigate(`/post/${encodeURIComponent(parentPost.uri)}`)
+                      }
+                    }}
+                  >
+                    <div className={styles.quotedPostHead}>
+                      {parentPost.author?.avatar ? (
+                        <img src={parentPost.author.avatar} alt="" className={styles.quotedPostAvatar} loading="lazy" />
+                      ) : (
+                        <span className={styles.quotedPostAvatarPlaceholder} aria-hidden>{parentHandle.slice(0, 1).toUpperCase()}</span>
+                      )}
+                      <ProfileLink handle={parentHandle} className={styles.quotedPostHandle} onClick={(e) => e.stopPropagation()}>
+                        @{parentHandle}
+                      </ProfileLink>
+                      {(parentPost.record as { createdAt?: string })?.createdAt && (
+                        <span className={styles.quotedPostTime} title={formatExactDateTime((parentPost.record as { createdAt: string }).createdAt)}>
+                          {formatRelativeTime((parentPost.record as { createdAt: string }).createdAt)}
+                        </span>
+                      )}
+                    </div>
+                    {parentFirstMedia && (
+                      <div className={styles.quotedPostMedia}>
+                        {parentFirstMedia.type === 'image' ? (
+                          <img src={parentFirstMedia.url} alt="" loading="lazy" className={styles.quotedPostThumb} />
+                        ) : parentFirstMedia.videoPlaylist ? (
+                          <div className={styles.quotedPostVideoThumb} style={{ backgroundImage: parentFirstMedia.url ? `url(${parentFirstMedia.url})` : undefined }} />
+                        ) : null}
+                      </div>
+                    )}
+                    {parentText ? (
+                      <p className={styles.quotedPostText}>
+                        <PostText text={parentText} facets={(parentPost.record as { facets?: unknown[] })?.facets} maxLength={200} stopPropagation />
+                      </p>
+                    ) : null}
+                  </button>
+                </div>
+              )
+            })()}
             <article className={`${styles.postBlock} ${styles.rootPostBlock}`}>
               {rootMedia.length > 0 && (
                 <div
@@ -1341,6 +1505,33 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                   </p>
                 )}
                 {(() => {
+                  const ext = getPostExternalLink(thread.post)
+                  if (!ext) return null
+                  return (
+                    <div className={styles.quotedPostWrap}>
+                      <p className={styles.quotedPostLabel}>Link</p>
+                      <a
+                        href={ext.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.quotedPostCard}
+                      >
+                        {ext.thumb ? (
+                          <div className={styles.quotedPostMedia}>
+                            <img src={ext.thumb} alt="" loading="lazy" className={styles.quotedPostThumb} />
+                          </div>
+                        ) : null}
+                        <p className={styles.quotedPostText}>{ext.title}</p>
+                        {ext.description ? (
+                          <p className={styles.quotedPostText}>
+                            <PostText text={ext.description} maxLength={200} stopPropagation />
+                          </p>
+                        ) : null}
+                      </a>
+                    </div>
+                  )
+                })()}
+                {(() => {
                   const quoted = getQuotedPostView(thread.post)
                   if (!quoted) return null
                   const quotedHandle = quoted.author?.handle ?? quoted.author?.did ?? ''
@@ -1354,8 +1545,11 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                         type="button"
                         className={styles.quotedPostCard}
                         onClick={() => {
-                          navigate(`/post/${encodeURIComponent(quoted.uri)}`)
-                          onClose?.()
+                          if (onClose) {
+                            openPostModal(quoted.uri)
+                          } else {
+                            navigate(`/post/${encodeURIComponent(quoted.uri)}`)
+                          }
                         }}
                       >
                         <div className={styles.quotedPostHead}>
@@ -1543,7 +1737,26 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
               <div
                 ref={commentsSectionRef}
                 className={`${styles.replies} ${styles.repliesTopLevel}`}
-                onFocusCapture={(e) => {
+              >
+                <div className={styles.commentSortRow}>
+                  <label htmlFor="comment-sort" className={styles.commentSortLabel}>Sort:</label>
+                  <select
+                    id="comment-sort"
+                    className={styles.commentSortSelect}
+                    value={commentSortOrder}
+                    onChange={(e) => setCommentSortOrder(e.target.value as CommentSortMode)}
+                    aria-label="Comment sort order"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="likes">Most liked</option>
+                    <option value="score">Score (↑ − ↓)</option>
+                    <option value="controversial">Controversial</option>
+                    <option value="best">Best</option>
+                  </select>
+                </div>
+                <div
+                  onFocusCapture={(e) => {
                   if (onClose) return
                   const target = e.target as HTMLElement
                   const commentEl = target.closest?.('[data-comment-uri]') as HTMLElement | null
@@ -1644,6 +1857,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                         onDownvote={sessionFromContext ? handleCommentDownvote : undefined}
                         likeOverrides={commentLikeOverrides}
                         myDownvotes={myDownvotes}
+                        downvoteCounts={downvoteCounts}
+                        downvoteCountOptimisticDelta={downvoteCountOptimisticDelta}
                         likeLoadingUri={commentLikeLoadingUri}
                         downvoteLoadingUri={commentDownvoteLoadingUri}
                         openActionsMenuCommentUri={openActionsMenuUri}
@@ -1652,6 +1867,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                     </div>
                   )
                 })}
+                </div>
               </div>
             )}
             {(!replyingTo || (thread && isThreadViewPost(thread) && replyingTo.uri === thread.post.uri)) && (
@@ -1693,10 +1909,10 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                       )}
                     </div>
                   )}
-                  <textarea
+                  <ComposerSuggestions
                   placeholder={replyingTo ? `Reply to @${replyingTo.handle}…` : 'Write a comment…'}
                   value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                  onChange={setComment}
                   onKeyDown={(e) => {
                     if ((e.key === 'Enter' || e.key === 'E') && (e.metaKey || e.ctrlKey)) {
                       e.preventDefault()
@@ -1742,10 +1958,10 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                       }
                     }}
                   >
-                    <textarea
+                    <ComposerSuggestions
                       className={styles.quoteComposerTextarea}
                       value={quoteText}
-                      onChange={(e) => setQuoteText(e.target.value.slice(0, QUOTE_MAX_LENGTH))}
+                      onChange={setQuoteText}
                       placeholder="Add your thoughts..."
                       rows={4}
                       maxLength={QUOTE_MAX_LENGTH}

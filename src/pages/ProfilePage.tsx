@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModalTopBarSlot } from '../context/ModalTopBarSlotContext'
-import { agent, publicAgent, getPostMediaInfo, getPostMediaInfoForDisplay, getSession, getActorFeeds, listStandardSiteDocumentsForAuthor, isPostNsfw, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getPostMediaInfoForDisplay, getSession, getActorFeeds, listStandardSiteDocumentsForAuthor, listActivitySubscriptions, putActivitySubscription, isPostNsfw, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
@@ -192,6 +192,8 @@ export function ProfileContent({
   const [profile, setProfile] = useState<ProfileState | null>(null)
   const [followLoading, setFollowLoading] = useState(false)
   const [followUriOverride, setFollowUriOverride] = useState<string | null>(null)
+  const [notificationSubscribed, setNotificationSubscribed] = useState<boolean | null>(null)
+  const [notificationLoading, setNotificationLoading] = useState(false)
   const session = getSession()
   const { viewMode, setViewMode } = useViewMode()
   const readAgent = session ? agent : publicAgent
@@ -235,6 +237,17 @@ export function ProfileContent({
       })
       .catch(() => {})
   }, [handle, readAgent, editSavedVersion])
+
+  useEffect(() => {
+    if (!session || !profile) {
+      setNotificationSubscribed(null)
+      return
+    }
+    if (session.did === profile.did) return
+    listActivitySubscriptions()
+      .then((subs) => setNotificationSubscribed(subs.some((s) => s.did === profile.did)))
+      .catch(() => setNotificationSubscribed(null))
+  }, [session, profile?.did])
 
   const load = useCallback(async (nextCursor?: string) => {
     if (!handle) return
@@ -386,7 +399,7 @@ export function ProfileContent({
   }
   const isRepostOrQuote = (item: TimelineItem) => isRepost(item) || isQuotePost(item)
   const itemsForPostsTab = profilePostsFilter === 'liked' ? likedItems : items
-  /* Posts tab + my posts: original posts + quote posts with media. Posts tab + liked: all liked posts (no filter). Reposts tab: reposts + quote posts. */
+  /* Posts tab + my posts: original posts + quote posts with media. Posts tab + liked: all liked posts (no filter). Reposts tab: reposts + quote posts. Text tab: text-only from same source as posts (includes quote posts with only text, per getPostMediaInfoForDisplay). */
   const authorFeedItemsRaw =
     tab === 'posts'
       ? profilePostsFilter === 'liked'
@@ -394,7 +407,9 @@ export function ProfileContent({
         : itemsForPostsTab.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
       : tab === 'reposts'
         ? items.filter(isRepostOrQuote)
-        : items
+        : tab === 'text'
+          ? itemsForPostsTab
+          : items
   const authorFeedItems =
     tab === 'posts'
       ? [...authorFeedItemsRaw].sort((a, b) => (isPinned(b) ? 1 : 0) - (isPinned(a) ? 1 : 0))
@@ -414,7 +429,8 @@ export function ProfileContent({
     const repostsMedia = items.filter(isRepostOrQuote)
       .filter((i) => getPostMediaInfoForDisplay(i.post))
       .filter((i) => nsfwPreference !== 'sfw' || !isPostNsfw(i.post))
-    const textOnly = items.filter((i) => !isRepost(i)).filter((i) => {
+    /* Text tab: same source as posts (all or liked). Includes quote posts with only text (getPostMediaInfoForDisplay is null when outer and quoted have no media). */
+    const textOnly = postsSource.filter((i) => !isRepost(i)).filter((i) => {
       const text = (i.post.record as { text?: string })?.text?.trim() ?? ''
       const hasMedia = getPostMediaInfoForDisplay(i.post)
       const isReplyPost = !!(i.post.record as { reply?: unknown })?.reply
@@ -614,6 +630,22 @@ export function ProfileContent({
     }
   }
 
+  async function handleNotificationToggle() {
+    if (!profile || notificationLoading) return
+    const next = !notificationSubscribed
+    setNotificationLoading(true)
+    try {
+      await putActivitySubscription(profile.did, next)
+      setNotificationSubscribed(next)
+    } catch {
+      // leave state unchanged so user can retry
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
+
+  const showNotificationBell = !!session && !!profile && !isOwnProfile
+
   return (
     <>
       <div className={`${styles.wrap} ${inModal ? styles.wrapInModal : ''}`}>
@@ -685,6 +717,27 @@ export function ProfileContent({
                       {followLoading ? 'Following…' : 'Follow'}
                     </button>
                   ))}
+                {showNotificationBell && (
+                  <button
+                    type="button"
+                    className={`${styles.notificationBellBtn} ${notificationSubscribed ? styles.notificationBellBtnActive : ''}`}
+                    onClick={handleNotificationToggle}
+                    disabled={notificationLoading}
+                    title={notificationSubscribed ? 'Stop notifications for this account' : 'Get notifications when this account posts'}
+                    aria-label={notificationSubscribed ? 'Stop notifications' : 'Notify when they post'}
+                  >
+                    {notificationSubscribed ? (
+                      <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M12 2C10.9 2 10 2.9 10 4v.7c-2.5.4-4.4 2.6-4.4 5.2v4.4l-1.8 1.8c-.4.4-.4 1 0 1.4.2.2.5.3.7.3s.5-.1.7-.3l.2-.2h7.2l.2.2c.4.4 1 .4 1.4 0s.4-1 0-1.4l-1.8-1.8V9.9c0-2.6-1.9-4.8-4.4-5.2V4c0-1.1-.9-2-2-2zm0 18c-1.1 0-2-.9-2-2h4c0 1.1-.9 2-2 2z" />
+                      </svg>
+                    ) : (
+                      <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
               {profile?.description && (
                 <p className={styles.description}>

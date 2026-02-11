@@ -245,6 +245,33 @@
   padding: 2rem 1rem;
 }
 
+.emptyLoadMoreText {
+  margin: 0 0 1rem 0;
+}
+
+.suggestedFollowsSection {
+  margin-bottom: 0.75rem;
+}
+
+.suggestedFollowsToggle {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: left;
+  color: var(--muted);
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.suggestedFollowsToggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .feedLoginHint {
   text-align: center;
   margin: 2rem 1rem;
