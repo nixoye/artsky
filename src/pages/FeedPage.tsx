@@ -152,15 +152,6 @@ function estimateEntryHeight(entry: FeedDisplayEntry): number {
   return CARD_CHROME + 220
 }
 
-function estimateItemHeight(item: TimelineItem): number {
-  const media = getPostMediaInfo(item.post)
-  if (!media) return CARD_CHROME + 80
-  if (media.aspectRatio != null && media.aspectRatio > 0) {
-    return CARD_CHROME + ESTIMATE_COL_WIDTH / media.aspectRatio
-  }
-  return CARD_CHROME + 220
-}
-
 /** Distribute entries (posts and carousels) so no column is much longer than others. */
 function distributeEntriesByHeight(
   entries: FeedDisplayEntry[],
