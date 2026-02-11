@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { agent, getSession, getSuggestedFollows, type SuggestedFollow } from '../lib/bsky'
-import {
-  getRecommendationsShown,
-  markRecommendationsShown,
-  getRotationCutoff,
-} from '../lib/recommendationStorage'
+import { getRecommendationsShown, markRecommendationsShown, getRotationCutoff } from '../lib/recommendationStorage'
 import { useProfileModal } from '../context/ProfileModalContext'
 import styles from './SuggestedFollows.module.css'
 
@@ -26,14 +22,12 @@ export default function SuggestedFollows() {
       const raw = await getSuggestedFollows(agent, did, { maxSuggestions: 20 })
       const shown = getRecommendationsShown()
       const cutoff = getRotationCutoff()
+      /* Only filter out dismissed (×) accounts for 7 days; don't mark as "shown" when displaying so each open is fresh */
       const filtered = raw.filter(
         (s) => !dismissedDids.has(s.did) && (!shown[s.did] || shown[s.did] < cutoff)
       )
       const toDisplay = filtered.slice(0, DISPLAY_COUNT)
       setSuggestions(toDisplay)
-      if (toDisplay.length > 0) {
-        markRecommendationsShown(toDisplay.map((s) => s.did))
-      }
     } catch {
       setSuggestions([])
     } finally {
@@ -46,7 +40,7 @@ export default function SuggestedFollows() {
   }, [load])
 
   const handleFollow = useCallback(
-    async (did: string, handle: string) => {
+    async (did: string, _handle: string) => {
       setFollowLoadingDid(did)
       try {
         await agent.follow(did)
@@ -66,15 +60,17 @@ export default function SuggestedFollows() {
     setSuggestions((prev) => prev.filter((s) => s.did !== did))
   }, [])
 
-  if (loading && suggestions.length === 0) return null
-  if (suggestions.length === 0) return null
-
   return (
     <section className={styles.wrap} aria-label="Suggested accounts to follow">
-      <h2 className={styles.heading}>Suggested for you</h2>
+      <h2 className={styles.heading}>Discover accounts</h2>
       <p className={styles.subtext}>
-        Accounts followed by people you follow. They’ll reappear after a week if you don’t follow.
+        Accounts followed by people you follow. New suggestions each time you open.
       </p>
+      {loading && suggestions.length === 0 ? (
+        <p className={styles.loading}>Loading…</p>
+      ) : suggestions.length === 0 ? (
+        <p className={styles.empty}>No suggestions right now. Follow more accounts to see recommendations.</p>
+      ) : (
       <ul className={styles.list}>
         {suggestions.map((s) => (
           <li key={s.did} className={styles.item}>
@@ -93,9 +89,11 @@ export default function SuggestedFollows() {
               )}
               <span className={styles.info}>
                 <span className={styles.handle}>@{s.handle}</span>
-                {s.count > 1 && (
-                  <span className={styles.meta}>{s.count} follow{s.count !== 1 ? 's' : ''} them</span>
-                )}
+                <span className={styles.reason}>
+                  {s.count === 1
+                    ? 'Followed by 1 person you follow'
+                    : `Followed by ${s.count} people you follow`}
+                </span>
               </span>
             </button>
             <div className={styles.actions}>
@@ -112,7 +110,7 @@ export default function SuggestedFollows() {
                 className={styles.dismissBtn}
                 onClick={() => handleDismiss(s.did)}
                 aria-label="Not now"
-                title="Hide for a week"
+                title="Hide this suggestion for a week"
               >
                 ×
               </button>
@@ -120,6 +118,7 @@ export default function SuggestedFollows() {
           </li>
         ))}
       </ul>
+      )}
     </section>
   )
 }

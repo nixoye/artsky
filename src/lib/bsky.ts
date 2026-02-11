@@ -585,7 +585,7 @@ export function getPostExternalLink(post: PostView): { uri: string; title: strin
   } else if (embed.$type === 'app.bsky.embed.recordWithMedia#view' && embed.media?.$type === 'app.bsky.embed.external#view' && embed.media.uri) {
     const m = embed.media
     ext = {
-      uri: m.uri,
+      uri: m.uri ?? '',
       title: m.title?.trim() ?? '',
       description: m.description ?? '',
       thumb: m.thumb,
@@ -1427,7 +1427,7 @@ export async function getSuggestedFollows(
   opts?: { maxSuggestions?: number }
 ): Promise<SuggestedFollow[]> {
   const maxSuggestions = opts?.maxSuggestions ?? SUGGESTED_FOLLOWS_TOP
-  const { dids: myFollowDids, handles: myHandles } = await getFollows(client, currentUserDid, {
+  const { dids: myFollowDids } = await getFollows(client, currentUserDid, {
     limit: SUGGESTED_FOLLOWS_MY_FOLLOWS_LIMIT,
   })
   const myFollowSet = new Set(myFollowDids)

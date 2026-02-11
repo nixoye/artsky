@@ -388,6 +388,11 @@ function PostBlock({
               ↑{showCommentCounts ? ` ${likeCount}` : ''}
             </button>
           )}
+          {onLike && onDownvote && showCommentCounts && (
+            <span className={styles.commentVoteTotal} aria-label={`${likeCount + downvoteCount} total votes`}>
+              {likeCount + downvoteCount}
+            </span>
+          )}
           {onDownvote && (
             <button
               type="button"
@@ -606,7 +611,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   const [focusedCommentIndex, setFocusedCommentIndex] = useState(0)
   const [commentFormFocused, setCommentFormFocused] = useState(false)
   type CommentSortMode = 'newest' | 'oldest' | 'likes' | 'score' | 'controversial' | 'best'
-  const [commentSortOrder, setCommentSortOrder] = useState<CommentSortMode>('newest')
+  const [commentSortOrder, setCommentSortOrder] = useState<CommentSortMode>('score')
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const keyboardFocusIndexRef = useRef(0)
   const scrollIntoViewFromKeyboardRef = useRef(false)

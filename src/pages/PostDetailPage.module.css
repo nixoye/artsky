@@ -513,6 +513,12 @@
   border-color: var(--muted);
 }
 
+.commentVoteTotal {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
+
 .avatar {
   width: 32px;
   height: 32px;

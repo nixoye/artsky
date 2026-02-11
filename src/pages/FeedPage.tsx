@@ -888,9 +888,9 @@ export default function FeedPage() {
               className={styles.suggestedFollowsToggle}
               onClick={() => setSuggestedFollowsOpen((open) => !open)}
               aria-expanded={suggestedFollowsOpen}
-              aria-label={suggestedFollowsOpen ? 'Hide suggested accounts' : 'Show suggested accounts to follow'}
+              aria-label={suggestedFollowsOpen ? 'Hide discover accounts' : 'Discover accounts to follow'}
             >
-              {suggestedFollowsOpen ? 'Hide suggestions' : 'Suggested for you'}
+              {suggestedFollowsOpen ? 'Hide suggestions' : 'Discover accounts'}
             </button>
             {suggestedFollowsOpen && <SuggestedFollows />}
           </div>
