@@ -209,7 +209,7 @@ export function ProfileContent({
   const [showBlockedMutedModal, setShowBlockedMutedModal] = useState(false)
   const [followListModal, setFollowListModal] = useState<'followers' | 'following' | 'mutuals' | 'followedByFollows' | null>(null)
   const [followeesWhoFollowPreview, setFolloweesWhoFollowPreview] = useState<ProfileViewBasic[] | null>(null)
-  const [followeesWhoFollowLoading, setFolloweesWhoFollowLoading] = useState(false)
+  const [, setFolloweesWhoFollowLoading] = useState(false)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
   const { openPostModal, isModalOpen } = useProfileModal()
   const editProfileCtx = useEditProfile()
@@ -1046,7 +1046,7 @@ export function ProfileContent({
           ) : (
             <>
               <div className={`${styles.grid} ${styles.gridView1}`} data-view-mode="1">
-                {textItems.map((item, index) => (
+                {textItems.map((item) => (
                   <div key={item.post.uri}>
                     <PostCard
                       item={item}

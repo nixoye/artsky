@@ -131,14 +131,14 @@ function SearchIcon() {
   )
 }
 
+/** Forums: message board / topic list (board with thread lines) */
 function ForumIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <line x1="10" y1="9" x2="8" y2="9" />
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="7" y1="8" x2="17" y2="8" />
+      <line x1="7" y1="12" x2="17" y2="12" />
+      <line x1="7" y1="16" x2="13" y2="16" />
     </svg>
   )
 }
@@ -213,6 +213,13 @@ function PlusIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+function ChevronDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   )
 }
@@ -1040,7 +1047,7 @@ export default function Layout({ title, children, showNav }: Props) {
         /* Desktop: Feed, Artboards, New, Search, Forum */
         navTrayItems
       ) : (
-        /* Mobile: Feed, Forum, New, Search, Artboards. Seen-posts button floats above Home (in navOuter). */
+        /* Mobile: Home, Forums, New, Search, Profile (right). Seen-posts button floats above Home; Collections in account menu. */
         <>
           <div className={styles.navHomeWrap}>
             <button
@@ -1055,7 +1062,6 @@ export default function Layout({ title, children, showNav }: Props) {
               title="Home (hold to show all seen posts)"
             >
               <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
-              <span className={styles.navLabel}>Home</span>
             </button>
           </div>
           <button
@@ -1063,27 +1069,34 @@ export default function Layout({ title, children, showNav }: Props) {
             className={isForumModalOpen ? styles.navActive : ''}
             onClick={openForumModal}
             aria-pressed={isForumModalOpen}
+            aria-label="Forums"
           >
             <span className={styles.navIcon}><ForumIcon /></span>
-            <span className={styles.navLabel}>Forums</span>
           </button>
           <button type="button" className={styles.navBtn} onClick={openCompose} aria-label="New post">
             <span className={styles.navIcon}><PlusIcon /></span>
-            <span className={styles.navLabel}>New</span>
           </button>
           <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
             <span className={styles.navIcon}><SearchIcon /></span>
-            <span className={styles.navLabel}>Search</span>
           </button>
-          <button
-            type="button"
-            className={isArtboardsModalOpen ? styles.navActive : ''}
-            onClick={openArtboardsModal}
-            aria-pressed={isArtboardsModalOpen}
-          >
-            <span className={styles.navIcon}><ArtboardsIcon /></span>
-            <span className={styles.navLabel}>Collections</span>
-          </button>
+          <div className={styles.navProfileWrap}>
+            <button
+              ref={accountBtnRef}
+              type="button"
+              className={styles.navProfileBtn}
+              onClick={() => setAccountMenuOpen((o) => !o)}
+              aria-label={session ? 'Accounts and settings' : 'Account'}
+              aria-expanded={accountMenuOpen}
+            >
+              <span className={styles.navIcon}>
+                {session && currentAccountAvatar ? (
+                  <img src={currentAccountAvatar} alt="" className={styles.navProfileAvatar} loading="lazy" />
+                ) : (
+                  <AccountIcon />
+                )}
+              </span>
+            </button>
+          </div>
         </>
       )}
     </>
@@ -1240,23 +1253,21 @@ export default function Layout({ title, children, showNav }: Props) {
         <>
           <section className={styles.menuSection}>
             <div className={styles.menuProfileAndAccounts}>
-              {isDesktop && (
-                <button
-                  type="button"
-                  className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
-                  onClick={() => {
-                    setAccountMenuOpen(false)
-                    setAccountSheetOpen(false)
-                    openArtboardsModal()
-                  }}
-                  title="Collections"
-                >
-                  <span className={styles.menuProfileIconWrap} aria-hidden>
-                    <ArtboardsIcon />
-                  </span>
-                  <span>Collections</span>
-                </button>
-              )}
+              <button
+                type="button"
+                className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  openArtboardsModal()
+                }}
+                title="Collections"
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <ArtboardsIcon />
+                </span>
+                <span>Collections</span>
+              </button>
               <div className={styles.menuAccountsBlock}>
                 {sessionsList.map((s) => {
             const profile = accountProfiles[s.did]
@@ -1377,7 +1388,7 @@ export default function Layout({ title, children, showNav }: Props) {
   )
 
   return (
-    <div className={`${styles.wrap} ${showNav ? styles.wrapWithHeader : ''}`}>
+    <div className={`${styles.wrap} ${showNav && isDesktop ? styles.wrapWithHeader : ''} ${showNav && !isDesktop ? styles.wrapMobileTop : ''}`}>
       <FeedSwipeProvider feedSources={session ? allFeedSources : GUEST_FEED_SOURCES} setSingleFeed={setSingleFeed}>
       <a href="#main-content" className={styles.skipLink}>
         Skip to main content
@@ -1438,8 +1449,9 @@ export default function Layout({ title, children, showNav }: Props) {
           {cardViewAnnouncement.text}
         </div>
       )}
-      <header className={`${styles.header} ${showNav && !session ? styles.headerLoggedOut : ''} ${showNav && !isDesktop && !navVisible ? styles.headerHidden : ''}`} role="banner">
-        {showNav && (
+      {showNav && isDesktop && (
+      <header className={`${styles.header} ${!session ? styles.headerLoggedOut : ''}`} role="banner">
+        {(
           <>
             <div className={styles.headerLeft}>
               <button
@@ -1731,6 +1743,92 @@ export default function Layout({ title, children, showNav }: Props) {
           </>
         )}
       </header>
+      )}
+      {showNav && !isDesktop && (
+        <div className={styles.feedsFloatWrap} ref={feedsDropdownRef}>
+          <button
+            ref={feedsBtnRef}
+            type="button"
+            className={`${styles.feedsFloatBtn} ${feedsDropdownOpen ? styles.feedsFloatBtnActive : ''}`}
+            onClick={() => setFeedsDropdownOpen((o) => !o)}
+            aria-label="Feeds"
+            aria-expanded={feedsDropdownOpen}
+          >
+            <span className={styles.feedsFloatLabel}>Feeds</span>
+            <span className={styles.feedsFloatChevronWrap}>
+              <ChevronDownIcon />
+            </span>
+          </button>
+          {feedsDropdownOpen && (
+            <div className={styles.feedsDropdown} role="dialog" aria-label="Remix feeds">
+              {feedAddError && (
+                <p className={styles.feedAddError} role="alert">
+                  {feedAddError}
+                </p>
+              )}
+              <FeedSelector
+                variant="dropdown"
+                sources={session ? allFeedSources : GUEST_FEED_SOURCES}
+                fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
+                mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
+                onToggle={handleFeedsToggleSource}
+                setEntryPercent={setEntryPercent}
+                onAddCustom={async (input) => {
+                  if (!session) return
+                  setFeedAddError(null)
+                  try {
+                    const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
+                    const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
+                    await addSavedFeed(uri)
+                    const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
+                    const source: FeedSource = { kind: 'custom', label, uri }
+                    setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                    handleFeedsToggleSource(source)
+                    await loadSavedFeeds(source)
+                  } catch (err) {
+                    setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
+                  }
+                }}
+                onToggleWhenGuest={session ? undefined : openLoginModal}
+                removableSourceUris={session ? removableSourceUris : undefined}
+                onRemoveFeed={session ? handleRemoveFeed : undefined}
+                onShareFeed={session ? handleShareFeed : undefined}
+                onReorderSources={session ? handleReorderFeeds : undefined}
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {showNav && !isDesktop && session && (
+        <div className={styles.notificationFloatWrap}>
+          <button
+            ref={notificationsBtnRef}
+            type="button"
+            className={styles.notificationFloatBtn}
+            onClick={() => setNotificationsOpen((o) => !o)}
+            aria-label="Notifications"
+            aria-expanded={notificationsOpen}
+            title="Notifications"
+          >
+            <BellIcon />
+            {unreadNotificationCount > 0 && (
+              <span className={styles.notificationUnreadDot} aria-hidden />
+            )}
+          </button>
+          {notificationsOpen && (
+            <div ref={notificationsMenuRef} className={styles.notificationsMenu} role="dialog" aria-label="Notifications">
+              {notificationsPanelContent}
+            </div>
+          )}
+        </div>
+      )}
+      {showNav && !isDesktop && accountMenuOpen && (
+        <div className={styles.accountMenuAboveWrap}>
+          <div ref={accountMenuRef} className={styles.accountMenuAbove} role="menu" aria-label="Accounts and settings">
+            {accountPanelContent}
+          </div>
+        </div>
+      )}
       <main id="main-content" className={styles.main} aria-label="Main content">
         {showNav && path === '/feed' && (
           <FeedSelector

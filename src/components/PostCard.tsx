@@ -373,7 +373,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isMultipleImages = hasMedia && media!.type === 'image' && (media!.imageCount ?? 0) > 1
   const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
-  const hasImage = imageItems.length > 0
   /** Indices in allMedia for each image (for onMediaRef / focusedMediaIndex when multi-image) */
   const imageMediaIndices = useMemo(
     () => allMedia.map((m, i) => (m.type === 'image' ? i : -1)).filter((i): i is number => i >= 0),
