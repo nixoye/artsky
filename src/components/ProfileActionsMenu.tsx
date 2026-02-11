@@ -7,6 +7,12 @@ interface ProfileActionsMenuProps {
   profileDid: string
   profileHandle: string
   isOwnProfile: boolean
+  /** When true, show "Don't show reposts" / "Show reposts" in menu (only for accounts you follow). */
+  isFollowing?: boolean
+  /** When true, reposts from this user are currently hidden on homepage. */
+  hideRepostsFromThisUser?: boolean
+  /** Callback to toggle hide reposts from this user. */
+  onToggleHideReposts?: () => void
   className?: string
 }
 
@@ -14,6 +20,9 @@ export default function ProfileActionsMenu({
   profileDid,
   profileHandle,
   isOwnProfile,
+  isFollowing,
+  hideRepostsFromThisUser,
+  onToggleHideReposts,
   className,
 }: ProfileActionsMenuProps) {
   const session = getSession()
@@ -207,6 +216,16 @@ export default function ProfileActionsMenu({
                     Block user
                   </button>
                 )
+              )}
+              {isFollowing && onToggleHideReposts && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleHideReposts() }}
+                  role="menuitem"
+                >
+                  {hideRepostsFromThisUser ? `Show reposts from @${profileHandle}` : `Don't show reposts from @${profileHandle}`}
+                </button>
               )}
               <button
                 type="button"

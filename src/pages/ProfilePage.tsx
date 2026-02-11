@@ -15,6 +15,7 @@ import { FollowListModal } from '../components/FollowListModal'
 import Layout from '../components/Layout'
 import { useViewMode, type ViewMode } from '../context/ViewModeContext'
 import { useModeration, type NsfwPreference } from '../context/ModerationContext'
+import { useHideReposts } from '../context/HideRepostsContext'
 import { EyeOpenIcon, EyeHalfIcon, EyeClosedIcon } from '../components/Icons'
 import styles from './ProfilePage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
@@ -697,7 +698,9 @@ export function ProfileContent({
     }
   }
 
-  const showNotificationBell = !!session && !!profile && !isOwnProfile
+  const hideReposts = useHideReposts()
+  const hideRepostsFromThisUser = !!profile && hideReposts?.isHidingRepostsFrom(profile.did)
+  const showNotificationBell = !!session && !!profile && !isOwnProfile && isFollowing
 
   return (
     <>
@@ -748,49 +751,51 @@ export function ProfileContent({
                     </div>
                   </>
                 )}
-                {showFollowButton &&
-                  (isFollowing ? (
-                    <button
-                      type="button"
-                      className={`${styles.followBtn} ${styles.followBtnFollowing}`}
-                      onClick={handleUnfollow}
-                      disabled={followLoading}
-                      title="Unfollow"
-                    >
-                      <span className={styles.followLabelDefault}>Following</span>
-                      <span className={styles.followLabelHover}>Unfollow</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.followBtn}
-                      onClick={handleFollow}
-                      disabled={followLoading}
-                    >
-                      {followLoading ? 'Following…' : 'Follow'}
-                    </button>
-                  ))}
-                {showNotificationBell && (
-                  <button
-                    type="button"
-                    className={`${styles.notificationBellBtn} ${notificationSubscribed ? styles.notificationBellBtnActive : ''}`}
-                    onClick={handleNotificationToggle}
-                    disabled={notificationLoading}
-                    title={notificationSubscribed ? 'Stop notifications for this account' : 'Get notifications when this account posts'}
-                    aria-label={notificationSubscribed ? 'Stop notifications' : 'Notify when they post'}
-                  >
-                    {notificationSubscribed ? (
-                      <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                        <path d="M12 2C10.9 2 10 2.9 10 4v.7c-2.5.4-4.4 2.6-4.4 5.2v4.4l-1.8 1.8c-.4.4-.4 1 0 1.4.2.2.5.3.7.3s.5-.1.7-.3l.2-.2h7.2l.2.2c.4.4 1 .4 1.4 0s.4-1 0-1.4l-1.8-1.8V9.9c0-2.6-1.9-4.8-4.4-5.2V4c0-1.1-.9-2-2-2zm0 18c-1.1 0-2-.9-2-2h4c0 1.1-.9 2-2 2z" />
-                      </svg>
+                <div className={styles.followNotifyRow}>
+                  {showFollowButton &&
+                    (isFollowing ? (
+                      <button
+                        type="button"
+                        className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                        onClick={handleUnfollow}
+                        disabled={followLoading}
+                        title="Unfollow"
+                      >
+                        <span className={styles.followLabelDefault}>Following</span>
+                        <span className={styles.followLabelHover}>Unfollow</span>
+                      </button>
                     ) : (
-                      <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                      </svg>
-                    )}
-                  </button>
-                )}
+                      <button
+                        type="button"
+                        className={styles.followBtn}
+                        onClick={handleFollow}
+                        disabled={followLoading}
+                      >
+                        {followLoading ? 'Following…' : 'Follow'}
+                      </button>
+                    ))}
+                  {showNotificationBell && (
+                    <button
+                      type="button"
+                      className={`${styles.notificationBellBtn} ${notificationSubscribed ? styles.notificationBellBtnActive : ''}`}
+                      onClick={handleNotificationToggle}
+                      disabled={notificationLoading}
+                      title={notificationSubscribed ? 'Stop notifications for this account' : 'Get notifications when this account posts'}
+                      aria-label={notificationSubscribed ? 'Stop notifications' : 'Notify when they post'}
+                    >
+                      {notificationSubscribed ? (
+                        <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d="M12 2C10.9 2 10 2.9 10 4v.7c-2.5.4-4.4 2.6-4.4 5.2v4.4l-1.8 1.8c-.4.4-.4 1 0 1.4.2.2.5.3.7.3s.5-.1.7-.3l.2-.2h7.2l.2.2c.4.4 1 .4 1.4 0s.4-1 0-1.4l-1.8-1.8V9.9c0-2.6-1.9-4.8-4.4-5.2V4c0-1.1-.9-2-2-2zm0 18c-1.1 0-2-.9-2-2h4c0 1.1-.9 2-2 2z" />
+                        </svg>
+                      ) : (
+                        <svg className={styles.notificationBellIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               {profile?.description && (
                 <p className={styles.description}>
@@ -869,6 +874,9 @@ export function ProfileContent({
               profileDid={profile.did}
               profileHandle={handle}
               isOwnProfile={isOwnProfile}
+              isFollowing={isFollowing}
+              hideRepostsFromThisUser={hideRepostsFromThisUser}
+              onToggleHideReposts={hideReposts ? () => hideReposts.toggleHideRepostsFrom(profile.did) : undefined}
               className={styles.profileMenu}
             />
           )}

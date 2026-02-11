@@ -16,6 +16,7 @@ import { LoginModalProvider } from './context/LoginModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
 import { ScrollLockProvider } from './context/ScrollLockContext'
 import { ModerationProvider } from './context/ModerationContext'
+import { HideRepostsProvider } from './context/HideRepostsContext'
 import { SeenPostsProvider } from './context/SeenPostsContext'
 import FeedPage from './pages/FeedPage'
 import PostDetailPage from './pages/PostDetailPage'
@@ -181,6 +182,7 @@ export default function App() {
                     <SeenPostsProvider>
                       <EditProfileProvider>
                     <ModerationProvider>
+                    <HideRepostsProvider>
                     <LoginModalProvider>
                     <ModalExpandProvider>
                     <ProfileModalProvider>
@@ -188,6 +190,7 @@ export default function App() {
                     </ProfileModalProvider>
                     </ModalExpandProvider>
                     </LoginModalProvider>
+                    </HideRepostsProvider>
                     </ModerationProvider>
                       </EditProfileProvider>
                     </SeenPostsProvider>

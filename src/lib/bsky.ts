@@ -10,6 +10,17 @@ const SESSION_KEY = 'artsky-bsky-session'
 const ACCOUNTS_KEY = 'artsky-accounts'
 const OAUTH_ACCOUNTS_KEY = 'artsky-oauth-accounts'
 
+/** Ask the browser to keep our storage (helps PWA stay logged in when app is closed). */
+export function requestPersistentStorage(): void {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.persist?.()) {
+      void navigator.storage.persist()
+    }
+  } catch {
+    // ignore
+  }
+}
+
 type AccountsStore = { activeDid: string | null; sessions: Record<string, AtpSessionData> }
 type OAuthAccountsStore = { activeDid: string | null; dids: string[] }
 
@@ -187,6 +198,21 @@ let oauthSessionRef: { signOut(): Promise<void> } | null = null
 export function setOAuthAgent(agent: Agent | null, session?: { signOut(): Promise<void> } | null): void {
   oauthAgentInstance = agent
   oauthSessionRef = session ?? null
+  // Mirror OAuth session to localStorage so PWA can restore after reopen when OAuth library storage (e.g. IndexedDB) was cleared
+  if (agent) {
+    const data = getSession()
+    if (data?.did) {
+      try {
+        const accounts = getAccounts()
+        accounts.sessions[data.did] = data
+        accounts.activeDid = data.did
+        saveAccounts(accounts)
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data))
+      } catch {
+        // ignore
+      }
+    }
+  }
 }
 
 /** Current agent for API calls: OAuth session if set, otherwise credential (app password) session. */

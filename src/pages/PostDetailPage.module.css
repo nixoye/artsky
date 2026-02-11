@@ -920,6 +920,11 @@
   color: #fff;
 }
 
+.likeRepostBtnDownvoteActive {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
 .likeRepostBtn:disabled {
   opacity: 0.7;
   cursor: default;

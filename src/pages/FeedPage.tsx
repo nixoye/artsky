@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition, useSyncExternalStore } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
@@ -24,6 +24,7 @@ import { useFeedSwipe } from '../context/FeedSwipeContext'
 import { blockAccount } from '../lib/bsky'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
+import { useHideReposts } from '../context/HideRepostsContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import SuggestedFollows from '../components/SuggestedFollows'
@@ -77,6 +78,16 @@ const REPOST_CAROUSEL_ESTIMATE_HEIGHT = 200
 const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
 const REPOST_CAROUSEL_WINDOW_MS = 60 * 60 * 1000
 const REPOST_CAROUSEL_MIN_COUNT = 4
+const DESKTOP_BREAKPOINT = 768
+function subscribeDesktop(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+function getDesktopSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+}
 
 export type FeedDisplayEntry =
   | { type: 'post'; item: TimelineItem; entryIndex: number }
@@ -280,6 +291,7 @@ export default function FeedPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const navigationType = useNavigationType()
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const { openLoginModal } = useLoginModal()
   const { session } = useSession()
   const { viewMode } = useViewMode()
@@ -595,12 +607,18 @@ export default function FeedPage() {
 
   const { mediaOnly } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
+  const { hideRepostsFromDids } = useHideReposts() ?? { hideRepostsFromDids: [] }
   const displayItems = useMemo(() =>
     items
       .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
       .filter((item) => !seenUrisAtReset.has(item.post.uri))
-      .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post)),
-    [items, mediaOnly, seenUrisAtReset, nsfwPreference]
+      .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
+      .filter((item) => {
+        if (!isRepost(item)) return true
+        const reposterDid = (item.reason as { by?: { did: string } })?.by?.did
+        return !reposterDid || !hideRepostsFromDids.includes(reposterDid)
+      }),
+    [items, mediaOnly, seenUrisAtReset, nsfwPreference, hideRepostsFromDids]
   )
   const displayEntries = useMemo(() => buildDisplayEntries(displayItems), [displayItems])
   const itemsAfterOtherFilters = useMemo(() =>
@@ -683,13 +701,15 @@ export default function FeedPage() {
       lastFlushTime = now
       const toAdd = new Set(pendingUris)
       pendingUris.clear()
-      setSeenUris((prev) => {
-        let next = prev
-        for (const uri of toAdd) {
-          if (!next.has(uri)) next = new Set(next).add(uri)
-        }
-        seenUrisRef.current = next
-        return next
+      startTransition(() => {
+        setSeenUris((prev) => {
+          let next = prev
+          for (const uri of toAdd) {
+            if (!next.has(uri)) next = new Set(next).add(uri)
+          }
+          seenUrisRef.current = next
+          return next
+        })
       })
     }
 
@@ -1101,7 +1121,7 @@ export default function FeedPage() {
               data-feed-cards
               data-view-mode={viewMode}
               data-keyboard-nav={keyboardNavActive || undefined}
-              onMouseLeave={() => setKeyboardFocusIndex(-1)}
+              onMouseLeave={isDesktop ? () => setKeyboardFocusIndex(-1) : undefined}
             >
               {distributeEntriesByHeight(displayEntries, cols).map((column, colIndex) => (
                 <div key={colIndex} className={styles.gridColumn}>
@@ -1109,14 +1129,18 @@ export default function FeedPage() {
                     <div
                       key={entry.type === 'post' ? entry.item.post.uri : `carousel-${entry.items[0].post.uri}`}
                       className={styles.gridItem}
-                      onMouseEnter={() => {
-                        if (mouseMovedRef.current) {
-                          mouseMovedRef.current = false
-                          setKeyboardNavActive(false)
-                          setFocusSetByMouse(true)
-                          setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
-                        }
-                      }}
+                      onMouseEnter={
+                        isDesktop
+                          ? () => {
+                              if (mouseMovedRef.current) {
+                                mouseMovedRef.current = false
+                                setKeyboardNavActive(false)
+                                setFocusSetByMouse(true)
+                                setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
+                              }
+                            }
+                          : undefined
+                      }
                     >
                       {entry.type === 'post' ? (
                         <PostCard

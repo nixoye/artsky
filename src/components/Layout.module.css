@@ -945,6 +945,14 @@ button.logoLink {
   align-items: flex-start;
 }
 
+@media (max-width: 767px) {
+  .feedsFloatWrap {
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+  }
+}
+
 .feedsFloatBtn {
   display: inline-flex;
   align-items: center;
@@ -968,7 +976,22 @@ button.logoLink {
   color: var(--text);
 }
 
+.feedsFloatBtn:active {
+  background: color-mix(in srgb, var(--glass-bg) 85%, transparent);
+  color: var(--text);
+}
+
 .feedsFloatBtnActive {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--glass-bg));
+}
+
+.feedsFloatBtnActive:hover {
+  color: var(--accent);
+}
+
+.feedsFloatBtnActive:active {
+  background: color-mix(in srgb, var(--accent) 22%, var(--glass-bg));
   color: var(--accent);
 }
 
@@ -985,16 +1008,63 @@ button.logoLink {
   border-radius: 50%;
   background: color-mix(in srgb, var(--glass-bg) 75%, transparent);
   -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.2s ease;
   backdrop-filter: blur(12px);
   color: inherit;
+}
+
+.feedsFloatChevronWrapNoTransition {
+  transition: none !important;
 }
 
 .feedsFloatWrap .feedsDropdown {
   margin-top: 0.5rem;
   left: 0;
   right: auto;
-  min-width: 280px;
+  min-width: min(340px, calc(100vw - 2rem));
   max-width: calc(100vw - 2rem);
+  padding: 0.5rem;
+}
+
+@media (max-width: 767px) {
+  .feedsFloatWrap .feedsDropdown {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
+
+/* Mobile: floating login button (top right) when logged out */
+.loginFloatWrap {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top, 59px));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.loginFloatBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  color: var(--text-on-accent);
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: filter 0.15s ease;
+}
+
+.loginFloatBtn:hover {
+  filter: brightness(0.92);
+  color: var(--text-on-accent);
 }
 
 /* Mobile: floating notification button (top right), same style as seen-posts float */
@@ -1674,7 +1744,7 @@ button.logoLink {
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
   border-radius: 9999px;
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease;
   /* Contain blur and paint so nothing bleeds into the safe area below */
   isolation: isolate;
   contain: layout style paint;
@@ -1688,10 +1758,17 @@ button.logoLink {
   right: max(1rem, env(safe-area-inset-right));
   z-index: 20;
   pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
 .navOuter > .nav {
   pointer-events: auto;
+}
+
+/* Mobile: hide only the nav bar when scrolling down; seen-posts button stays visible */
+.navOuter.navOuterScrollHidden .nav {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Floating above the Home button (first nav item); ~10% = center of first of 5 items */
@@ -1717,6 +1794,9 @@ button.logoLink {
   font: inherit;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -1771,6 +1851,20 @@ button.logoLink {
 
 .navHomeWrap > button:last-child.navActive {
   color: var(--accent);
+}
+
+.navHomeWrap > button:last-child:active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 0.5rem;
+}
+
+.navHomeWrap > button:last-child.navActive:active {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.navProfileBtn:active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 0.5rem;
 }
 
 .navProfileBtn {
@@ -1902,9 +1996,23 @@ button.logoLink {
   text-decoration: none;
 }
 
+.nav a:active,
+.nav button:active,
+.navBtn:active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 0.5rem;
+}
+
 .nav a.navActive,
 .nav button.navActive {
   color: var(--accent);
+}
+
+.nav a.navActive:active,
+.nav button.navActive:active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .nav .navIcon {

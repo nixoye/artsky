@@ -58,7 +58,32 @@ export function FeedMixProvider({ children }: { children: ReactNode }) {
   const setEntryPercent = useCallback((index: number, percent: number) => {
     const n = Math.max(0, Math.min(100, Math.round(percent)))
     setEntries((prev) => {
-      const next = prev.map((e, i) => (i === index ? { ...e, percent: n } : e))
+      const remainder = 100 - n
+      const otherIndices = prev.map((_, i) => i).filter((i) => i !== index)
+      const otherCount = otherIndices.length
+      if (otherCount === 0) return prev.map((e, i) => (i === index ? { ...e, percent: n } : e))
+      const otherSum = otherIndices.reduce((s, i) => s + prev[i].percent, 0)
+      if (otherSum === 0) {
+        const base = Math.floor(remainder / otherCount)
+        let extra = remainder - base * otherCount
+        return prev.map((e, i) => {
+          if (i === index) return { ...e, percent: n }
+          const p = base + (extra > 0 ? 1 : 0)
+          if (extra > 0) extra -= 1
+          return { ...e, percent: Math.max(0, p) }
+        })
+      }
+      const next = prev.map((e, i) => {
+        if (i === index) return { ...e, percent: n }
+        const p = Math.round((remainder * e.percent) / otherSum)
+        return { ...e, percent: Math.max(0, p) }
+      })
+      const total = next.reduce((s, e) => s + e.percent, 0)
+      const diff = 100 - total
+      if (diff !== 0 && otherIndices.length > 0) {
+        const fixIndex = otherIndices[diff > 0 ? 0 : otherIndices.length - 1]
+        next[fixIndex] = { ...next[fixIndex], percent: Math.max(0, next[fixIndex].percent + diff) }
+      }
       return next
     })
   }, [])
