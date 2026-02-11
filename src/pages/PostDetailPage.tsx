@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
@@ -194,13 +194,27 @@ function collectThreadPostUris(
   return uris
 }
 
+const DESKTOP_BREAKPOINT = 768
+function subscribeDesktop(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+function getDesktopSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+}
+
 function MediaGallery({
   items,
   autoPlayFirstVideo = false,
+  hideVideoControlsUntilTap = false,
   onFocusItem,
 }: {
   items: Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string; aspectRatio?: number }>
   autoPlayFirstVideo?: boolean
+  /** On mobile: hide native video controls until user taps the video. */
+  hideVideoControlsUntilTap?: boolean
   onFocusItem?: (index: number) => void
 }) {
   if (items.length === 0) return null
@@ -227,6 +241,7 @@ function MediaGallery({
                   className={styles.galleryVideo}
                   autoPlay={i === firstVideoIndex}
                   preload={i === firstVideoIndex ? 'metadata' : 'none'}
+                  controlsHiddenUntilTap={hideVideoControlsUntilTap}
                 />
               </div>
             )
@@ -595,6 +610,7 @@ export interface PostDetailContentProps {
 export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose, onAuthorHandle, onRegisterRefresh }: PostDetailContentProps) {
   const navigate = useNavigate()
   const { openProfileModal, openPostModal, openQuotesModal } = useProfileModal()
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -835,19 +851,23 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
     setError(null)
     const api = getSession() ? agent : publicAgent
     try {
-      const [threadRes, downvotes] = await Promise.all([
-        api.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 }),
-        getSession() ? listMyDownvotes().catch(() => ({})) : Promise.resolve({}),
-      ])
+      const threadRes = await api.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 })
       const threadData = threadRes.data.thread
       setThread(threadData)
-      setMyDownvotes(downvotes)
+      setLoading(false)
       setDownvoteCountOptimisticDelta({})
       const uris = isThreadViewPost(threadData) ? collectThreadPostUris(threadData) : []
       if (uris.length > 0) {
         getDownvoteCounts(uris).then(setDownvoteCounts).catch(() => {})
       } else {
         setDownvoteCounts({})
+      }
+      if (getSession()) {
+        listMyDownvotes()
+          .then(setMyDownvotes)
+          .catch(() => {})
+      } else {
+        setMyDownvotes({})
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load post')
@@ -1495,6 +1515,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                   <MediaGallery
                     items={rootMedia}
                     autoPlayFirstVideo
+                    hideVideoControlsUntilTap={!isDesktop}
                     onFocusItem={(i) => !onClose && setKeyboardFocusIndex(i)}
                   />
                 </div>
@@ -1724,6 +1745,24 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                 >
                   {likeLoading ? '…' : isLiked ? '♥' : '♡'} Like
                 </button>
+                {thread && isThreadViewPost(thread) && session && (
+                  <button
+                    type="button"
+                    className={`${styles.likeRepostBtn} ${myDownvotes[thread.post.uri] ? styles.likeRepostBtnDownvoteActive : ''}`}
+                    onClick={() => handleCommentDownvote(thread.post.uri, thread.post.cid, myDownvotes[thread.post.uri] ?? null)}
+                    disabled={commentDownvoteLoadingUri === thread.post.uri}
+                    title={myDownvotes[thread.post.uri] ? 'Remove downvote' : 'Downvote (syncs across AT Protocol)'}
+                    aria-label={myDownvotes[thread.post.uri] ? 'Remove downvote' : 'Downvote'}
+                  >
+                    {commentDownvoteLoadingUri === thread.post.uri ? '…' : '↓'} Downvote
+                    {(() => {
+                      const base = downvoteCounts[thread.post.uri] ?? (thread.post as { downvoteCount?: number }).downvoteCount ?? 0
+                      const delta = downvoteCountOptimisticDelta[thread.post.uri] ?? 0
+                      const n = Math.max(0, base + delta)
+                      return n > 0 ? ` ${n}` : ''
+                    })()}
+                  </button>
+                )}
                 <div className={styles.repostWrap} ref={repostDropdownRef}>
                   <button
                     type="button"

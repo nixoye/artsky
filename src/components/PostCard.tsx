@@ -10,7 +10,7 @@ import { useLoginModal } from '../context/LoginModalContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { useModeration } from '../context/ModerationContext'
 import { useProfileModal } from '../context/ProfileModalContext'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatExactDateTime, getRelativeTimeParts } from '../lib/date'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
 import PostActionsMenu from './PostActionsMenu'
@@ -635,7 +635,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   <PostText
                     text={text}
                     facets={(post.record as { facets?: unknown[] })?.facets}
-                    maxLength={320}
+                    maxLength={500}
                     stopPropagation
                     interactive={false}
                   />
@@ -875,15 +875,28 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               </button>
             </div>
             <div className={styles.cardActionRowRight}>
-              {(post.record as { createdAt?: string })?.createdAt && (
-                <span
-                  className={styles.cardActionRowTime}
-                  title={formatExactDateTime((post.record as { createdAt: string }).createdAt)}
-                  aria-hidden
-                >
-                  {formatRelativeTime((post.record as { createdAt: string }).createdAt)}
-                </span>
-              )}
+              {(post.record as { createdAt?: string })?.createdAt && (() => {
+                const createdAt = (post.record as { createdAt: string }).createdAt
+                const parts = getRelativeTimeParts(createdAt)
+                return parts.kind === 'relative' ? (
+                  <span
+                    className={styles.cardActionRowTime}
+                    title={formatExactDateTime(createdAt)}
+                    aria-hidden
+                  >
+                    {parts.text}
+                  </span>
+                ) : (
+                  <span
+                    className={`${styles.cardActionRowTime} ${styles.postTimeStacked}`}
+                    title={formatExactDateTime(createdAt)}
+                    aria-hidden
+                  >
+                    <span className={styles.postTimeMonth}>{parts.month}</span>
+                    <span className={styles.postTimeDayYear}>{parts.day}{parts.year ? ` ${parts.year}` : ''}</span>
+                  </span>
+                )
+              })()}
               <PostActionsMenu
                 postUri={post.uri}
                 postCid={post.cid}
@@ -950,11 +963,20 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     <PinIcon />
                   </span>
                 )}
-                {(post.record as { createdAt?: string })?.createdAt && (
-                  <span className={styles.postTime} title={formatExactDateTime((post.record as { createdAt: string }).createdAt)}>
-                    {formatRelativeTime((post.record as { createdAt: string }).createdAt)}
-                  </span>
-                )}
+                {(post.record as { createdAt?: string })?.createdAt && (() => {
+                  const createdAt = (post.record as { createdAt: string }).createdAt
+                  const parts = getRelativeTimeParts(createdAt)
+                  return parts.kind === 'relative' ? (
+                    <span className={styles.postTime} title={formatExactDateTime(createdAt)}>
+                      {parts.text}
+                    </span>
+                  ) : (
+                    <span className={`${styles.postTime} ${styles.postTimeStacked}`} title={formatExactDateTime(createdAt)}>
+                      <span className={styles.postTimeMonth}>{parts.month}</span>
+                      <span className={styles.postTimeDayYear}>{parts.day}{parts.year ? ` ${parts.year}` : ''}</span>
+                    </span>
+                  )
+                })()}
               </span>
             </div>
           </div>

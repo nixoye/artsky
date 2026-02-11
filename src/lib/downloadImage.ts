@@ -10,6 +10,20 @@ function filenameFromPostUri(postUri: string, extension: string, imageIndex?: nu
 }
 
 /**
+ * Try to use the native share sheet (e.g. on mobile) so the user can choose "Save to Photos" / "Save to Files".
+ * Returns true if share was used (and succeeded), false to fall back to download link.
+ */
+function tryShareFile(blob: Blob, filename: string, mimeType: string): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return Promise.resolve(false)
+  const file = new File([blob], filename, { type: mimeType })
+  if (!navigator.canShare({ files: [file] })) return Promise.resolve(false)
+  return navigator
+    .share({ files: [file], title: filename })
+    .then(() => true)
+    .catch(() => false)
+}
+
+/**
  * Download an image with "@handle" overlaid in a corner (small text).
  * Prefers drawing on canvas so we can add the handle; if CORS blocks, falls back to direct download.
  * If postUri is provided, the file is named from the post URI; otherwise from handle + timestamp.
@@ -31,8 +45,35 @@ export function downloadImageWithHandle(
     const img = new Image()
     img.crossOrigin = 'anonymous'
 
-    img.onerror = () => {
-      // CORS or load failed: fallback to direct download (no handle on image)
+    img.onerror = async () => {
+      // CORS or load failed: try to fetch as blob for share, else fallback to direct download (no handle on image)
+      try {
+        const res = await fetch(imageUrl, { mode: 'cors' })
+        if (res.ok) {
+          const blob = await res.blob()
+          const mime = blob.type || 'image/png'
+          const ext = mime.includes('webp') ? '.webp' : mime.includes('png') ? '.png' : '.jpg'
+          const nameForBlob = filename.replace(/\.[a-z]+$/i, ext)
+          const shared = await tryShareFile(blob, nameForBlob, mime)
+          if (shared) {
+            resolve()
+            return
+          }
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = nameForBlob
+          a.rel = 'noopener'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          resolve()
+          return
+        }
+      } catch {
+        /* ignore */
+      }
       const a = document.createElement('a')
       a.href = imageUrl
       a.download = filename
@@ -71,9 +112,14 @@ export function downloadImageWithHandle(
         ctx.fillStyle = '#fff'
         ctx.fillText(label, x, y)
         canvas.toBlob(
-          (blob) => {
+          async (blob) => {
             if (!blob) {
               img.onerror?.(new Event('error'))
+              return
+            }
+            const shared = await tryShareFile(blob, filename, 'image/png')
+            if (shared) {
+              resolve()
               return
             }
             const url = URL.createObjectURL(blob)
@@ -147,6 +193,8 @@ export async function downloadVideoWithPostUri(videoUrl: string, postUri: string
         if (res2.ok) {
           const blob2 = await res2.blob()
           if (isVideoBlob(blob2)) {
+            const shared = await tryShareFile(blob2, filename, blob2.type || 'video/mp4')
+            if (shared) return
             const url = URL.createObjectURL(blob2)
             const a = document.createElement('a')
             a.href = url
@@ -162,6 +210,8 @@ export async function downloadVideoWithPostUri(videoUrl: string, postUri: string
       }
       throw new Error('Video format not available')
     }
+    const shared = await tryShareFile(blob, filename, blob.type || 'video/mp4')
+    if (shared) return
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

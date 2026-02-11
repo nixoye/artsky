@@ -33,6 +33,8 @@ interface Props {
   onToggleWhenGuest?: () => void
   /** 'page' = homepage (compact row, no header). 'dropdown' = Feeds dropdown (title, sections, hints). */
   variant?: 'page' | 'dropdown'
+  /** When true (e.g. mobile float), use larger touch targets. */
+  touchFriendly?: boolean
   /** URIs of feeds that can be removed (saved custom feeds). When set with onRemoveFeed, long-press shows Delete. */
   removableSourceUris?: Set<string>
   /** Called when user chooses Delete in the feed context menu. */
@@ -54,6 +56,7 @@ export default function FeedSelector({
   onAddCustom,
   onToggleWhenGuest,
   variant = 'page',
+  touchFriendly = false,
   removableSourceUris,
   onRemoveFeed,
   onShareFeed,
@@ -272,16 +275,11 @@ export default function FeedSelector({
       >
         ?
       </button>
-      {showHelp && isDropdown && (
-        <div className={styles.helpPopover} role="tooltip">
-          {REMIX_EXPLANATION}
-        </div>
-      )}
     </div>
   )
 
   const helpModal =
-    showHelp && !isDropdown
+    showHelp
       ? createPortal(
           <div
             className={styles.helpModalOverlay}
@@ -347,9 +345,9 @@ export default function FeedSelector({
           const isInMix = entryIndex >= 0 || (mixEntries.length === 0 && sameSource(s, fallbackSource))
           const entry = isInMix ? mixEntries[entryIndex] : null
           const showRatio = isInMix && mixEntries.length >= 2 && entry
-          const in10 = entry ? Math.max(1, Math.min(10, Math.round(entry.percent / 10))) : 1
-          const canDecrease = showRatio && in10 > 1
-          const canIncrease = showRatio && in10 < 10
+          const step = 5
+          const canDecrease = showRatio && (entry?.percent ?? 0) >= step
+          const canIncrease = showRatio && (entry?.percent ?? 0) < 100
           const plusAddsFeed = !isInMix
           const percent = entry?.percent ?? 0
           const pillButton = (
@@ -384,8 +382,7 @@ export default function FeedSelector({
                 e.stopPropagation()
                 if (onToggleWhenGuest) onToggleWhenGuest()
                 else if (canDecrease) {
-                  const next = Math.max(1, in10 - 1)
-                  setEntryPercent(entryIndex, next * 10)
+                  setEntryPercent(entryIndex, Math.max(0, (entry?.percent ?? 0) - step))
                 }
               }}
               aria-label="Fewer posts from this feed"
@@ -404,8 +401,7 @@ export default function FeedSelector({
                 else if (plusAddsFeed) {
                   onToggle(s)
                 } else if (canIncrease) {
-                  const next = Math.min(10, in10 + 1)
-                  setEntryPercent(entryIndex, next * 10)
+                  setEntryPercent(entryIndex, Math.min(100, (entry?.percent ?? 0) + step))
                 }
               }}
               aria-label={plusAddsFeed ? 'Add feed to mix' : 'More posts from this feed'}
@@ -487,20 +483,21 @@ export default function FeedSelector({
   const hasSuggestions = suggestions.length > 0 || networkFeeds.length > 0 || networkLoading
   const addCustomBlock = showCustom ? (
     <form onSubmit={handleAddCustom} className={styles.customForm}>
-      <input
-        type="text"
-        placeholder="Paste feed URL, or type a handle to find their feeds…"
-        value={customInput}
-        onChange={(e) => setCustomInput(e.target.value)}
-        className={styles.input}
-        disabled={adding}
-        autoComplete="off"
-        aria-autocomplete="list"
-        aria-controls={hasSuggestions ? 'feed-search-suggestions' : undefined}
-        aria-expanded={hasSuggestions}
-      />
-      {(suggestions.length > 0 || networkFeeds.length > 0 || networkLoading) && (
-        <div id="feed-search-suggestions" className={styles.customSuggestionsWrap} aria-label="Feeds">
+      <div className={styles.customInputWrap}>
+        <input
+          type="text"
+          placeholder="Paste feed URL, or type a handle to find their feeds…"
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          className={styles.input}
+          disabled={adding}
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-controls={hasSuggestions ? 'feed-search-suggestions' : undefined}
+          aria-expanded={hasSuggestions}
+        />
+        {(suggestions.length > 0 || networkFeeds.length > 0 || networkLoading) && (
+          <div id="feed-search-suggestions" className={styles.customSuggestionsWrap} aria-label="Feeds">
           {suggestions.length > 0 && (
             <>
               <div className={styles.customSuggestionsSection}>Your feeds</div>
@@ -541,8 +538,9 @@ export default function FeedSelector({
               </ul>
             </>
           )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       <div className={styles.customActions}>
         <button type="submit" className={styles.btn} disabled={adding}>
           {adding ? 'Adding…' : 'Add'}
@@ -603,8 +601,9 @@ export default function FeedSelector({
 
   if (isDropdown) {
     return (
-      <div className={`${styles.wrap} ${styles.wrapDropdown}`}>
+      <div className={`${styles.wrap} ${styles.wrapDropdown} ${touchFriendly ? styles.wrapTouchFriendly : ''}`}>
         {feedMenu}
+        {helpModal}
         <header className={styles.header}>
           <span className={styles.headerTitle}>{editFeeds ? 'Edit feeds' : 'Feeds'}</span>
           <div className={styles.headerActions}>

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import Hls from 'hls.js'
 
 function isHlsUrl(url: string): boolean {
@@ -13,6 +13,8 @@ interface Props {
   playsInline?: boolean
   preload?: string
   autoPlay?: boolean
+  /** When true, start with controls hidden; first tap on video shows native controls (for mobile post detail). */
+  controlsHiddenUntilTap?: boolean
 }
 
 export default function VideoWithHls({
@@ -23,8 +25,11 @@ export default function VideoWithHls({
   playsInline = true,
   preload = 'metadata',
   autoPlay = false,
+  controlsHiddenUntilTap = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [showControls, setShowControls] = useState(!controlsHiddenUntilTap)
+  const effectiveControls = controlsHiddenUntilTap ? showControls : controls
 
   useEffect(() => {
     if (!playlistUrl || !videoRef.current) return
@@ -62,11 +67,12 @@ export default function VideoWithHls({
       ref={videoRef}
       className={className}
       poster={poster}
-      controls={controls}
+      controls={effectiveControls}
       playsInline={playsInline}
       preload={preload}
       autoPlay={autoPlay}
       muted={autoPlay}
+      onClick={controlsHiddenUntilTap && !showControls ? () => setShowControls(true) : undefined}
     />
   )
 }

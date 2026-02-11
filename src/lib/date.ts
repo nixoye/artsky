@@ -22,6 +22,26 @@ export function formatRelativeTime(isoDate: string): string {
   return formatShortDate(d, true)
 }
 
+/** For compact UI: relative text or date parts (month above day/year). */
+export type RelativeTimeParts =
+  | { kind: 'relative'; text: string }
+  | { kind: 'date'; month: string; day: string; year?: string }
+
+export function getRelativeTimeParts(isoDate: string): RelativeTimeParts {
+  const d = new Date(isoDate)
+  const now = new Date()
+  const sec = (now.getTime() - d.getTime()) / 1000
+  if (sec < 60) return { kind: 'relative', text: 'now' }
+  if (sec < 3600) return { kind: 'relative', text: `${Math.floor(sec / 60)}m` }
+  if (sec < 86400) return { kind: 'relative', text: `${Math.floor(sec / 3600)}h` }
+  if (sec < 2592000) return { kind: 'relative', text: `${Math.floor(sec / 86400)}d` }
+  const month = d.toLocaleDateString(undefined, { month: 'short' }).slice(0, 3)
+  const day = String(d.getDate()).padStart(2, '0')
+  if (sec < 31536000) return { kind: 'date', month, day }
+  const year = String(d.getFullYear() % 100).padStart(2, '0')
+  return { kind: 'date', month, day, year }
+}
+
 /** Longer relative phrase for tooltips (e.g. "2 hours ago", "Jan 05"). */
 export function formatRelativeTimeTitle(isoDate: string): string {
   const d = new Date(isoDate)

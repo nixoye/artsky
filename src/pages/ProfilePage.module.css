@@ -84,7 +84,8 @@
     margin-bottom: 0.5rem;
   }
   .profileMeta .handleRow .followBtn,
-  .profileMeta .handleRow .blockedMutedBtn {
+  .profileMeta .handleRow .blockedMutedBtn,
+  .profileMeta .handleRow .followNotifyRow {
     order: -1;
   }
   .profileMeta .handleRow .handle {
@@ -101,6 +102,13 @@
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-bottom: 0.25rem;
+}
+
+.followNotifyRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .followBtn {
@@ -176,11 +184,13 @@
 
 .notificationBellBtnActive {
   color: var(--accent);
+  background: var(--accent-muted);
   border-color: var(--accent);
 }
 
 .notificationBellBtnActive:hover:not(:disabled) {
   background: var(--accent-muted);
+  border-color: var(--accent);
 }
 
 .notificationBellIcon {

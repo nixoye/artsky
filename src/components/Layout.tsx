@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
@@ -353,15 +354,20 @@ export default function Layout({ title, children, showNav }: Props) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
   const [feedsDropdownOpen, setFeedsDropdownOpen] = useState(false)
+  const [feedsClosingAngle, setFeedsClosingAngle] = useState<number | null>(null)
+  const [feedsChevronNoTransition, setFeedsChevronNoTransition] = useState(false)
+  const prevFeedsOpenRef = useRef(false)
   const [savedFeedSources, setSavedFeedSources] = useState<FeedSource[]>([])
   const [hiddenPresetUris, setHiddenPresetUris] = useState<Set<string>>(loadHiddenPresetUris)
   const [feedOrder, setFeedOrder] = useState<string[]>(loadFeedOrder)
   const [feedAddError, setFeedAddError] = useState<string | null>(null)
   const feedsDropdownRef = useRef<HTMLDivElement>(null)
   const feedsBtnRef = useRef<HTMLButtonElement>(null)
+  const feedsChevronRef = useRef<HTMLSpanElement>(null)
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+  const unreadCountInitialFetchDoneRef = useRef(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   const [composeOverlayBottom, setComposeOverlayBottom] = useState(0)
@@ -374,6 +380,9 @@ export default function Layout({ title, children, showNav }: Props) {
   const composeFormRef = useRef<HTMLFormElement>(null)
   const currentSegment = composeSegments[composeSegmentIndex] ?? { text: '', images: [], imageAlts: [] }
   const navVisible = true
+  const [mobileNavScrollHidden, setMobileNavScrollHidden] = useState(false)
+  const lastScrollYRef = useRef(0)
+  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -669,6 +678,20 @@ export default function Layout({ title, children, showNav }: Props) {
   }, [feedsDropdownOpen])
 
   useEffect(() => {
+    if (prevFeedsOpenRef.current && !feedsDropdownOpen) setFeedsClosingAngle(360)
+    prevFeedsOpenRef.current = feedsDropdownOpen
+  }, [feedsDropdownOpen])
+
+  /* Clear no-transition class only after we've painted 0deg, so 360→0 doesn't animate */
+  useEffect(() => {
+    if (!feedsChevronNoTransition || feedsClosingAngle !== null) return
+    const id = requestAnimationFrame(() => {
+      setFeedsChevronNoTransition(false)
+    })
+    return () => cancelAnimationFrame(id)
+  }, [feedsChevronNoTransition, feedsClosingAngle])
+
+  useEffect(() => {
     if (!feedsDropdownOpen) return
     const onDocClick = (e: MouseEvent) => {
       const t = e.target as Node
@@ -686,10 +709,10 @@ export default function Layout({ title, children, showNav }: Props) {
       .then(({ notifications: list }) => {
         setNotifications(list)
         setUnreadNotificationCount(0)
-        // Immediately advance server seenAt to now so the unread count clears
-        // reliably – the IO-based mark-as-seen can still fail if the panel is
-        // closed before the 400ms debounce fires.
-        updateSeenNotifications().catch(() => {})
+        // Advance server seenAt so the unread count clears; then refetch count so we don't show the dot if server was stale.
+        updateSeenNotifications()
+          .then(() => getUnreadNotificationCount().then(setUnreadNotificationCount))
+          .catch(() => {})
       })
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false))
@@ -753,11 +776,21 @@ export default function Layout({ title, children, showNav }: Props) {
     }
   }, [notificationsOpen, session, notifications])
 
-  /* Fetch unread count when session exists (so bell dot shows) and when notifications panel closes */
+  /* Fetch unread count when session exists. On initial load/refresh don't show the dot (server count can be stale). */
   useEffect(() => {
-    if (!session) return
+    if (!session) {
+      unreadCountInitialFetchDoneRef.current = false
+      return
+    }
     getUnreadNotificationCount()
-      .then(setUnreadNotificationCount)
+      .then((count) => {
+        if (!unreadCountInitialFetchDoneRef.current) {
+          unreadCountInitialFetchDoneRef.current = true
+          setUnreadNotificationCount(0)
+        } else {
+          setUnreadNotificationCount(count)
+        }
+      })
       .catch(() => setUnreadNotificationCount(0))
   }, [session])
 
@@ -775,15 +808,9 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [session])
 
+  /* Do not refetch unread count on panel close – server can be stale and would bring the dot back. Count is updated when panel opens (after updateSeen) and on visibility change. */
   const prevNotificationsOpenRef = useRef(false)
-  useEffect(() => {
-    if (prevNotificationsOpenRef.current && !notificationsOpen && session) {
-      getUnreadNotificationCount()
-        .then(setUnreadNotificationCount)
-        .catch(() => {})
-    }
-    prevNotificationsOpenRef.current = notificationsOpen
-  }, [notificationsOpen, session])
+  prevNotificationsOpenRef.current = notificationsOpen
 
   /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
   const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || composeOpen || aboutOpen
@@ -825,6 +852,15 @@ export default function Layout({ title, children, showNav }: Props) {
     }
   }, [mobileSearchOpen])
 
+  /* On mobile: focus search input when overlay opens so the keyboard pops up immediately */
+  useEffect(() => {
+    if (!mobileSearchOpen || isDesktop) return
+    const id = setTimeout(() => {
+      searchInputRef.current?.focus({ preventScroll: false })
+    }, 100)
+    return () => clearTimeout(id)
+  }, [mobileSearchOpen, isDesktop])
+
   useEffect(() => {
     if (!composeOpen || isDesktop || typeof window === 'undefined') return
     const vv = window.visualViewport
@@ -841,6 +877,31 @@ export default function Layout({ title, children, showNav }: Props) {
       viewport.removeEventListener('scroll', update)
     }
   }, [composeOpen, isDesktop])
+
+  /* Mobile: hide bottom nav when scrolling down; show when scrolling up or when scroll stops */
+  useEffect(() => {
+    if (typeof window === 'undefined' || isDesktop || !showNav) return
+    lastScrollYRef.current = window.scrollY
+    const SCROLL_THRESHOLD = 8
+    const SCROLL_END_MS = 350
+    function onScroll() {
+      const y = window.scrollY
+      const delta = y - lastScrollYRef.current
+      if (delta > SCROLL_THRESHOLD) setMobileNavScrollHidden(true)
+      else if (delta < -SCROLL_THRESHOLD) setMobileNavScrollHidden(false)
+      lastScrollYRef.current = y
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
+      scrollEndTimerRef.current = setTimeout(() => {
+        scrollEndTimerRef.current = null
+        setMobileNavScrollHidden(false)
+      }, SCROLL_END_MS)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
+    }
+  }, [isDesktop, showNav])
 
   function closeMobileSearch() {
     setMobileSearchOpen(false)
@@ -1755,7 +1816,19 @@ export default function Layout({ title, children, showNav }: Props) {
             aria-expanded={feedsDropdownOpen}
           >
             <span className={styles.feedsFloatLabel}>Feeds</span>
-            <span className={styles.feedsFloatChevronWrap}>
+            <span
+              ref={feedsChevronRef}
+              className={`${styles.feedsFloatChevronWrap} ${feedsChevronNoTransition ? styles.feedsFloatChevronWrapNoTransition : ''}`}
+              style={{
+                transform: `rotate(${feedsDropdownOpen ? 180 : (feedsClosingAngle ?? 0)}deg)`,
+              }}
+              onTransitionEnd={() => {
+                if (feedsClosingAngle === 360) {
+                  flushSync(() => setFeedsChevronNoTransition(true))
+                  setFeedsClosingAngle(null)
+                }
+              }}
+            >
               <ChevronDownIcon />
             </span>
           </button>
@@ -1768,6 +1841,7 @@ export default function Layout({ title, children, showNav }: Props) {
               )}
               <FeedSelector
                 variant="dropdown"
+                touchFriendly
                 sources={session ? allFeedSources : GUEST_FEED_SOURCES}
                 fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
                 mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
@@ -1797,6 +1871,19 @@ export default function Layout({ title, children, showNav }: Props) {
               />
             </div>
           )}
+        </div>
+      )}
+      {showNav && !isDesktop && !session && (
+        <div className={styles.loginFloatWrap}>
+          <button
+            type="button"
+            className={styles.loginFloatBtn}
+            onClick={() => openLoginModal()}
+            aria-label="Log in"
+            title="Log in"
+          >
+            Log in
+          </button>
         </div>
       )}
       {showNav && !isDesktop && session && (
@@ -1865,7 +1952,9 @@ export default function Layout({ title, children, showNav }: Props) {
       </main>
       {showNav && (
         <>
-          <div className={`${styles.navOuter} ${navVisible ? '' : styles.navHidden}`}>
+          <div
+            className={`${styles.navOuter} ${navVisible ? '' : styles.navHidden} ${!isDesktop && mobileNavScrollHidden ? styles.navOuterScrollHidden : ''}`}
+          >
             <button
               type="button"
               className={styles.seenPostsFloatBtn}

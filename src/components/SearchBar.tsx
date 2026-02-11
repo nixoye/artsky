@@ -146,7 +146,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   }, [trimmed, filter, fetchActors])
 
   useEffect(() => {
-    if (open && (filter === 'feeds' || filter === 'all') && !trimmed) {
+    if (open && (filter === 'feeds' || filter === 'all') && trimmed) {
       getSuggestedFeeds(6).then((feeds) => setSuggestedFeeds(feeds ?? []))
     } else {
       setSuggestedFeeds([])
@@ -291,7 +291,13 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
       onClose?.()
       return
     }
-    if (e.key === 'Enter') {
+    const isEnterOrCtrlE = e.key === 'Enter' || (e.key === 'e' && (e.ctrlKey || e.metaKey))
+    if (isEnterOrCtrlE) {
+      if (open && options.length > 0 && activeIndex >= 0) {
+        e.preventDefault()
+        handleSelect(activeIndex)
+        return
+      }
       e.preventDefault()
       handleSubmit()
       return
