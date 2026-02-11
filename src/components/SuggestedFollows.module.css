@@ -16,8 +16,35 @@
 .subtext {
   font-size: 0.8rem;
   color: var(--fg-muted, #666);
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.5rem 0;
   line-height: 1.3;
+}
+
+.sortRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sortLabel {
+  font-size: 0.8rem;
+  color: var(--fg-muted, #666);
+}
+
+.sortSelect {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  background: var(--bg, #fff);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.sortSelect:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .loading,
@@ -116,6 +143,35 @@
   flex-shrink: 0;
 }
 
+.infoBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg-muted, #666);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.infoBtn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--fg);
+}
+
+.infoBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.infoIcon {
+  width: 18px;
+  height: 18px;
+}
+
 .followBtn {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
@@ -160,4 +216,162 @@
 .dismissBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Why we recommend – detail modal */
+.detailBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.detailPanel {
+  background: var(--bg, #fff);
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  max-width: 360px;
+  width: 100%;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0.5rem;
+}
+
+.detailTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--fg);
+}
+
+.detailClose {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg-muted, #666);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.detailClose:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--fg);
+}
+
+.detailBody {
+  padding: 0.5rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+.detailSummary {
+  font-size: 0.85rem;
+  color: var(--fg-muted, #666);
+  margin: 0 0 0.5rem;
+}
+
+.detailList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detailListItem {
+  margin: 0;
+}
+
+.detailProfileBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.detailProfileBtn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.detailProfileBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.detailAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.detailAvatarPlaceholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-muted, #ccc);
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.detailProfileInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.detailDisplayName {
+  font-weight: 500;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailHandle {
+  font-size: 0.8rem;
+  color: var(--fg-muted, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailLoading {
+  padding: 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--fg-muted, #666);
 }

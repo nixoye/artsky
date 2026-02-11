@@ -211,7 +211,7 @@ function MediaGallery({
             <div
               key={i}
               className={styles.galleryImageBtn}
-              style={{ aspectRatio: aspect }}
+              style={{ aspectRatio: aspect, ['--media-aspect']: aspect } as React.CSSProperties}
               data-media-item={i}
               tabIndex={0}
               onFocus={() => onFocusItem?.(i)}
@@ -389,8 +389,8 @@ function PostBlock({
             </button>
           )}
           {onLike && onDownvote && showCommentCounts && (
-            <span className={styles.commentVoteTotal} aria-label={`${likeCount + downvoteCount} total votes`}>
-              {likeCount + downvoteCount}
+            <span className={styles.commentVoteTotal} aria-label={`Score: ${likeCount - downvoteCount} (upvotes minus downvotes)`}>
+              {likeCount - downvoteCount}
             </span>
           )}
           {onDownvote && (

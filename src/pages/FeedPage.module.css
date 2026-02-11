@@ -97,6 +97,39 @@
   border-color: var(--accent);
 }
 
+.feedSortRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.feedSortLabel {
+  font-size: 0.85rem;
+  color: var(--fg-muted, #666);
+}
+
+.feedSortSelect {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.35rem;
+  background: var(--bg, #fff);
+  color: var(--fg);
+}
+
+.feedSortSelect:hover {
+  border-color: var(--accent);
+}
+
+.feedSortSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle, rgba(0, 0, 0, 0.08));
+}
+
 .feedMixSection {
   margin-bottom: 0.5rem;
 }
