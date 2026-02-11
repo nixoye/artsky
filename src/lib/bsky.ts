@@ -1482,6 +1482,57 @@ export async function getSuggestedFollows(
   return results
 }
 
+/** Detail for a suggested account: which people you follow follow them. Used when user clicks "why" on a suggestion. */
+export type SuggestedFollowDetail = {
+  count: number
+  followedBy: Array<{ did: string; handle: string; displayName?: string; avatar?: string }>
+}
+
+/** Get which accounts you follow also follow the given suggested user (for "why we recommend" panel). */
+export async function getSuggestedFollowDetail(
+  client: AtpAgent,
+  currentUserDid: string,
+  suggestedDid: string
+): Promise<SuggestedFollowDetail> {
+  const { dids: myFollowDids } = await getFollows(client, currentUserDid, {
+    limit: SUGGESTED_FOLLOWS_MY_FOLLOWS_LIMIT,
+  })
+  const sample =
+    myFollowDids.length <= SUGGESTED_FOLLOWS_SAMPLE
+      ? myFollowDids
+      : myFollowDids
+          .slice()
+          .sort(() => Math.random() - 0.5)
+          .slice(0, SUGGESTED_FOLLOWS_SAMPLE)
+
+  const followeeDidsWhoFollow: string[] = []
+  for (const did of sample) {
+    try {
+      const { dids: theirDids } = await getFollows(client, did, {
+        limit: SUGGESTED_FOLLOWS_THEIR_LIMIT,
+      })
+      if (theirDids.includes(suggestedDid)) followeeDidsWhoFollow.push(did)
+    } catch {
+      // skip
+    }
+  }
+
+  const profiles = await Promise.all(
+    followeeDidsWhoFollow.map((did) =>
+      client.getProfile({ actor: did }).then((res) => {
+        const d = res.data as { did?: string; handle?: string; displayName?: string; avatar?: string }
+        return {
+          did: d.did ?? did,
+          handle: d.handle ?? did,
+          displayName: d.displayName,
+          avatar: d.avatar,
+        }
+      })
+    )
+  )
+  return { count: followeeDidsWhoFollow.length, followedBy: profiles }
+}
+
 /** Resolve DID from a publication base URL via .well-known/site.standard.publication. Returns null on CORS/network error. */
 export async function resolvePublicationDidFromWellKnown(baseUrl: string): Promise<string | null> {
   try {

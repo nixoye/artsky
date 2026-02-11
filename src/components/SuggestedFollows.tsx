@@ -1,10 +1,22 @@
-import { useCallback, useEffect, useState } from 'react'
-import { agent, getSession, getSuggestedFollows, type SuggestedFollow } from '../lib/bsky'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { agent, getSession, getSuggestedFollows, getSuggestedFollowDetail, type SuggestedFollow, type SuggestedFollowDetail } from '../lib/bsky'
 import { getRecommendationsShown, markRecommendationsShown, getRotationCutoff } from '../lib/recommendationStorage'
 import { useProfileModal } from '../context/ProfileModalContext'
 import styles from './SuggestedFollows.module.css'
 
 const DISPLAY_COUNT = 8
+
+export type SuggestedFollowSort = 'count' | 'random' | 'handle'
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = arr.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
 
 export default function SuggestedFollows() {
   const { openProfileModal } = useProfileModal()
@@ -12,6 +24,16 @@ export default function SuggestedFollows() {
   const [loading, setLoading] = useState(false)
   const [followLoadingDid, setFollowLoadingDid] = useState<string | null>(null)
   const [dismissedDids, setDismissedDids] = useState<Set<string>>(() => new Set())
+  const [sortBy, setSortBy] = useState<SuggestedFollowSort>('count')
+  const [infoOpenForDid, setInfoOpenForDid] = useState<string | null>(null)
+  const [detail, setDetail] = useState<SuggestedFollowDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const sortedSuggestions = useMemo(() => {
+    if (sortBy === 'count') return suggestions
+    if (sortBy === 'handle') return [...suggestions].sort((a, b) => (a.handle ?? a.did).localeCompare(b.handle ?? b.did))
+    return shuffle(suggestions)
+  }, [suggestions, sortBy])
 
   const load = useCallback(async () => {
     const session = getSession()
@@ -39,6 +61,23 @@ export default function SuggestedFollows() {
     load()
   }, [load])
 
+  const openInfo = useCallback(async (s: SuggestedFollow) => {
+    setInfoOpenForDid(s.did)
+    setDetail(null)
+    setDetailLoading(true)
+    try {
+      const session = getSession()
+      const did = session?.did
+      if (!did) return
+      const d = await getSuggestedFollowDetail(agent, did, s.did)
+      setDetail(d)
+    } catch {
+      setDetail({ count: 0, followedBy: [] })
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
+
   const handleFollow = useCallback(
     async (did: string, _handle: string) => {
       setFollowLoadingDid(did)
@@ -60,19 +99,36 @@ export default function SuggestedFollows() {
     setSuggestions((prev) => prev.filter((s) => s.did !== did))
   }, [])
 
+  const infoSuggestion = infoOpenForDid ? suggestions.find((s) => s.did === infoOpenForDid) : null
+
   return (
     <section className={styles.wrap} aria-label="Suggested accounts to follow">
       <h2 className={styles.heading}>Discover accounts</h2>
       <p className={styles.subtext}>
         Accounts followed by people you follow. New suggestions each time you open.
       </p>
+      {suggestions.length > 0 && (
+        <div className={styles.sortRow}>
+          <span className={styles.sortLabel}>Sort by:</span>
+          <select
+            className={styles.sortSelect}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SuggestedFollowSort)}
+            aria-label="Sort suggestions"
+          >
+            <option value="count">Most followed by people you follow</option>
+            <option value="random">Random</option>
+            <option value="handle">Handle (A–Z)</option>
+          </select>
+        </div>
+      )}
       {loading && suggestions.length === 0 ? (
         <p className={styles.loading}>Loading…</p>
       ) : suggestions.length === 0 ? (
         <p className={styles.empty}>No suggestions right now. Follow more accounts to see recommendations.</p>
       ) : (
       <ul className={styles.list}>
-        {suggestions.map((s) => (
+        {sortedSuggestions.map((s) => (
           <li key={s.did} className={styles.item}>
             <button
               type="button"
@@ -99,6 +155,15 @@ export default function SuggestedFollows() {
             <div className={styles.actions}>
               <button
                 type="button"
+                className={styles.infoBtn}
+                onClick={(e) => { e.stopPropagation(); openInfo(s); }}
+                aria-label="Why we recommend this account"
+                title="Why we recommend this account"
+              >
+                <InfoIcon />
+              </button>
+              <button
+                type="button"
                 className={styles.followBtn}
                 onClick={() => handleFollow(s.did, s.handle)}
                 disabled={followLoadingDid === s.did}
@@ -119,6 +184,74 @@ export default function SuggestedFollows() {
         ))}
       </ul>
       )}
+      {infoOpenForDid && infoSuggestion && createPortal(
+        <div
+          className={styles.detailBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="suggestion-detail-title"
+          onClick={() => setInfoOpenForDid(null)}
+        >
+          <div className={styles.detailPanel} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.detailHeader}>
+              <h3 id="suggestion-detail-title" className={styles.detailTitle}>
+                Why we recommend @{infoSuggestion.handle}
+              </h3>
+              <button
+                type="button"
+                className={styles.detailClose}
+                onClick={() => setInfoOpenForDid(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {detailLoading ? (
+              <p className={styles.detailLoading}>Loading…</p>
+            ) : detail ? (
+              <div className={styles.detailBody}>
+                <p className={styles.detailSummary}>
+                  {detail.count === 1
+                    ? 'Followed by 1 person you follow:'
+                    : `Followed by ${detail.count} people you follow:`}
+                </p>
+                <ul className={styles.detailList}>
+                  {detail.followedBy.map((acc) => (
+                    <li key={acc.did} className={styles.detailListItem}>
+                      <button
+                        type="button"
+                        className={styles.detailProfileBtn}
+                        onClick={() => { openProfileModal(acc.handle); setInfoOpenForDid(null); }}
+                      >
+                        {acc.avatar ? (
+                          <img src={acc.avatar} alt="" className={styles.detailAvatar} loading="lazy" />
+                        ) : (
+                          <span className={styles.detailAvatarPlaceholder} aria-hidden>
+                            {(acc.displayName ?? acc.handle).slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <span className={styles.detailProfileInfo}>
+                          {acc.displayName && <span className={styles.detailDisplayName}>{acc.displayName}</span>}
+                          <span className={styles.detailHandle}>@{acc.handle}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg className={styles.infoIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+    </svg>
   )
 }

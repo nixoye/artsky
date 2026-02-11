@@ -211,7 +211,7 @@ function MediaGallery({
             <div
               key={i}
               className={styles.galleryImageBtn}
-              style={{ aspectRatio: aspect }}
+              style={{ aspectRatio: aspect, ['--media-aspect']: aspect } as React.CSSProperties}
               data-media-item={i}
               tabIndex={0}
               onFocus={() => onFocusItem?.(i)}

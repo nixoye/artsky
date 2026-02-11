@@ -117,6 +117,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const externalLink = getPostExternalLink(post)
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
+  const isQuotePost = (() => {
+    const embed = (post as { embed?: { $type?: string } })?.embed
+    return !!embed && (embed.$type === 'app.bsky.embed.record#view' || embed.$type === 'app.bsky.embed.recordWithMedia#view')
+  })()
   const isPinned = reason?.$type === REASON_PIN
   const authorViewer = (post.author as { viewer?: { following?: string } }).viewer
   const initialFollowingUri = authorViewer?.following
@@ -965,13 +969,13 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     @{handle}
                   </ProfileLink>
                 </span>
-                {repostedByHandle && (
+                {(repostedByHandle || isQuotePost) && (
                   <span
                     className={styles.repostIconLink}
                     role="button"
                     tabIndex={0}
-                    title={`Reposted by @${repostedByHandle}`}
-                    aria-label={`Reposted by @${repostedByHandle}`}
+                    title={repostedByHandle ? `Reposted by @${repostedByHandle}` : 'Quote post'}
+                    aria-label={repostedByHandle ? `Reposted by @${repostedByHandle}` : 'Quote post'}
                     onClick={(e) => { e.stopPropagation(); handleCardClick(e); }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
