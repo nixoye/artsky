@@ -658,12 +658,12 @@ export default function FeedPage() {
     }
   }, [cursor, load, viewMode])
 
-  const { mediaOnly } = useMediaOnly()
+  const { mediaMode } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const { hideRepostsFromDids } = useHideReposts() ?? { hideRepostsFromDids: [] as string[] }
   const displayItems = useMemo(() =>
     items
-      .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
+      .filter((item) => (mediaMode === 'media' ? getPostMediaInfo(item.post) : true))
       .filter((item) => !seenUrisAtReset.has(item.post.uri))
       .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
       .filter((item) => {
@@ -671,33 +671,32 @@ export default function FeedPage() {
         const reposterDid = (item.reason as { by?: { did: string } })?.by?.did
         return !reposterDid || !hideRepostsFromDids.includes(reposterDid)
       }),
-    [items, mediaOnly, seenUrisAtReset, nsfwPreference, hideRepostsFromDids]
+    [items, mediaMode, seenUrisAtReset, nsfwPreference, hideRepostsFromDids]
   )
   const displayEntries = useMemo(() => buildDisplayEntries(displayItems), [displayItems])
   const itemsAfterOtherFilters = useMemo(() =>
     items
-      .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
+      .filter((item) => (mediaMode === 'media' ? getPostMediaInfo(item.post) : true))
       .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post)),
-    [items, mediaOnly, nsfwPreference]
+    [items, mediaMode, nsfwPreference]
   )
   /** Only "seen all" when there's nothing more to load (no cursor). With mixed feeds, one feed can be exhausted while others still have posts. */
   const emptyBecauseAllSeen = displayEntries.length === 0 && itemsAfterOtherFilters.length > 0 && !cursor
   const canLoadMoreWhenEmpty = displayEntries.length === 0 && cursor != null
   const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
-  /** Flat list of focus targets: one per media item per post; carousel counts as one. */
+  /** Flat list of focus targets: one per media item per post (or one per card in text-only mode). */
   const focusTargets = useMemo(() => {
     const out: { cardIndex: number; mediaIndex: number }[] = []
     displayEntries.forEach((entry, cardIndex) => {
       if (entry.type === 'post') {
-        const all = getPostAllMediaForDisplay(entry.item.post)
-        const n = Math.max(1, all.length)
+        const n = mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)
         for (let m = 0; m < n; m++) out.push({ cardIndex, mediaIndex: m })
       } else {
         out.push({ cardIndex, mediaIndex: 0 })
       }
     })
     return out
-  }, [displayEntries])
+  }, [displayEntries, mediaMode])
   /** First focus index for each card (top image; for S and A/D). */
   const firstFocusIndexForCard = useMemo(() => {
     const out: number[] = []
@@ -705,20 +704,20 @@ export default function FeedPage() {
     displayEntries.forEach((_entry, cardIndex) => {
       out[cardIndex] = idx
       const entry = displayEntries[cardIndex]
-      const n = entry.type === 'post' ? Math.max(1, getPostAllMediaForDisplay(entry.item.post).length) : 1
+      const n = entry.type === 'post' ? (mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)) : 1
       idx += n
     })
     return out
-  }, [displayEntries])
+  }, [displayEntries, mediaMode])
   /** Last focus index for each card (bottom image; for W when moving to card above). */
   const lastFocusIndexForCard = useMemo(() => {
     const out: number[] = []
     displayEntries.forEach((entry, cardIndex) => {
-      const n = entry.type === 'post' ? Math.max(1, getPostAllMediaForDisplay(entry.item.post).length) : 1
+      const n = entry.type === 'post' ? (mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)) : 1
       out[cardIndex] = firstFocusIndexForCard[cardIndex] + n - 1
     })
     return out
-  }, [displayEntries, firstFocusIndexForCard])
+  }, [displayEntries, firstFocusIndexForCard, mediaMode])
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
   actionsMenuOpenForIndexRef.current = actionsMenuOpenForIndex
@@ -1031,7 +1030,8 @@ export default function FeedPage() {
         window.scrollTo(0, 0)
       })
     },
-    enabled: true,
+    enabled: isDesktop,
+    maxTouchStartY: 130,
   })
 
   const swipeEnabled =
@@ -1175,7 +1175,7 @@ export default function FeedPage() {
               </>
             ) : emptyBecauseAllSeen ? (
               <>You've seen all the posts in this feed.<br />New posts will appear as they're posted.</>
-            ) : mediaOnly ? (
+            ) : mediaMode === 'media' ? (
               'No posts with images or videos in this feed.'
             ) : (
               'No posts in this feed.'

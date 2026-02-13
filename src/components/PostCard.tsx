@@ -8,6 +8,7 @@ import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useLoginModal } from '../context/LoginModalContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
+import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useModeration } from '../context/ModerationContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { formatExactDateTime, getRelativeTimeParts } from '../lib/date'
@@ -96,6 +97,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const { session } = useSession()
   const { openLoginModal } = useLoginModal()
   const { artOnly, minimalist } = useArtOnly()
+  const { mediaMode } = useMediaOnly()
   const { unblurredUris, setUnblurred } = useModeration()
   const { openQuotesModal } = useProfileModal()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -147,8 +149,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const cardRef = useRef<HTMLDivElement>(null)
   const prevSelectedRef = useRef(isSelected)
   const lastTapRef = useRef(0)
+  const lastMediaClickRef = useRef(0)
   const didDoubleTapRef = useRef(false)
   const touchSessionRef = useRef(false)
+  const mediaClickFromTouchRef = useRef(false)
   const openDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   /* Close ... menu when parent says focus moved to another card (e.g. A/D) */
@@ -532,6 +536,38 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     else navigate(`/post/${encodeURIComponent(post.uri)}`)
   }
 
+  function handleMediaDoubleTapLike() {
+    if (!session?.did) {
+      openLoginModal()
+      return
+    }
+    if (effectiveLikedUri) {
+      setLikedUri(undefined)
+      agent.deleteLike(effectiveLikedUri).then(() => {
+        onLikedChange?.(post.uri, null)
+      }).catch(() => setLikedUri(effectiveLikedUri))
+    } else {
+      setLikedUri('pending')
+      agent.like(post.uri, post.cid).then((res) => {
+        setLikedUri(res.uri)
+        onLikedChange?.(post.uri, res.uri)
+      }).catch(() => setLikedUri(undefined))
+    }
+  }
+
+  function handleMediaClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (mediaClickFromTouchRef.current) return
+    const now = Date.now()
+    if (now - lastMediaClickRef.current < 400) {
+      lastMediaClickRef.current = 0
+      handleMediaDoubleTapLike()
+    } else {
+      lastMediaClickRef.current = now
+      setTimeout(() => openPost(), 400)
+    }
+  }
+
   const setCardRef = useCallback(
     (el: HTMLDivElement | null) => {
       (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = el
@@ -557,6 +593,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         }}
         onTouchStart={(e) => {
           touchSessionRef.current = true
+          mediaClickFromTouchRef.current = true
           const t = e.touches[0]
           touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null
         }}
@@ -575,6 +612,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               openDelayTimerRef.current = null
             }
             touchSessionRef.current = false
+            mediaClickFromTouchRef.current = false
             return
           }
           const now = Date.now()
@@ -598,13 +636,14 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 onLikedChange?.(post.uri, res.uri)
               }).catch(() => setLikedUri(undefined))
             }
-            setTimeout(() => { touchSessionRef.current = false }, 500)
+            setTimeout(() => { touchSessionRef.current = false; mediaClickFromTouchRef.current = false }, 500)
           } else {
             lastTapRef.current = now
             if (openDelayTimerRef.current) clearTimeout(openDelayTimerRef.current)
             openDelayTimerRef.current = setTimeout(() => {
               openDelayTimerRef.current = null
               touchSessionRef.current = false
+              mediaClickFromTouchRef.current = false
               openPost()
             }, 400)
           }
@@ -613,7 +652,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         <div
           ref={(el) => {
             ;(mediaWrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el
-            if (onMediaRef && hasMedia && !(isMultipleImages && imageItems.length > 1)) onMediaRef(0, el)
+            if (onMediaRef && (mediaMode === 'text' || (hasMedia && !(isMultipleImages && imageItems.length > 1)))) onMediaRef(0, el)
           }}
           className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 ? styles.mediaWrapMultiStack : ''}`}
           style={
@@ -627,8 +666,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           }
           onMouseEnter={onMediaEnter}
           onMouseLeave={onMediaLeave}
+          {...(hasMedia && { onClick: handleMediaClick })}
         >
-          {!hasMedia ? (
+          {(!hasMedia || mediaMode === 'text') ? (
             <div className={styles.textOnlyPreview}>
               {text ? (
                 <div className={styles.textOnlyPreviewText} onClick={(e) => { e.stopPropagation(); handleCardClick(e); }}>

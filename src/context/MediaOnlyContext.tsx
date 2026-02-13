@@ -3,51 +3,77 @@ import { useToast } from './ToastContext'
 
 const STORAGE_KEY = 'artsky-feed-media-only'
 
+export type MediaMode = 'mediaText' | 'media' | 'text'
+
+export const MEDIA_MODE_LABELS: Record<MediaMode, string> = {
+  mediaText: 'All Posts',
+  media: 'Media only',
+  text: 'Text only',
+}
+
 type MediaOnlyContextValue = {
-  /** When true, feed shows only posts with images/videos. When false, show all posts. */
+  /** Current mode: mediaText (show all with media+text), media (filter to posts with media), text (hide media in cards). */
+  mediaMode: MediaMode
+  /** @deprecated Use mediaMode === 'media' */
   mediaOnly: boolean
+  setMediaMode: (value: MediaMode) => void
+  /** Cycle: Media+Text → Media only → Text only → Media+Text. */
+  cycleMediaMode: (options?: { showToast?: boolean }) => void
+  /** @deprecated Use setMediaMode or cycleMediaMode */
   setMediaOnly: (value: boolean) => void
+  /** @deprecated Use cycleMediaMode */
   toggleMediaOnly: (options?: { showToast?: boolean }) => void
 }
 
 const MediaOnlyContext = createContext<MediaOnlyContextValue | null>(null)
 
-function getStored(): boolean {
+function getStored(): MediaMode {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
-    if (v === null) return false
-    return v !== '0' && v !== 'false'
+    if (v === 'media' || v === 'text') return v
+    if (v === '1' || v === 'true') return 'media' // legacy
+    return 'mediaText'
   } catch {
-    return false
+    return 'mediaText'
   }
 }
 
 export function MediaOnlyProvider({ children }: { children: ReactNode }) {
   const toast = useToast()
-  const [mediaOnly, setMediaOnlyState] = useState(getStored)
+  const [mediaMode, setMediaModeState] = useState<MediaMode>(getStored)
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, mediaOnly ? '1' : '0')
+      localStorage.setItem(STORAGE_KEY, mediaMode)
     } catch {
       // ignore
     }
-  }, [mediaOnly])
+  }, [mediaMode])
 
-  const setMediaOnly = useCallback((value: boolean) => {
-    setMediaOnlyState(value)
+  const setMediaMode = useCallback((value: MediaMode) => {
+    setMediaModeState(value)
   }, [])
 
-  const toggleMediaOnly = useCallback((options?: { showToast?: boolean }) => {
-    setMediaOnlyState((v) => {
-      const next = !v
-      if (options?.showToast !== false) toast?.showToast(next ? 'Media only' : 'Media and text')
+  const cycleMediaMode = useCallback((options?: { showToast?: boolean }) => {
+    setMediaModeState((m) => {
+      const next = m === 'mediaText' ? 'media' : m === 'media' ? 'text' : 'mediaText'
+      if (options?.showToast !== false) toast?.showToast(MEDIA_MODE_LABELS[next])
       return next
     })
   }, [toast])
 
+  const setMediaOnly = useCallback((value: boolean) => {
+    setMediaModeState(value ? 'media' : 'mediaText')
+  }, [])
+
+  const toggleMediaOnly = useCallback((options?: { showToast?: boolean }) => {
+    cycleMediaMode(options)
+  }, [cycleMediaMode])
+
+  const mediaOnly = mediaMode === 'media'
+
   return (
-    <MediaOnlyContext.Provider value={{ mediaOnly, setMediaOnly, toggleMediaOnly }}>
+    <MediaOnlyContext.Provider value={{ mediaMode, mediaOnly, setMediaMode, cycleMediaMode, setMediaOnly, toggleMediaOnly }}>
       {children}
     </MediaOnlyContext.Provider>
   )
@@ -56,7 +82,14 @@ export function MediaOnlyProvider({ children }: { children: ReactNode }) {
 export function useMediaOnly() {
   const ctx = useContext(MediaOnlyContext)
   if (!ctx) {
-    return { mediaOnly: false, setMediaOnly: () => {}, toggleMediaOnly: () => {} }
+    return {
+      mediaMode: 'mediaText' as MediaMode,
+      mediaOnly: false,
+      setMediaMode: () => {},
+      cycleMediaMode: () => {},
+      setMediaOnly: () => {},
+      toggleMediaOnly: () => {},
+    }
   }
   return ctx
 }

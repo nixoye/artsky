@@ -15,6 +15,8 @@ export interface UsePullToRefreshOptions {
   onRefresh: () => void | Promise<void>
   /** When false, touch handlers are no-ops. Use to disable when e.g. a nested scroll is active. */
   enabled?: boolean
+  /** When set, only arm pull when touch starts with clientY <= this value (viewport top). Use to restrict pull to a top strip and avoid triggering under buttons. */
+  maxTouchStartY?: number
 }
 
 export interface UsePullToRefreshResult {
@@ -42,6 +44,7 @@ export function usePullToRefresh({
   touchTargetRef,
   onRefresh,
   enabled = true,
+  maxTouchStartY,
 }: UsePullToRefreshOptions): UsePullToRefreshResult {
   const startYRef = useRef(0)
   const startScrollTopRef = useRef(0)
@@ -66,12 +69,14 @@ export function usePullToRefresh({
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (!enabled || e.touches.length !== 1) return
-      startYRef.current = e.touches[0].clientY
-      startScrollTopRef.current = getScrollTop(scrollRef)
       pullingRef.current = false
       setPullDistance(0)
+      const y = e.touches[0].clientY
+      if (maxTouchStartY != null && y > maxTouchStartY) return
+      startYRef.current = y
+      startScrollTopRef.current = getScrollTop(scrollRef)
     },
-    [enabled, scrollRef]
+    [enabled, scrollRef, maxTouchStartY]
   )
 
   const onTouchMove = useCallback(
@@ -119,14 +124,18 @@ export function usePullToRefresh({
     [enabled, isRefreshing, runRefresh]
   )
 
-  /* Attach touchmove with passive: false so preventDefault() works when pulling at top (required on mobile). */
+  /* Attach touchstart/touchmove with passive: false so preventDefault() works when pulling at top. */
   useEffect(() => {
     const el = touchTargetRef?.current ?? scrollRef?.current
     if (!enabled || !el) return
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) startYRef.current = e.touches[0].clientY
+    }
     const onMove = (e: TouchEvent) => {
       if (e.touches.length !== 1) return
       const scrollTop = getScrollTop(scrollRef)
       const dy = e.touches[0].clientY - startYRef.current
+      if (maxTouchStartY != null && startYRef.current > maxTouchStartY) return
       if (!pullingRef.current) {
         if (scrollTop <= 2 && dy > PULL_COMMIT_PX) pullingRef.current = true
         else return
@@ -138,9 +147,13 @@ export function usePullToRefresh({
         setPullDistance(capped)
       }
     }
+    el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: false })
-    return () => el.removeEventListener('touchmove', onMove)
-  }, [enabled, scrollRef, touchTargetRef])
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+    }
+  }, [enabled, scrollRef, touchTargetRef, maxTouchStartY])
 
   return {
     onTouchStart,

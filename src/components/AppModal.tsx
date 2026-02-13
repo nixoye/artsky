@@ -55,17 +55,17 @@ export default function AppModal({
   const { modalScrollHidden, setModalScrollHidden } = useProfileModal()
   const lastScrollYRef = useRef(0)
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
   const pullRefresh = usePullToRefresh({
     scrollRef,
     touchTargetRef: scrollRef,
     onRefresh: onPullToRefresh ?? (() => {}),
-    enabled: !!onPullToRefresh,
+    enabled: !!onPullToRefresh && !isMobile,
   })
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
   const { expanded, setExpanded } = useModalExpand()
   const scrollLock = useScrollLock()
-  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
   const handleSwipeRight = () => (canGoBack ? onBack() : onClose())
   const swipe = useSwipeToClose({
     enabled: isMobile,

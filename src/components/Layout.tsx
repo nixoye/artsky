@@ -9,7 +9,7 @@ import { useProfileModal } from '../context/ProfileModalContext'
 import { useLoginModal } from '../context/LoginModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModeration, NSFW_LABELS } from '../context/ModerationContext'
-import { useMediaOnly } from '../context/MediaOnlyContext'
+import { useMediaOnly, MEDIA_MODE_LABELS } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
 import { useToast } from '../context/ToastContext'
@@ -266,26 +266,15 @@ function AboutIcon() {
   )
 }
 
-/** Media mode: image-only vs image+text. Compact icon to match other gear button widths. */
-function MediaModeIcon({ mediaOnly }: { mediaOnly: boolean }) {
-  if (mediaOnly) {
-    return (
-      <span className={styles.mediaModeIconWrap}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <rect x="5" y="5" width="14" height="14" rx="2" />
-          <circle cx="9" cy="9" r="1.5" />
-          <path d="M19 17l-5-5-7 7" />
-        </svg>
-      </span>
-    )
-  }
+/** Media mode: T (text) with small photo under it. Thin stroke to align with other gear icons. */
+function MediaModeIcon() {
   return (
     <span className={styles.mediaModeIconWrap}>
-      <svg viewBox="0 0 18 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <rect x="1" y="4" width="8" height="8" rx="1" />
-        <line x1="11" y1="6" x2="16" y2="6" />
-        <line x1="11" y1="10" x2="16" y2="10" />
-        <line x1="11" y1="14" x2="14" y2="14" />
+      <svg viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M10 2v6M5.5 2h9" />
+        <rect x="4" y="12" width="12" height="10" rx="1" />
+        <circle cx="7.5" cy="15" r="1" />
+        <path d="M14.5 21l-2.5-2-4 3" />
       </svg>
     </span>
   )
@@ -340,7 +329,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
   const { nsfwPreference, cycleNsfwPreference } = useModeration()
-  const { mediaOnly, toggleMediaOnly } = useMediaOnly()
+  const { mediaMode, cycleMediaMode } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const scrollLock = useScrollLock()
@@ -558,7 +547,7 @@ export default function Layout({ title, children, showNav }: Props) {
       }
       if (key === 't') {
         e.preventDefault()
-        toggleMediaOnly()
+        cycleMediaMode()
         return
       }
       if (key !== 'q' && e.key !== 'Backspace') return
@@ -569,7 +558,7 @@ export default function Layout({ title, children, showNav }: Props) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navigate, isModalOpen, setViewMode, toggleMediaOnly, loc.pathname])
+  }, [navigate, isModalOpen, setViewMode, cycleMediaMode, loc.pathname])
 
   useEffect(() => {
     if (!accountMenuOpen) return
@@ -926,17 +915,21 @@ export default function Layout({ title, children, showNav }: Props) {
     }
   }, [composeOpen, isDesktop])
 
-  /* Mobile: hide bottom nav when scrolling down; show when scrolling up or when scroll stops */
+  /* Mobile: hide bottom nav when scrolling down; show when scrolling up or when scroll stops. Also collapse gear expandable on scroll. */
   useEffect(() => {
-    if (typeof window === 'undefined' || isDesktop || !showNav) return
+    if (typeof window === 'undefined' || isDesktop) return
     lastScrollYRef.current = window.scrollY
     const SCROLL_THRESHOLD = 8
     const SCROLL_END_MS = 350
     function onScroll() {
       const y = window.scrollY
       const delta = y - lastScrollYRef.current
-      if (delta > SCROLL_THRESHOLD) setMobileNavScrollHidden(true)
-      else if (delta < -SCROLL_THRESHOLD) setMobileNavScrollHidden(false)
+      if (delta > SCROLL_THRESHOLD) {
+        setMobileNavScrollHidden(true)
+        setFeedFloatButtonsExpanded(false)
+      } else if (delta < -SCROLL_THRESHOLD) {
+        setMobileNavScrollHidden(false)
+      }
       lastScrollYRef.current = y
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
       scrollEndTimerRef.current = setTimeout(() => {
@@ -949,7 +942,7 @@ export default function Layout({ title, children, showNav }: Props) {
       window.removeEventListener('scroll', onScroll)
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
     }
-  }, [isDesktop, showNav])
+  }, [isDesktop])
 
   function closeMobileSearch() {
     setMobileSearchOpen(false)
@@ -1493,12 +1486,12 @@ export default function Layout({ title, children, showNav }: Props) {
                     <button
                       type="button"
                       className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
-                      onClick={() => toggleMediaOnly({ showToast: false })}
-                      title={mediaOnly ? 'Media only. Click for Media & Text.' : 'Media and text. Click for Media only.'}
-                      aria-label={mediaOnly ? 'Media only' : 'Media and text'}
+                      onClick={() => cycleMediaMode({ showToast: false })}
+                      title={`${MEDIA_MODE_LABELS[mediaMode]}. Click to cycle: All Posts → Media only → Text only.`}
+                      aria-label={MEDIA_MODE_LABELS[mediaMode]}
                     >
-                      <MediaModeIcon mediaOnly={mediaOnly} />
-                      <span className={styles.gearExpandableLabel}>{mediaOnly ? 'Media only' : 'Media & text'}</span>
+                      <MediaModeIcon />
+                      <span className={styles.gearExpandableLabel}>{MEDIA_MODE_LABELS[mediaMode]}</span>
                     </button>
                     <button
                       type="button"
@@ -1911,12 +1904,12 @@ export default function Layout({ title, children, showNav }: Props) {
             <button
               type="button"
               className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
-              onClick={() => toggleMediaOnly({ showToast: false })}
-              title={mediaOnly ? 'Media only. Click for Media & Text.' : 'Media and text. Click for Media only.'}
-              aria-label={mediaOnly ? 'Media only' : 'Media and text'}
+              onClick={() => cycleMediaMode({ showToast: false })}
+              title={`${MEDIA_MODE_LABELS[mediaMode]}. Click to cycle: All Posts → Media only → Text only.`}
+              aria-label={MEDIA_MODE_LABELS[mediaMode]}
             >
-              <MediaModeIcon mediaOnly={mediaOnly} />
-              <span className={styles.gearExpandableLabel}>{mediaOnly ? 'Media only' : 'Media & text'}</span>
+              <MediaModeIcon />
+              <span className={styles.gearExpandableLabel}>{MEDIA_MODE_LABELS[mediaMode]}</span>
             </button>
             <button
               type="button"
