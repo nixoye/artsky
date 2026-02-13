@@ -1108,8 +1108,8 @@ button.logoLink {
 /* Gear expandable: pill buttons – same shape as Feeds button (override circular feedFloatBtn/nsfwFloatBtn) */
 .gearFloatExpandable .nsfwFloatBtn.gearExpandableBtn,
 .gearFloatExpandable .feedFloatBtn.gearExpandableBtn {
-  width: auto;
-  min-width: 8rem;
+  width: 9rem;
+  min-width: 9rem;
   height: auto;
   min-height: 2.5rem;
   padding: 8px 14px 8px 18px;

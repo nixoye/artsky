@@ -210,20 +210,55 @@ function MediaGallery({
   autoPlayFirstVideo = false,
   hideVideoControlsUntilTap = false,
   onFocusItem,
+  onDoubleTapLike,
 }: {
   items: Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string; aspectRatio?: number }>
   autoPlayFirstVideo?: boolean
   /** On mobile: hide native video controls until user taps the video. */
   hideVideoControlsUntilTap?: boolean
   onFocusItem?: (index: number) => void
+  /** Called when user double-taps or double-clicks on media to like the post. */
+  onDoubleTapLike?: () => void
 }) {
+  const lastTapRef = useRef(0)
+  const lastClickRef = useRef(0)
+
   if (items.length === 0) return null
   const firstVideoIndex = autoPlayFirstVideo
     ? items.findIndex((m) => m.type === 'video' && m.videoPlaylist)
     : -1
 
+  const handleMediaTouchEnd = (e: React.TouchEvent) => {
+    if (!onDoubleTapLike || e.changedTouches.length !== 1) return
+    const now = Date.now()
+    if (now - lastTapRef.current < 400) {
+      lastTapRef.current = 0
+      e.preventDefault()
+      onDoubleTapLike()
+    } else {
+      lastTapRef.current = now
+    }
+  }
+
+  const handleMediaClick = (e: React.MouseEvent) => {
+    if (!onDoubleTapLike) return
+    const now = Date.now()
+    if (now - lastClickRef.current < 400) {
+      lastClickRef.current = 0
+      e.stopPropagation()
+      e.preventDefault()
+      onDoubleTapLike()
+    } else {
+      lastClickRef.current = now
+    }
+  }
+
   return (
-    <div className={styles.galleryWrap}>
+    <div
+      className={styles.galleryWrap}
+      onTouchEnd={handleMediaTouchEnd}
+      onClick={handleMediaClick}
+    >
       <div className={styles.gallery}>
         {items.map((m, i) => {
           if (m.type === 'video' && m.videoPlaylist) {
@@ -402,7 +437,13 @@ function PostBlock({
           )}
         </div>
       </div>
-      {allMedia.length > 0 && <MediaGallery items={allMedia} onFocusItem={(i) => onCommentMediaFocus?.(post.uri, i)} />}
+      {allMedia.length > 0 && (
+        <MediaGallery
+          items={allMedia}
+          onFocusItem={(i) => onCommentMediaFocus?.(post.uri, i)}
+          onDoubleTapLike={onLike ? () => onLike(post.uri, post.cid, likedUri ?? null) : undefined}
+        />
+      )}
       {text && (
         <p className={styles.postText}>
           <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} interactive />
@@ -1516,6 +1557,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                     autoPlayFirstVideo
                     hideVideoControlsUntilTap={!isDesktop}
                     onFocusItem={(i) => !onClose && setKeyboardFocusIndex(i)}
+                    onDoubleTapLike={!onClose ? handleLike : undefined}
                   />
                 </div>
               )}

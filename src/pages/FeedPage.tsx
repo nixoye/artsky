@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, startTransition, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, startTransition, useSyncExternalStore } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
@@ -12,8 +12,6 @@ import {
   type TimelineItem,
 } from '../lib/bsky'
 import type { FeedSource } from '../types'
-import PostCard from '../components/PostCard'
-import RepostCarouselCard from '../components/RepostCarouselCard'
 import Layout, { FeedPullRefreshContext } from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useLoginModal } from '../context/LoginModalContext'
@@ -27,8 +25,8 @@ import { useModeration } from '../context/ModerationContext'
 import { useHideReposts } from '../context/HideRepostsContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { setInitialPostForUri } from '../lib/postCache'
 import SuggestedFollows from '../components/SuggestedFollows'
+import VirtualizedFeedColumn from '../components/VirtualizedFeedColumn'
 import styles from './FeedPage.module.css'
 
 /** Dedupe feed items by post URI (keep first). Stops the same post appearing as both original and repost. */
@@ -339,6 +337,8 @@ export default function FeedPage() {
   seenUrisRef.current = seenUris
   const seenPostsContext = useSeenPosts()
   const [suggestedFollowsOpen, setSuggestedFollowsOpen] = useState(false)
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
 
   // Register clear-seen handler so that long-press on Home can bring back all hidden (seen) items.
   useEffect(() => {
@@ -658,12 +658,12 @@ export default function FeedPage() {
     }
   }, [cursor, load, viewMode])
 
-  const { mediaOnly } = useMediaOnly()
+  const { mediaMode } = useMediaOnly()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const { hideRepostsFromDids } = useHideReposts() ?? { hideRepostsFromDids: [] as string[] }
   const displayItems = useMemo(() =>
     items
-      .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
+      .filter((item) => (mediaMode === 'media' ? getPostMediaInfo(item.post) : true))
       .filter((item) => !seenUrisAtReset.has(item.post.uri))
       .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
       .filter((item) => {
@@ -671,33 +671,32 @@ export default function FeedPage() {
         const reposterDid = (item.reason as { by?: { did: string } })?.by?.did
         return !reposterDid || !hideRepostsFromDids.includes(reposterDid)
       }),
-    [items, mediaOnly, seenUrisAtReset, nsfwPreference, hideRepostsFromDids]
+    [items, mediaMode, seenUrisAtReset, nsfwPreference, hideRepostsFromDids]
   )
   const displayEntries = useMemo(() => buildDisplayEntries(displayItems), [displayItems])
   const itemsAfterOtherFilters = useMemo(() =>
     items
-      .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
+      .filter((item) => (mediaMode === 'media' ? getPostMediaInfo(item.post) : true))
       .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post)),
-    [items, mediaOnly, nsfwPreference]
+    [items, mediaMode, nsfwPreference]
   )
   /** Only "seen all" when there's nothing more to load (no cursor). With mixed feeds, one feed can be exhausted while others still have posts. */
   const emptyBecauseAllSeen = displayEntries.length === 0 && itemsAfterOtherFilters.length > 0 && !cursor
   const canLoadMoreWhenEmpty = displayEntries.length === 0 && cursor != null
   const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
-  /** Flat list of focus targets: one per media item per post; carousel counts as one. */
+  /** Flat list of focus targets: one per media item per post (or one per card in text-only mode). */
   const focusTargets = useMemo(() => {
     const out: { cardIndex: number; mediaIndex: number }[] = []
     displayEntries.forEach((entry, cardIndex) => {
       if (entry.type === 'post') {
-        const all = getPostAllMediaForDisplay(entry.item.post)
-        const n = Math.max(1, all.length)
+        const n = mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)
         for (let m = 0; m < n; m++) out.push({ cardIndex, mediaIndex: m })
       } else {
         out.push({ cardIndex, mediaIndex: 0 })
       }
     })
     return out
-  }, [displayEntries])
+  }, [displayEntries, mediaMode])
   /** First focus index for each card (top image; for S and A/D). */
   const firstFocusIndexForCard = useMemo(() => {
     const out: number[] = []
@@ -705,23 +704,37 @@ export default function FeedPage() {
     displayEntries.forEach((_entry, cardIndex) => {
       out[cardIndex] = idx
       const entry = displayEntries[cardIndex]
-      const n = entry.type === 'post' ? Math.max(1, getPostAllMediaForDisplay(entry.item.post).length) : 1
+      const n = entry.type === 'post' ? (mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)) : 1
       idx += n
     })
     return out
-  }, [displayEntries])
+  }, [displayEntries, mediaMode])
   /** Last focus index for each card (bottom image; for W when moving to card above). */
   const lastFocusIndexForCard = useMemo(() => {
     const out: number[] = []
     displayEntries.forEach((entry, cardIndex) => {
-      const n = entry.type === 'post' ? Math.max(1, getPostAllMediaForDisplay(entry.item.post).length) : 1
+      const n = entry.type === 'post' ? (mediaMode === 'text' ? 1 : Math.max(1, getPostAllMediaForDisplay(entry.item.post).length)) : 1
       out[cardIndex] = firstFocusIndexForCard[cardIndex] + n - 1
     })
     return out
-  }, [displayEntries, firstFocusIndexForCard])
+  }, [displayEntries, firstFocusIndexForCard, mediaMode])
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
   actionsMenuOpenForIndexRef.current = actionsMenuOpenForIndex
+
+  // Measure grid offset for virtualizer scroll margin (document-relative top of grid)
+  useLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const update = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY
+      setScrollMargin(top)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [displayEntries.length, suggestedFollowsOpen])
 
   useEffect(() => {
     setKeyboardFocusIndex((i) => {
@@ -1031,7 +1044,8 @@ export default function FeedPage() {
         window.scrollTo(0, 0)
       })
     },
-    enabled: true,
+    enabled: isDesktop,
+    maxTouchStartY: 130,
   })
 
   const swipeEnabled =
@@ -1175,7 +1189,7 @@ export default function FeedPage() {
               </>
             ) : emptyBecauseAllSeen ? (
               <>You've seen all the posts in this feed.<br />New posts will appear as they're posted.</>
-            ) : mediaOnly ? (
+            ) : mediaMode === 'media' ? (
               'No posts with images or videos in this feed.'
             ) : (
               'No posts in this feed.'
@@ -1184,6 +1198,7 @@ export default function FeedPage() {
         ) : (
           <>
             <div
+              ref={gridRef}
               className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}
               data-feed-cards
               data-view-mode={viewMode}
@@ -1191,77 +1206,42 @@ export default function FeedPage() {
               onMouseLeave={isDesktop ? () => setKeyboardFocusIndex(-1) : undefined}
             >
               {distributeEntriesByHeight(displayEntries, cols).map((column, colIndex) => (
-                <div key={colIndex} className={styles.gridColumn}>
-                  {column.map(({ entry, originalIndex }) => (
-                    <div
-                      key={entry.type === 'post' ? entry.item.post.uri : `carousel-${entry.items[0].post.uri}`}
-                      className={styles.gridItem}
-                      onMouseEnter={
-                        isDesktop
-                          ? () => {
-                              if (mouseMovedRef.current) {
-                                mouseMovedRef.current = false
-                                setKeyboardNavActive(false)
-                                setFocusSetByMouse(true)
-                                setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
-                              }
-                            }
-                          : undefined
-                      }
-                    >
-                      {entry.type === 'post' ? (
-                        <PostCard
-                          item={entry.item}
-                          isSelected={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex}
-                          focusedMediaIndex={
-                            focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex && !(focusSetByMouse && getPostAllMediaForDisplay(entry.item.post).length > 1)
-                              ? focusTargets[keyboardFocusIndex]?.mediaIndex
-                              : undefined
-                          }
-                          onMediaRef={(mediaIndex, el) => {
-                            if (!mediaRefsRef.current[originalIndex]) mediaRefsRef.current[originalIndex] = {}
-                            mediaRefsRef.current[originalIndex][mediaIndex] = el
-                          }}
-                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                          openAddDropdown={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex && keyboardAddOpen}
-                          onAddClose={() => setKeyboardAddOpen(false)}
-                          onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? originalIndex : null)}
-                          cardIndex={originalIndex}
-                          actionsMenuOpenForIndex={actionsMenuOpenForIndex}
-                          onPostClick={(uri, opts) => {
-                            if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                            openPostModal(uri, opts?.openReply)
-                          }}
-                          onAspectRatio={undefined}
-                          fillCell={false}
-                          nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(entry.item.post) && !unblurredUris.has(entry.item.post.uri)}
-                          onNsfwUnblur={() => setUnblurred(entry.item.post.uri, true)}
-                          likedUriOverride={likeOverrides[entry.item.post.uri]}
-                          onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
-                          seen={seenUris.has(entry.item.post.uri)}
-                        />
-                      ) : (
-                        <RepostCarouselCard
-                          items={entry.items}
-                          onPostClick={(uri, opts) => {
-                            if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                            openPostModal(uri)
-                          }}
-                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                          seen={seenUris.has(entry.items[0].post.uri)}
-                          data-post-uri={entry.items[0].post.uri}
-                        />
-                      )}
-                    </div>
-                  ))}
-                  {cursor && (
-                    <div
-                      ref={(el) => { loadMoreSentinelRefs.current[colIndex] = el }}
-                      className={styles.loadMoreSentinel}
-                      aria-hidden
-                    />
-                  )}
-                </div>
+                <VirtualizedFeedColumn
+                  key={colIndex}
+                  column={column}
+                  colIndex={colIndex}
+                  scrollMargin={scrollMargin}
+                  loadMoreSentinelRef={cursor ? (el) => { loadMoreSentinelRefs.current[colIndex] = el } : undefined}
+                  hasCursor={!!cursor}
+                  keyboardFocusIndex={keyboardFocusIndex}
+                  focusTargets={focusTargets}
+                  firstFocusIndexForCard={firstFocusIndexForCard}
+                  focusSetByMouse={focusSetByMouse}
+                  keyboardAddOpen={keyboardAddOpen}
+                  actionsMenuOpenForIndex={actionsMenuOpenForIndex}
+                  nsfwPreference={nsfwPreference}
+                  unblurredUris={unblurredUris}
+                  setUnblurred={setUnblurred}
+                  likeOverrides={likeOverrides}
+                  setLikeOverrides={setLikeOverrides}
+                  seenUris={seenUris}
+                  openPostModal={openPostModal}
+                  cardRef={(index) => (el) => { cardRefsRef.current[index] = el }}
+                  onMediaRef={(index, mediaIndex, el) => {
+                    if (!mediaRefsRef.current[index]) mediaRefsRef.current[index] = {}
+                    mediaRefsRef.current[index][mediaIndex] = el
+                  }}
+                  onActionsMenuOpenChange={(index, open) => setActionsMenuOpenForIndex(open ? index : null)}
+                  onMouseEnter={(originalIndex) => {
+                    if (isDesktop && mouseMovedRef.current) {
+                      mouseMovedRef.current = false
+                      setKeyboardNavActive(false)
+                      setFocusSetByMouse(true)
+                      setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
+                    }
+                  }}
+                  onAddClose={() => setKeyboardAddOpen(false)}
+                />
               ))}
             </div>
             {session && (
