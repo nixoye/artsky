@@ -18,10 +18,13 @@ import { ScrollLockProvider } from './context/ScrollLockContext'
 import { ModerationProvider } from './context/ModerationContext'
 import { HideRepostsProvider } from './context/HideRepostsContext'
 import { SeenPostsProvider } from './context/SeenPostsContext'
+import { ToastProvider } from './context/ToastContext'
 import FeedPage from './pages/FeedPage'
 import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import TagPage from './pages/TagPage'
+import CollabPage from './pages/CollabPage'
+import ConsensusPage from './pages/ConsensusPage'
 
 /** Official Git SCM logo (https://git-scm.com/images/logos/downloads/Git-Icon-1788C.svg) */
 function GitLogo() {
@@ -156,6 +159,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/feed" element={<FeedPage />} />
       <Route path="/forum" element={<Navigate to="/feed?forum=1" replace />} />
+      <Route path="/collab" element={<CollabPage />} />
+      <Route path="/consensus" element={<ConsensusPage />} />
       <Route path="/artboards" element={<Navigate to="/feed?artboards=1" replace />} />
       <Route path="/artboard/:id" element={<ArtboardRedirect />} />
       <Route path="/post/:uri" element={<PostDetailPage />} />
@@ -175,6 +180,7 @@ export default function App() {
         <ThemeProvider>
           <SessionProvider>
             <ScrollLockProvider>
+            <ToastProvider>
             <ViewModeProvider>
               <ArtOnlyProvider>
                 <MediaOnlyProvider>
@@ -198,6 +204,7 @@ export default function App() {
                 </MediaOnlyProvider>
               </ArtOnlyProvider>
             </ViewModeProvider>
+            </ToastProvider>
             </ScrollLockProvider>
           </SessionProvider>
         </ThemeProvider>

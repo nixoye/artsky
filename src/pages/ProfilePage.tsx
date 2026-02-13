@@ -5,6 +5,7 @@ import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModalTopBarSlot } from '../context/ModalTopBarSlotContext'
 import { agent, publicAgent, getAgent, getPostMediaInfo, getPostMediaInfoForDisplay, getSession, getActorFeeds, listStandardSiteDocumentsForAuthor, listActivitySubscriptions, putActivitySubscription, isPostNsfw, getFolloweesWhoFollowTarget, type TimelineItem, type StandardSiteDocumentView, type ProfileViewBasic } from '../lib/bsky'
+import { setInitialPostForUri } from '../lib/postCache'
 import type { AtpAgent } from '@atproto/api'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
@@ -215,7 +216,7 @@ export function ProfileContent({
   const { openPostModal, isModalOpen } = useProfileModal()
   const editProfileCtx = useEditProfile()
   const topBarSlots = useModalTopBarSlot()
-  const mobileBottomBarSlot = topBarSlots?.mobileBottomBarSlot ?? null
+  const topBarRightSlot = topBarSlots?.rightSlot ?? null
   const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
   const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
@@ -893,7 +894,7 @@ export function ProfileContent({
             authenticatedClient={followListModal === 'followedByFollows' ? agent : undefined}
           />
         )}
-        {inModal && mobileBottomBarSlot
+        {inModal && topBarRightSlot
           ? createPortal(
               <div className={styles.modalBottomBarButtons}>
                 <button
@@ -918,7 +919,7 @@ export function ProfileContent({
                   <NsfwEyeIcon mode={nsfwPreference} />
                 </button>
               </div>,
-              mobileBottomBarSlot,
+              topBarRightSlot,
             )
           : null}
         {!inModal && (
@@ -1058,7 +1059,10 @@ export function ProfileContent({
                   <div key={item.post.uri}>
                     <PostCard
                       item={item}
-                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      onPostClick={(uri, opts) => {
+                        if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
+                        openPostModal(uri, opts?.openReply)
+                      }}
                       nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                       constrainMediaHeight
@@ -1129,7 +1133,10 @@ export function ProfileContent({
                           cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
                           openAddDropdown={(tab === 'posts' || tab === 'reposts') && originalIndex === keyboardFocusIndex && keyboardAddOpen}
                           onAddClose={() => setKeyboardAddOpen(false)}
-                          onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                          onPostClick={(uri, opts) => {
+                        if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
+                        openPostModal(uri, opts?.openReply)
+                      }}
                           nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                           onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                           constrainMediaHeight={false}
@@ -1169,7 +1176,10 @@ export function ProfileContent({
                       cardRef={(el) => { cardRefsRef.current[index] = el }}
                       openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
                       onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      onPostClick={(uri, opts) => {
+                        if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
+                        openPostModal(uri, opts?.openReply)
+                      }}
                       nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                       constrainMediaHeight={cols === 1}

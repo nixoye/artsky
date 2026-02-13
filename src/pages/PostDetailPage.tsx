@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
-import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getPostExternalLink, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
+import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getPostExternalLink, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes, getPostThreadCached } from '../lib/bsky'
+import { takeInitialPostForUri, getCachedThread } from '../lib/postCache'
 import { getDownvoteCounts } from '../lib/constellation'
-import { downloadImageWithHandle, downloadVideoWithPostUri } from '../lib/downloadImage'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
@@ -641,7 +641,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   const [openActionsMenuUri, setOpenActionsMenuUri] = useState<string | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
   const [showBoardDropdown, setShowBoardDropdown] = useState(false)
-  const [saveLoading, setSaveLoading] = useState(false)
   const [showRepostDropdown, setShowRepostDropdown] = useState(false)
   const [showQuoteComposer, setShowQuoteComposer] = useState(false)
   const [quoteText, setQuoteText] = useState('')
@@ -751,26 +750,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
     }
   }
 
-  async function handleSave() {
-    if (!thread || !isThreadViewPost(thread) || saveLoading) return
-    const mediaList = getPostAllMedia(thread.post)
-    if (mediaList.length === 0) return
-    const idx = Math.min(keyboardFocusIndex, mediaList.length - 1)
-    const item = mediaList[idx]
-    const handle = thread.post.author.handle ?? thread.post.author.did
-    const postUri = thread.post.uri
-    setSaveLoading(true)
-    try {
-      if (item.type === 'video' && item.videoPlaylist) {
-        await downloadVideoWithPostUri(item.videoPlaylist, postUri)
-      } else if (item.type === 'image' && item.url) {
-        await downloadImageWithHandle(item.url, handle, postUri, mediaList.length > 1 ? idx : undefined)
-      }
-    } finally {
-      setSaveLoading(false)
-    }
-  }
-
   const QUOTE_MAX_LENGTH = 300
   const QUOTE_IMAGE_MAX = 4
   const QUOTE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
@@ -847,12 +826,32 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
 
   const load = useCallback(async () => {
     if (!decodedUri) return
-    setLoading(true)
     setError(null)
     const api = getSession() ? agent : publicAgent
+    let hadInstantData = false
+    const initialPost = takeInitialPostForUri(decodedUri)
+    const cached = getCachedThread(decodedUri)
+    if (initialPost) {
+      const post = (initialPost as { post?: unknown }).post ?? initialPost
+      if (post && typeof post === 'object' && (post as { uri?: string }).uri === decodedUri) {
+        const minimal: AppBskyFeedDefs.ThreadViewPost = {
+          $type: 'app.bsky.feed.defs#threadViewPost',
+          post: post as AppBskyFeedDefs.PostView,
+          replies: [],
+        }
+        setThread(minimal)
+        setLoading(false)
+        hadInstantData = true
+      }
+    } else if (cached && isThreadViewPost(cached as AppBskyFeedDefs.ThreadViewPost)) {
+      setThread(cached as AppBskyFeedDefs.ThreadViewPost)
+      setLoading(false)
+      hadInstantData = true
+    }
+    if (!hadInstantData) setLoading(true)
     try {
-      const threadRes = await api.app.bsky.feed.getPostThread({ uri: decodedUri, depth: 10 })
-      const threadData = threadRes.data.thread
+      const threadRes = await getPostThreadCached(decodedUri, api)
+      const threadData = threadRes.data.thread as AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
       setThread(threadData)
       setLoading(false)
       setDownvoteCountOptimisticDelta({})
@@ -1447,8 +1446,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
 
   const content = (
-      <div className={`${styles.wrap}${onClose ? ` ${styles.wrapInModal}` : ''}`}>
-        {loading && <div className={styles.loading}>Loading…</div>}
+      <div className={`${styles.wrap}${onClose ? ` ${styles.wrapInModal}` : ''}${loading ? ` ${styles.wrapLoading}` : ''}`}>
+        {loading && <div className={styles.loading} aria-live="polite">Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
         {thread && isThreadViewPost(thread) && (
           <>
@@ -1660,18 +1659,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
               </div>
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
-                {rootMedia.length > 0 && (
-                  <button
-                    type="button"
-                    className={styles.saveBtn}
-                    onClick={handleSave}
-                    disabled={saveLoading}
-                    title={rootMedia[keyboardFocusIndex]?.type === 'video' ? 'Save video' : 'Save image'}
-                    aria-label={rootMedia[keyboardFocusIndex]?.type === 'video' ? 'Save video' : 'Save image'}
-                  >
-                    {saveLoading ? '…' : '↓'} Save
-                  </button>
-                )}
                 <div className={styles.addToBoardWrap}>
                   <button
                     type="button"
