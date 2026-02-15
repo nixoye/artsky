@@ -35,6 +35,9 @@ jobs:
         env:
           CI: true
           NODE_OPTIONS: '--max-old-space-size=4096'
+          # OAuth: use repo owner + repo name so forks work without changes
+          VITE_APP_ORIGIN: "https://${{ github.repository_owner }}.github.io"
+          VITE_BASE_PATH: "/${{ github.event.repository.name }}/"
 
       - name: Verify build output
         run: |
@@ -78,7 +81,9 @@ jobs:
         env:
           CI: true
           NODE_OPTIONS: '--max-old-space-size=4096'
-          VITE_BASE_PATH: '/artsky-dev/'
+          # OAuth: use repo owner + repo name so forks work without changes
+          VITE_APP_ORIGIN: "https://${{ github.repository_owner }}.github.io"
+          VITE_BASE_PATH: "/${{ github.event.repository.name }}-dev/"
           VITE_APP_ENV: 'dev'
 
       - name: Verify build output
@@ -91,11 +96,11 @@ jobs:
       - name: Add README for artsky-dev repo
         run: cp artsky-dev-README.md dist/README.md
 
-      - name: Deploy to artsky-dev repo
+      - name: Deploy to dev repo
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.DEV_DEPLOY_TOKEN }}
-          external_repository: slrgt/artsky-dev
+          external_repository: ${{ github.repository_owner }}/${{ github.event.repository.name }}-dev
           publish_branch: main
           publish_dir: ./dist
           force_orphan: false
