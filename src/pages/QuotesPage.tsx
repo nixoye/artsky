@@ -1,22 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams, Navigate } from 'react-router-dom'
 import { getQuotes } from '../lib/bsky'
 import type { TimelineItem } from '../lib/bsky'
-import VirtualizedProfileColumn from './VirtualizedProfileColumn'
-import AppModal from './AppModal'
+import VirtualizedProfileColumn from '../components/VirtualizedProfileColumn'
+import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useModeration } from '../context/ModerationContext'
-import { useModalScroll } from '../context/ModalScrollContext'
-import styles from './QuotesModal.module.css'
-import profileGridStyles from '../pages/ProfilePage.module.css'
+import profileGridStyles from './ProfilePage.module.css'
+import styles from '../components/QuotesModal.module.css'
 
-interface QuotesModalProps {
-  postUri: string
-  onClose: () => void
-  onBack: () => void
-  canGoBack: boolean
-}
-
-export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: QuotesModalProps) {
+export default function QuotesPage() {
+  const [searchParams] = useSearchParams()
+  const postUri = searchParams.get('post') ?? ''
   const { openPostModal } = useProfileModal()
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const [items, setItems] = useState<TimelineItem[]>([])
@@ -24,13 +19,12 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [refreshFn, setRefreshFn] = useState<(() => void | Promise<void>) | null>(null)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
-  const modalScrollRef = useModalScroll()
 
   const load = useCallback(
     async (nextCursor?: string) => {
+      if (!postUri) return
       try {
         if (nextCursor) setLoadingMore(true)
         else setLoading(true)
@@ -50,38 +44,33 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
   )
 
   useEffect(() => {
-    setItems([])
-    setCursor(undefined)
-    load()
+    if (postUri) {
+      setItems([])
+      setCursor(undefined)
+      load()
+    }
   }, [postUri, load])
 
   useEffect(() => {
-    setRefreshFn(() => () => load())
-  }, [load])
-
-  useEffect(() => {
-    if (!cursor || loadingMore) return
+    if (!cursor || loadingMore || !postUri) return
     const el = loadMoreSentinelRef.current
     if (!el) return
-    const root = el.closest('[data-modal-scroll]') ?? undefined
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) load(cursor)
       },
-      { root, rootMargin: '200px', threshold: 0 }
+      { root: undefined, rootMargin: '200px', threshold: 0 }
     )
     obs.observe(el)
     return () => obs.disconnect()
-  }, [cursor, loadingMore, load])
+  }, [cursor, loadingMore, load, postUri])
+
+  if (!postUri) {
+    return <Navigate to="/feed" replace />
+  }
 
   return (
-    <AppModal
-      ariaLabel="Posts that quote this post"
-      onClose={onClose}
-      onBack={onBack}
-      canGoBack={canGoBack}
-      onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
-    >
+    <Layout title="Quotes" showNav>
       <div className={styles.wrap}>
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
@@ -95,8 +84,14 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
                 column={items.map((item, i) => ({ item, originalIndex: i }))}
                 colIndex={0}
                 scrollMargin={0}
-                scrollRef={modalScrollRef}
-                loadMoreSentinelRef={cursor ? (el) => { (loadMoreSentinelRef as unknown as { current: HTMLDivElement | null }).current = el } : undefined}
+                scrollRef={null}
+                loadMoreSentinelRef={
+                  cursor
+                    ? (el) => {
+                        ;(loadMoreSentinelRef as unknown as { current: HTMLDivElement | null }).current = el
+                      }
+                    : undefined
+                }
                 hasCursor={!!cursor}
                 keyboardFocusIndex={0}
                 keyboardAddOpen={false}
@@ -119,6 +114,6 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
           </>
         )}
       </div>
-    </AppModal>
+    </Layout>
   )
 }

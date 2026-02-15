@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, fullpagevirtual]
   workflow_dispatch:
 
 permissions:
@@ -96,6 +96,47 @@ jobs:
         with:
           personal_token: ${{ secrets.DEV_DEPLOY_TOKEN }}
           external_repository: slrgt/artsky-dev
+          publish_branch: main
+          publish_dir: ./dist
+          force_orphan: false
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+
+  # Fullpage branch: build with / base and push to slrgt/artsky-fullpage repo (slrgt.github.io/artsky-fullpage/ or custom domain)
+  build-and-deploy-fullpage:
+    if: github.ref == 'refs/heads/fullpagevirtual'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for fullpage site
+        run: npm run build
+        env:
+          CI: true
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          VITE_BASE_PATH: '/artsky-fullpage/'
+          VITE_APP_ENV: 'fullpage'
+
+      - name: Verify build output
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "::error::Build failed: dist/index.html not found"
+            exit 1
+          fi
+
+      - name: Deploy to artsky-fullpage repo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.FULLPAGE_DEPLOY_TOKEN }}
+          external_repository: slrgt/artsky-fullpage
           publish_branch: main
           publish_dir: ./dist
           force_orphan: false
